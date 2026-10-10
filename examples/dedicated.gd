@@ -23,7 +23,7 @@ const ScProgress := preload("../game/sc_progress.gd")
 ## and those are what this is about.
 
 const SECTIONS := 11
-const CHECKS := 82
+const CHECKS := 86
 
 ## Everything this run writes, and it is deleted on the way in and on the way out.
 ##
@@ -608,6 +608,38 @@ func _test_the_stand_ins() -> void:
 	_check(bots == game.players.size(), "and all of them are stand-ins on an empty server",
 		"%d of %d" % [bots, game.players.size()])
 
+	# [b]A person takes a stand-in's place, and leaving gives it back[/b]: DotBotQuota's fill
+	# mode, the family's default. Driven by calling the roster check rather than waiting for
+	# its interval, with a person added through the bridge the way a test's player is (peer
+	# zero, not a stand-in), so the count is exact and nothing else moves under it.
+	var quota_module := _module()
+	var quota_bridge: Object = quota_module.get("bridge") if quota_module != null else null
+	_check(server.console.find_cvar("bot_quota") != null and server.console.find_cvar("bot_quota_mode") != null,
+		"the shared bot_quota cvars are registered")
+	var _alias := _run_command("sc_min_players 3")
+	_check(server.console.find_cvar("bot_quota") != null and server.console.find_cvar("bot_quota").get_int() == 3,
+		"and the old sc_min_players sets bot_quota",
+		server.console.find_cvar("bot_quota").get_string() if server.console.find_cvar("bot_quota") != null else "missing")
+
+	if quota_module != null and quota_bridge != null:
+		quota_module.call("_keep_the_round_full")
+		var bots_before: int = (quota_module.get("_bot_ids") as Array).size()
+		var joined: DotResult = quota_bridge.call("add_player", 0, 9001, "Person")
+		quota_module.call("_keep_the_round_full")
+		var bots_with: int = (quota_module.get("_bot_ids") as Array).size()
+		_check(joined.ok and bots_before == 3 and bots_with == bots_before - 1,
+			"a person joining takes a stand-in's place", "%d -> %d" % [bots_before, bots_with])
+		quota_bridge.call("remove_player", 9001)
+		quota_module.call("_keep_the_round_full")
+		var bots_after: int = (quota_module.get("_bot_ids") as Array).size()
+		_check(bots_after == bots_before, "and a stand-in comes back when they leave",
+			"%d -> %d" % [bots_with, bots_after])
+	else:
+		_check(false, "a person joining takes a stand-in's place", "no module")
+		_check(false, "and a stand-in comes back when they leave", "no module")
+
+	var _restored := _run_command("sc_min_players 4")
+
 	# Turned off, they go away. A stand-in that could not be removed would be an operator
 	# with no way to run an empty server.
 	_run_command("sc_bots 0")
@@ -615,7 +647,9 @@ func _test_the_stand_ins() -> void:
 	for _i in range(int(3.0 * TICK_RATE)):
 		await get_tree().physics_frame
 
-	_check(true, "and the cvar that turns them off is accepted")
+	var off_module := _module()
+	_check(off_module != null and (off_module.get("_bot_ids") as Array).is_empty(),
+		"and turned off, the stand-ins are taken out")
 
 	_run_command("sc_bots 1")
 

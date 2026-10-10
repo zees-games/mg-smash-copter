@@ -30,4 +30,4 @@ cvars:
   sc_survival_seconds: "120"
   sc_showdown_seconds: "90"
   sc_bots: "1"
-  sc_min_players: "4"
+  bot_quota: "4"
