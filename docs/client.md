@@ -26,7 +26,7 @@ The cannon is behind you as often as in front, and the creak is the platform und
 - **The creak is derived on the client**: a lean past 70% of the collapse angle, from numbers every client has 30 times a second, with hysteresis (again only after settling below 50%), or it creaks every snapshot.
 - **Weapons by kind of use, not by weapon**: five kinds are what a player acts on. Your own shots from your rig's `used` signal (a round trip sooner), everybody else's from `ScNetBridge.weapon_used_by`.
 - **The ears are wherever the eyes are**, spectator camera included.
-- **The beacon's ping stays in `ScBeacon`** (its own `AudioStreamPlayer3D`, pinned to once a second by the suite); `beacon` is the id to move it to when real audio ships.
+- **The beacon's ping stays in `DotFxBeacon`** (its own `AudioStreamPlayer3D`, pinned to once a second by the suite); `beacon` is the id to move it to when real audio ships.
 - A headless client gets dot-audio's null sink; whether a speaker moves is `tools/audio_probe.sh` under xvfb, which drains the mixer before quitting (quitting with a voice sounding leaks the stream).
 
 ## Figures, and a gun in somebody else's hand
@@ -44,7 +44,7 @@ The cannon is behind you as often as in front, and the creak is the platform und
 - `blind_overlay` fades a near-black rect in under the numbers and **hides the tilt bar**, because the bar is the floor drawn as a number, and a blinded player would balance by instrument.
 - **The chat box is on its own CanvasLayer (layer 2)**: in the default canvas it drew under every CanvasLayer, so a blind covered the line saying an admin had done it.
 - **The health number and the chat box both anchor bottom-left**; they once overlapped. A headless viewport is 64x64, where nothing can overlap anything: only a render shows layout.
-- `ScBeacon` (by preload) is a ring, a once-a-second ripple, a 30 m column through everything except on your own, placed by `ScClient.present_beacons` at the drawn position, on the client, never the world (which also runs on a dedicated server).
+- `DotFxBeacon` (dot-fx's, shared with every game that marks a player) is a ring, a once-a-second ripple, a 30 m column through everything except on your own, placed by `ScClient.present_beacons` at the drawn position, on the client, never the world (which also runs on a dedicated server).
 
 ## Settings and the menu
 

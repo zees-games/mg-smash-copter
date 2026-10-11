@@ -1,6 +1,5 @@
 extends CharacterBody3D
 
-const ScBeacon := preload("sc_beacon.gd")
 const ScConfig := preload("sc_config.gd")
 const ScFigure := preload("sc_figure.gd")
 const ScAvatars := preload("sc_avatars.gd")
@@ -136,7 +135,7 @@ var blinded: bool = false
 var beacon: bool = false
 
 ## The marker [member beacon] draws, while it does. Client side.
-var beacon_marker: ScBeacon = null
+var beacon_marker: DotFxBeacon = null
 
 ## What other people see this player as. Client side: built and shown by
 ## [method present_body], never on a server, which draws nothing.
@@ -537,7 +536,7 @@ func present_beacon(delta: float, at: Vector3, local_view: bool) -> bool:
 		return false
 
 	if beacon_marker == null:
-		beacon_marker = ScBeacon.new()
+		beacon_marker = DotFxBeacon.new()
 		beacon_marker.name = "Beacon"
 		add_child(beacon_marker)
 

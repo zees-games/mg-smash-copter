@@ -31,7 +31,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 | `game/sc_config.gd`, `sc_paths.gd`, `sc_textures.gd` | every number (metres and seconds, layered); `rebase`/`rebase_onto`; prototype textures by role |
 | `game/sc_module.gd`, `sc_server.gd`, `sc_services.gd` | the dot-server module over `DotGameModule`, the game scene, chat/voice/moderation over `DotGameServices` |
 | `game/net/` | codec, behaviours, link, and `sc_net_bridge.gd`, the only file naming both halves |
-| `game/sc_client.gd`, `sc_client_chat.gd`, `sc_hud.gd`, `sc_spectate.gd`, `sc_audio.gd`, `sc_figure.gd`, `sc_beacon.gd`, `sc_settings.gd`, `sc_avatars.gd`, `sc.tscn` | the client (spectate is built on both ends) |
+| `game/sc_client.gd`, `sc_client_chat.gd`, `sc_hud.gd`, `sc_spectate.gd`, `sc_audio.gd`, `sc_figure.gd`, `sc_settings.gd`, `sc_avatars.gd`, `sc.tscn` | the client (spectate is built on both ends) |
 | `game/sc_progress.gd` | stats and achievements, authority only |
 | `props/` | prop bodies built from exported numbers, and the chopper |
 | `assets/kenney/`, `assets/{blaster-kit,melee,arms}/`, `textures/prototype/` | vendored CC0 art, one folder per kit; the weapon pack's art; six prototype textures |
@@ -85,7 +85,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 - Stand-ins are never counted and a player is begun on their first number; progress in memory, reporting off.
 - Refused moderation tools (respawn, give, strip) are refused for a reason `modtools` prints.
 - Spectating defaults to own side; no delay; the server's automatic choice prefers a team-mate.
-- The creak is derived on the client with hysteresis; the cannon's bang is a prop arriving at the muzzle; the beacon's ping stays in `ScBeacon`.
+- The creak is derived on the client with hysteresis; the cannon's bang is a prop arriving at the muzzle; the beacon's ping stays in `DotFxBeacon`.
 
 **Tests** ([testing](docs/testing.md))
 - Every suite counts sections and a total, and both are compared. The two halves of `headless_net` differ in tick rate and field on purpose.

@@ -25,7 +25,7 @@ const ScPlatforms := preload("sc_platforms.gd")
 ## a headless suite all run the same code and differ only in whether a speaker moves.
 ## dot-audio picks its own null sink when there is no device.
 ##
-## [b]The beacon's ping is not here, deliberately.[/b] [ScBeacon] synthesises its own tone
+## [b]The beacon's ping is not here, deliberately.[/b] [DotFxBeacon] synthesises its own tone
 ## on its own [AudioStreamPlayer3D], and `headless_run` pins its rate to once a second; it
 ## predates this layer and moving it is a change to a tested behaviour with nothing to gain
 ## but tidiness. The day real audio ships, `beacon` is the id it moves to.

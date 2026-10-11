@@ -208,7 +208,7 @@ func _player_of(peer_id: int) -> ScPlayer:
 ##
 ## [b]Blind and beacon are the two about a SCREEN rather than a body[/b], and each is one flag
 ## on [ScPlayer] that `ScPlayerNet` replicates — the blind to its owner alone, the beacon to
-## everybody — and that the client draws: `ScHud` blacks the owner's screen out, `ScBeacon`
+## everybody — and that the client draws: `ScHud` blacks the owner's screen out, `DotFxBeacon`
 ## rings the player on every screen and pings. The server decides; nothing about either is a
 ## client's to choose.
 func _mod_abilities() -> Dictionary:
