@@ -25,12 +25,35 @@ const ScPlayer := preload("sc_player.gd")
 ## Radians of lean at which the tilt bar goes red. The angle a player slides at.
 const SLIDE_LEAN := 0.244
 
+## Seconds left at which the clock turns red.
+const LOW_CLOCK_SEC := 10.0
+
+## The tilt bar's green, which the health bar shares: one "fine" colour on this HUD.
+const FINE_COLOUR := Color(0.45, 0.82, 0.48)
+
+
+## The glance pieces' colours in this game's palette: a dark slate plate under a bright sky
+## and a white floor, the platforms' yellow edge as the highlight, the tilt bar's green as
+## "fine". The numbers stay white ringed in dark, which reads over sky, floor and platform in
+## the same frame. Static so a render tool can use it.
+static func piece_theme() -> Theme:
+	var t := Theme.new()
+	var type := DotHudPiece.THEME_TYPE
+	t.set_color(&"plate", type, Color(0.05, 0.08, 0.14, 0.62))
+	t.set_color(&"plate_edge", type, Color(0.98, 0.86, 0.40, 0.3))
+	t.set_color(&"highlight", type, Color(0.98, 0.86, 0.40))
+	t.set_color(&"good", type, FINE_COLOUR)
+	t.set_color(&"low", type, Color(0.92, 0.28, 0.26))
+	return t
+
 var game: ScGame = null
 var player: ScPlayer = null
 
-var _clock: Label = null
-var _phase: Label = null
-var _health: Label = null
+## The clock with the phase line under it: dot-ui's [DotScoreStrip], clock alone (the
+## sides' state is the field line, bottom right).
+var strip: DotScoreStrip = null
+## Health: dot-ui's [DotVitals], bar and number on one plate, red at a quarter.
+var vitals: DotVitals = null
 var _field: Label = null
 var _special: Label = null
 var _shout: Label = null
@@ -102,17 +125,18 @@ func _build() -> void:
 
 	var size := 22
 
-	_clock = _label(size + 14)
-	_clock.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	_clock.offset_top = 16.0
-	_clock.offset_bottom = 72.0
-	_clock.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# The glance pieces read their colours from the theme on the type DotHudPiece; set on
+	# the root, every piece under it inherits them. See [method piece_theme].
+	_root.theme = piece_theme()
 
-	_phase = _label(size)
-	_phase.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	_phase.offset_top = 74.0
-	_phase.offset_bottom = 108.0
-	_phase.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# The clock, and the phase line under it. Full width, because the strip centres itself
+	# on its own middle; it ends above the special line at 110.
+	strip = DotScoreStrip.new()
+	strip.name = "Clock"
+	strip.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	strip.offset_top = 16.0
+	strip.offset_bottom = 96.0
+	_root.add_child(strip)
 
 	_special = _label(size)
 	_special.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -135,15 +159,20 @@ func _build() -> void:
 	# one on top of the other — which is exactly the shape of the bug game-buses-from-hell
 	# shipped with four HUD labels, and is invisible to a headless suite because a headless
 	# viewport is 64 x 64 and nothing there can overlap anything.
-	_health = _label(size + 16)
-	_health.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	_health.offset_left = 30.0
-	_health.offset_right = 300.0
+	vitals = DotVitals.new()
+	vitals.name = "Vitals"
+	vitals.bar_end = 220.0
+	vitals.fill_colour = FINE_COLOUR
+	vitals.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	vitals.offset_left = 24.0
+	vitals.offset_right = 24.0 + 340.0
 	# Above the chat box's FULL log, not its first line: eight rows reached y 518 at 720 and
-	# drew over this number. ScClient.new_chat caps the box at six rows, so its log tops out 162
-	# pixels off the bottom, under this label's 170 (checked in headless_run).
-	_health.offset_top = -230.0
-	_health.offset_bottom = -170.0
+	# drew over the old number. ScClient.new_chat caps the box at six rows, so its log tops
+	# out 162 pixels off the bottom, under this plate's 170 (it is 56 tall; checked in
+	# headless_run).
+	vitals.offset_top = -226.0
+	vitals.offset_bottom = -170.0
+	_root.add_child(vitals)
 
 	_field = _label(size)
 	_field.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
@@ -245,18 +274,18 @@ func _process(delta: float) -> void:
 		return
 
 	var left := game.seconds_left()
-	_clock.text = "%d:%02d" % [int(left) / 60, int(left) % 60]
-	_phase.text = _phase_line()
+	# No clock between rounds: a plate reading 0:00 over "between rounds" said the same
+	# thing twice. Red for the last ten seconds of a phase.
+	var running := game.phase != ScGame.Phase.IDLE and game.sides_are_playable()
+	strip.show_clock(
+		DotScoreStrip.clock_text(left) if running else "", left <= LOW_CLOCK_SEC, _phase_line()
+	)
 	_special.text = game.special_line()
 
 	if player != null and player.health != null:
-		_health.text = "%d" % int(round(player.health.health))
-		# Red below a quarter, which in the showdown is one burst from gone and in the
-		# survival phase is one crate.
-		var hurt := player.health.health <= player.health.max_health * 0.25
-		_health.add_theme_color_override(
-			"font_color", Color(1.0, 0.35, 0.3) if hurt else Color(1, 1, 1)
-		)
+		# Red at a quarter (DotVitals.low_fraction), which in the showdown is one burst from
+		# gone and in the survival phase is one crate.
+		vitals.show_vitals(player.health.health, player.health.max_health)
 
 	_field.text = "%d up   %d left   %d sides" % [
 		game.standing_platforms(), game.alive_count(), game.teams_alive(),

@@ -44,7 +44,7 @@ const SECTIONS := 36
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 265
+const CHECKS := 268
 
 const TICK_RATE := 64
 const TICK := 1.0 / float(TICK_RATE)
@@ -3099,13 +3099,42 @@ func _test_blind_and_beacon_drawn() -> void:
 	add_child(chat)
 	var w: DotChatWindow = chat.window
 	var log_top := w.margin_bottom + w.entry_height + float(w.max_lines) * (w.line_height + w.line_gap)
-	var health: Label = hud.get("_health")
+	var vitals: DotVitals = hud.vitals
+	var plate_bottom := -(vitals.offset_top + vitals.footprint().end.y)
 	_check(
-		-health.offset_bottom >= log_top,
-		"a full chat log stays under the health number",
-		"log reaches %.0f px off the bottom, the number starts %.0f off it" % [log_top, -health.offset_bottom]
+		plate_bottom >= log_top,
+		"a full chat log stays under the health plate",
+		"log reaches %.0f px off the bottom, the plate ends %.0f off it" % [log_top, plate_bottom]
 	)
 	chat.queue_free()
+
+	# Health and the clock are dot-ui's glance pieces, handed this world's numbers.
+	me.health.health = 17.4
+	hud._process(0.0)
+	_check(
+		vitals.number_text() == "18" and vitals.is_low(),
+		"the HUD hands health to DotVitals, red at a quarter",
+		"%s low=%s" % [vitals.number_text(), str(vitals.is_low())]
+	)
+	_check(
+		hud.strip.under_text() == hud._phase_line()
+		and hud.strip.clock == (
+			DotScoreStrip.clock_text(game.seconds_left())
+			if game.phase != ScGame.Phase.IDLE and game.sides_are_playable() else ""
+		),
+		"and the clock and the phase line to DotScoreStrip",
+		"%s / %s" % [hud.strip.clock, hud.strip.under_text()]
+	)
+	me.health.health = me.health.max_health
+
+	# A pack naming these classes does not parse on a shell whose dot-ui predates them, so
+	# the requires.json dot-ci derives must ask for dot-ui 4, and nothing may lower it.
+	var asks := DotAddonApi.derive()
+	_check(
+		int(asks.get("dot_ui", 0)) >= 4 and not FileAccess.file_exists("res://" + DotAddonApi.FLOOR_FILE),
+		"the pack asks a shell for dot-ui level 4, the glance pieces",
+		str(asks.get("dot_ui"))
+	)
 
 	me.blinded = false
 	for _i in range(30):

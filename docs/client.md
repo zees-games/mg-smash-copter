@@ -39,11 +39,11 @@ The cannon is behind you as often as in front, and the creak is the platform und
 
 ## HUD, admin overlays, chat
 
-`ScHud`: four numbers, a tilt bar, a dot, and who you are watching.
+`ScHud`: four numbers, a tilt bar, a dot, and who you are watching. **Health and the clock are dot-ui's glance pieces**: `DotVitals` (bar, cross and number on one plate, red at a quarter, the tilt bar's green as its fill) and `DotScoreStrip` (the clock alone, red for the last ten seconds, hidden between rounds, with the phase line under it), coloured by `ScHud.piece_theme()` (a dark slate plate, the platforms' yellow as highlight). Naming them makes the pack need a client shell with dot-ui API level 4; the derived `requires.json` asks for it and `headless_run` checks it.
 
 - `blind_overlay` fades a near-black rect in under the numbers and **hides the tilt bar**, because the bar is the floor drawn as a number, and a blinded player would balance by instrument.
 - **The chat box is on its own CanvasLayer (layer 2)**: in the default canvas it drew under every CanvasLayer, so a blind covered the line saying an admin had done it.
-- **The health number and the chat box both anchor bottom-left**; they once overlapped. A headless viewport is 64x64, where nothing can overlap anything: only a render shows layout.
+- **The health plate and the chat box both anchor bottom-left**; they once overlapped. The plate ends 170 pixels off the bottom, above the six-row log's 162 (`headless_run`). A headless viewport is 64x64, where nothing can overlap anything: only a render shows layout.
 - `DotFxBeacon` (dot-fx's, shared with every game that marks a player) is a ring, a once-a-second ripple, a 30 m column through everything except on your own, placed by `ScClient.present_beacons` at the drawn position, on the client, never the world (which also runs on a dedicated server).
 
 ## Settings and the menu
