@@ -140,7 +140,7 @@ func _build() -> void:
 	_health.offset_left = 30.0
 	_health.offset_right = 300.0
 	# Above the chat box's FULL log, not its first line: eight rows reached y 518 at 720 and
-	# drew over this number. ScClientChat caps the box at six rows, so its log tops out 162
+	# drew over this number. ScClient.new_chat caps the box at six rows, so its log tops out 162
 	# pixels off the bottom, under this label's 170 (checked in headless_run).
 	_health.offset_top = -230.0
 	_health.offset_bottom = -170.0

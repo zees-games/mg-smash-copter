@@ -31,7 +31,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 | `game/sc_config.gd`, `sc_paths.gd`, `sc_textures.gd` | every number (metres and seconds, layered); `rebase`/`rebase_onto`; the prototype grid's tint by role |
 | `game/sc_module.gd`, `sc_server.gd`, `sc_services.gd`, `sc_vote.gd` | the dot-server module over `DotGameModule`, the game scene, chat/voice/moderation over `DotGameServices`, the layout vote over dot-vote |
 | `game/net/` | codec, behaviours, link, and `sc_net_bridge.gd`, the only file naming both halves |
-| `game/sc_client.gd`, `sc_client_chat.gd`, `sc_hud.gd`, `sc_spectate.gd`, `sc_audio.gd`, `sc_figure.gd`, `sc_settings.gd`, `sc_avatars.gd`, `sc.tscn` | the client (spectate is built on both ends) |
+| `game/sc_client.gd`, `sc_hud.gd`, `sc_spectate.gd`, `sc_audio.gd`, `sc_figure.gd`, `sc_settings.gd`, `sc_avatars.gd`, `sc.tscn` | the client (spectate is built on both ends) |
 | `game/sc_progress.gd` | stats and achievements, authority only |
 | `props/` | prop bodies built from exported numbers, and the chopper |
 | `assets/kenney/`, `assets/{blaster-kit,melee,arms}/`, `textures/prototype/` | vendored CC0 art, one folder per kit; the weapon pack's art; Kenney's light prototype grid |

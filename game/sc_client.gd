@@ -2,7 +2,7 @@ extends Node
 
 const ScAudio := preload("sc_audio.gd")
 const ScSettings := preload("sc_settings.gd")
-const ScClientChat := preload("sc_client_chat.gd")
+const ScServices := preload("sc_services.gd")
 const ScNetBridge := preload("net/sc_net_bridge.gd")
 const ScNetCommand := preload("net/sc_net_command.gd")
 
@@ -60,7 +60,7 @@ var game: ScGame = null
 var player: ScPlayer = null
 var camera: Camera3D = null
 var hud: ScHud = null
-var chat: ScClientChat = null
+var chat: DotGameChatClient = null
 
 ## What the game sounds like. See [ScAudio].
 var audio: ScAudio = null
@@ -846,8 +846,7 @@ func _build_hud() -> void:
 ## first line arrived would miss it — the backlog a joining player is sent is the first thing
 ## the server says.
 func _build_chat() -> void:
-	chat = ScClientChat.new()
-	chat.name = "Chat"
+	chat = new_chat()
 	add_child(chat)
 
 	# [b]Typing is not moving.[/b] The sampler is what turns keys into a command, so
@@ -1327,3 +1326,23 @@ func describe() -> Dictionary:
 		out["world"] = game.describe()
 
 	return out
+
+
+## dot-game's chat box and microphone, with this game's channels and voice format. It also
+## draws dot-server's own lines (the vote between games, joins, an admin's `say`), which arrive
+## on the shell's client link rather than on this game's bridge. Static so a suite can build
+## the same box the client does.
+static func new_chat() -> DotGameChatClient:
+	var box := DotGameChatClient.new()
+	box.name = "Chat"
+	box.channels = [
+		{"id": ScServices.CH_ALL, "label": "All", "colour": Color(0.93, 0.94, 0.96)},
+		{"id": ScServices.CH_TEAM, "label": "Team", "colour": Color(0.55, 0.82, 0.95)},
+		{"id": ScServices.CH_NEAR, "label": "Near", "colour": Color(0.82, 0.86, 0.72)},
+	]
+	box.max_length = ScServices.chat_rules().max_length
+	box.voice_config = ScServices.voice_format()
+	# Six rows, not eight: a full log of eight reached the health number (ScHud puts it 170
+	# pixels off the bottom; six rows end 162 off it). A wrapped vote line takes two.
+	box.window_settings = {"max_lines": 6}
+	return box

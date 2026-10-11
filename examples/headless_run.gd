@@ -9,7 +9,6 @@ const ScCopter := preload("../game/sc_copter.gd")
 const ScFigure := preload("../game/sc_figure.gd")
 const ScGame := preload("../game/sc_game.gd")
 const ScHud := preload("../game/sc_hud.gd")
-const ScClientChat := preload("../game/sc_client_chat.gd")
 const ScLayouts := preload("../game/sc_layouts.gd")
 const ScPlatforms := preload("../game/sc_platforms.gd")
 const ScPaths := preload("../game/sc_paths.gd")
@@ -3096,7 +3095,7 @@ func _test_blind_and_beacon_drawn() -> void:
 
 	# The chat box's full log against the health number, both bottom-anchored, so the
 	# arithmetic holds at any height: eight rows once drew over the "100".
-	var chat := ScClientChat.new()
+	var chat := ScClient.new_chat()
 	add_child(chat)
 	var w: DotChatWindow = chat.window
 	var log_top := w.margin_bottom + w.entry_height + float(w.max_lines) * (w.line_height + w.line_gap)
