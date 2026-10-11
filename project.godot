@@ -15,6 +15,10 @@ config/description="Two to six teams survive on platforms balanced on single pil
 config/features=PackedStringArray("4.7")
 run/main_scene="res://game/sc.tscn"
 
+[audio]
+
+driver/enable_input=true
+
 [physics]
 
 ; [b]Godot's own 9.8, and that is deliberate here where three other 3D games in this
