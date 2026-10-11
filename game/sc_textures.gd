@@ -16,11 +16,10 @@ const ScPaths := preload("sc_paths.gd")
 ## what those are drawn as is decided here once. The alternative is a colour per box,
 ## which means replacing the look is editing every line that builds a box.
 ##
-## The six files are [b]Kenney's Prototype Textures 1.0[/b], CC0 — public domain, no
-## attribution required, strictly more permissive than the MIT this repository ships
-## under. `textures/prototype/LICENSE.txt` is Kenney's own, copied unchanged. Only the six
-## referenced files are vendored; the kit is six colours by thirteen patterns and the rest
-## is not needed.
+## The grid is [b]Kenney's Prototype Textures 1.0[/b], CC0 — public domain, no attribution
+## required, strictly more permissive than the MIT this repository ships under.
+## `textures/prototype/LICENSE.txt` is Kenney's own, copied unchanged. One file is vendored:
+## the light grid, tinted per role (see [constant ROLE_COLOURS]).
 
 const CHANNEL := "sc.textures"
 
@@ -38,33 +37,46 @@ enum Role {
 	HAZARD,
 	## A spawn pad and the chopper's landing square.
 	SAFE,
+	## The floor forty metres down. Appended, so no role's number moves.
+	FLOOR,
 }
 
 ## The file each role loads. Dropping a different PNG in is the whole of a re-skin.
 ##
-## [b]`texture_02` from each colour folder, and not `texture_13`, which is the same
-## grid.[/b] Kenney's numbering is not the same pattern in every colour folder and several
-## of the `texture_13`s have `WALL / 1 x 1 meter / 1024 x 1024` painted into the corner of
-## the image. Tiled across a map that is a label repeating every eight metres, and the
-## number on it is wrong here anyway. game-g2gfast checked this per file rather than per
-## number and wrote down why; this is the same six choices.
+## [b]Every role draws Kenney's light grid (`texture_02` of the Light folder), tinted by
+## [constant ROLE_COLOURS].[/b] The roles used to load six of Kenney's colour folders (an
+## orange, a violet, a red, a green, a charcoal), each drawn white; at full saturation under
+## a sun they made the field read as a neon test level, and a tint over one of them is a
+## double tint that produces mud. One light tile under a pastel per role is the family's
+## look (game-arena's built-in maps) and keeps the grid identical on every surface. Not
+## `texture_13`, which is the same grid with `WALL / 1 x 1 meter` painted in a corner.
 const ROLE_FILES := {
-	Role.DECK: "deck.png",
-	Role.PILLAR: "pillar.png",
-	Role.CANNON: "cannon.png",
-	Role.ARENA: "arena.png",
-	Role.HAZARD: "hazard.png",
-	Role.SAFE: "safe.png",
+	Role.DECK: "grid.png",
+	Role.PILLAR: "grid.png",
+	Role.CANNON: "grid.png",
+	Role.ARENA: "grid.png",
+	Role.HAZARD: "grid.png",
+	Role.SAFE: "grid.png",
+	Role.FLOOR: "grid.png",
 }
 
-## What the generated fallback grid is tinted with, per role, when no set is installed.
+## What each role is tinted, over the installed grid or the generated one.
+##
+## [b]Pastels, and the deck the lightest thing in the sky.[/b] The deck is what a player
+## reads a lean off, so it stays near white with the grid on it; the pillar under it is a
+## mid lavender, dark enough that a deck reads against it and light enough that the field
+## is not a row of black posts; the cannon and anything to take cover behind are the one
+## saturated colour (butter yellow); the corner arenas lavender, the hazard rim a coral,
+## spawn pads mint. The floor is a muted sky blue, far away and plainly not somewhere to
+## land, without the four hundred metres of red or charcoal it has been before.
 const ROLE_COLOURS := {
-	Role.DECK: Color(0.74, 0.76, 0.79),
-	Role.PILLAR: Color(0.30, 0.31, 0.34),
-	Role.CANNON: Color(0.86, 0.48, 0.18),
-	Role.ARENA: Color(0.55, 0.43, 0.68),
-	Role.HAZARD: Color(0.72, 0.27, 0.26),
-	Role.SAFE: Color(0.36, 0.62, 0.38),
+	Role.DECK: Color(0.97, 0.97, 1.00),
+	Role.PILLAR: Color(0.70, 0.64, 0.92),
+	Role.CANNON: Color(1.00, 0.78, 0.30),
+	Role.ARENA: Color(0.80, 0.70, 1.00),
+	Role.HAZARD: Color(1.00, 0.55, 0.60),
+	Role.SAFE: Color(0.58, 0.96, 0.78),
+	Role.FLOOR: Color(0.56, 0.74, 0.90),
 }
 
 ## How many squares are across one tile of the installed set.
@@ -113,6 +125,9 @@ static var _materials: Dictionary = {}
 ## Composited installed textures, by role. Null means "looked for it and it is not here".
 static var _installed: Dictionary = {}
 
+## Composited installed textures, by file, which several roles share.
+static var _by_path: Dictionary = {}
+
 ## The one generated tile, shared by every role and tinted per role.
 static var _grid: ImageTexture = null
 
@@ -129,10 +144,9 @@ static func surface(role: Role) -> StandardMaterial3D:
 	if texture == null:
 		texture = grid_texture()
 		squares = GENERATED_SQUARES_PER_TILE
-		# The generated tile is greyscale and is multiplied by the role's colour. An
-		# installed set brings its own colour and is drawn white, because multiplying
-		# Kenney's orange by a role tint is a double tint that produces mud.
-		material.albedo_color = ROLE_COLOURS.get(role, Color.WHITE)
+
+	# Both tiles are light grey and white, so the role's colour is the colour.
+	material.albedo_color = ROLE_COLOURS.get(role, Color.WHITE)
 
 	material.albedo_texture = texture
 
@@ -166,7 +180,7 @@ static func installed(role: Role) -> Texture2D:
 	if _installed.has(role):
 		return _installed[role]
 
-	var path := "%s/%s" % [TEXTURE_DIR, ROLE_FILES.get(role, "deck.png")]
+	var path := "%s/%s" % [TEXTURE_DIR, ROLE_FILES.get(role, "grid.png")]
 
 	# [method ResourceLoader.exists] rather than [method FileAccess.file_exists]: an
 	# imported texture in an exported build is a `.ctex` beside a `.png` that is not
@@ -185,8 +199,12 @@ static func installed(role: Role) -> Texture2D:
 		_installed[role] = null
 		return null
 
-	var checkered := _with_checker(loaded as Texture2D)
-	_installed[role] = checkered if checkered != null else loaded as Texture2D
+	# Every role shares one file, so the checker is composited once per file, not per role:
+	# it is a million-pixel loop in GDScript.
+	if not _by_path.has(path):
+		var checkered := _with_checker(loaded as Texture2D)
+		_by_path[path] = checkered if checkered != null else loaded as Texture2D
+	_installed[role] = _by_path[path]
 	return _installed[role]
 
 
@@ -203,7 +221,7 @@ static func _with_checker(source: Texture2D) -> ImageTexture:
 	image = image.duplicate() as Image
 
 	if image.is_compressed():
-		# A compressed import cannot be written into. Decompressing is cheap for six
+		# A compressed import cannot be written into. Decompressing is cheap for one
 		# 1024-pixel tiles and happens once for the life of the process.
 		if image.decompress() != OK:
 			return null
@@ -275,6 +293,7 @@ static func grid_texture() -> ImageTexture:
 static func forget_cache() -> void:
 	_materials.clear()
 	_installed.clear()
+	_by_path.clear()
 	_grid = null
 
 

@@ -26,15 +26,15 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 | `game/sc_platforms.gd` | THE FILE: a slab on a pillar as a torsion spring the game integrates; bridges resting on lips |
 | `game/sc_game.gd` | the simulation: phases, loads, impacts, falls, the handover. Headless |
 | `game/sc_layouts.gd`, `sc_specials.gd`, `sc_content.gd` | the eight field layouts as documents and the jumps each means; special rounds as multipliers; props in four tiers and the chopper |
-| `game/sc_arena.gd`, `sc_cannon.gd`, `sc_copter.gd` | the sky, floor, tube and showdown complex in code; what the cannon throws and where; the helicopter chassis |
+| `game/sc_arena.gd`, `sc_cannon.gd`, `sc_copter.gd` | the sky (a dot-lighting document), floor, tube and showdown complex in code; what the cannon throws and where; the helicopter chassis |
 | `game/sc_player.gd` | one person: movement, the carry, health, weapons |
-| `game/sc_config.gd`, `sc_paths.gd`, `sc_textures.gd` | every number (metres and seconds, layered); `rebase`/`rebase_onto`; prototype textures by role |
+| `game/sc_config.gd`, `sc_paths.gd`, `sc_textures.gd` | every number (metres and seconds, layered); `rebase`/`rebase_onto`; the prototype grid's tint by role |
 | `game/sc_module.gd`, `sc_server.gd`, `sc_services.gd`, `sc_vote.gd` | the dot-server module over `DotGameModule`, the game scene, chat/voice/moderation over `DotGameServices`, the layout vote over dot-vote |
 | `game/net/` | codec, behaviours, link, and `sc_net_bridge.gd`, the only file naming both halves |
 | `game/sc_client.gd`, `sc_client_chat.gd`, `sc_hud.gd`, `sc_spectate.gd`, `sc_audio.gd`, `sc_figure.gd`, `sc_settings.gd`, `sc_avatars.gd`, `sc.tscn` | the client (spectate is built on both ends) |
 | `game/sc_progress.gd` | stats and achievements, authority only |
 | `props/` | prop bodies built from exported numbers, and the chopper |
-| `assets/kenney/`, `assets/{blaster-kit,melee,arms}/`, `textures/prototype/` | vendored CC0 art, one folder per kit; the weapon pack's art; six prototype textures |
+| `assets/kenney/`, `assets/{blaster-kit,melee,arms}/`, `textures/prototype/` | vendored CC0 art, one folder per kit; the weapon pack's art; Kenney's light prototype grid |
 | `scenes/sc_server.tscn`, `game.yml` | what a deployed server instantiates; the descriptor in the pack |
 | `examples/` | `headless_run`, `headless_net`, `dedicated` |
 | `tools/` | `shot.sh` (`--view=…`, `--ballot`, any `--sc-*` is config), `net_shot` (`--view=walk`), `audio_probe.sh` |
@@ -79,6 +79,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 - `ZeeModelCache.set_asset_root(ScPaths.root())` on client ready, `res://` back on exit.
 - A property or method newer than the shipped shell is set by name, or the pack fails to parse; rebuild the shell first.
 - Gravity is `ScConfig.gravity` on the world's own space; the renderer is `gl_compatibility`.
+- Colour is a tint per role over one light grid (`ScTextures.ROLE_COLOURS`), never a coloured tile; the light is `ScArena.DAYLIGHT` (dot-lighting), turned down under Compatibility. [platforms](docs/platforms.md#readability)
 
 **The game** ([services](docs/services.md), [client](docs/client.md))
 - The layout vote opens `sc_vote_after` into a round and applies at its end (MANUAL, `END_OF_ROUND`), rocked votes too; under MANUAL `ScVote` opens a passed rock-the-vote itself, or `!rtv` does nothing. [design](docs/design.md#the-layout-vote)

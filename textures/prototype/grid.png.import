@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dn8jl045losou"
-path="res://.godot/imported/deck.png-8d8adf4eebf44b4e09ac91e6f4eda4a5.ctex"
+uid="uid://bqmouuarvqq1d"
+path="res://.godot/imported/grid.png-b21d333c8c48ee0f2aa4f88ee091147b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://textures/prototype/deck.png"
-dest_files=["res://.godot/imported/deck.png-8d8adf4eebf44b4e09ac91e6f4eda4a5.ctex"]
+source_file="res://textures/prototype/grid.png"
+dest_files=["res://.godot/imported/grid.png-b21d333c8c48ee0f2aa4f88ee091147b.ctex"]
 
 [params]
 

@@ -112,7 +112,7 @@ func _clear() -> void:
 
 # --- The sky ----------------------------------------------------------------
 
-## The sun and the sky.
+## The sun and the sky, as a dot-lighting document.
 ##
 ## [b]Built here rather than left to the host scene, and the first render of
 ## game-buses-from-hell is why.[/b] A Godot scene with no [DirectionalLight3D] and no
@@ -121,64 +121,74 @@ func _clear() -> void:
 ## tones of the same colour and the depth a player judges a forty-metre drop by is simply
 ## absent. It reads as a fog bug and is the absence of any lighting whatsoever.
 ##
-## Not dot-lighting: that addon reads a document off imported map data and this map has no
-## data, because it is built in code. One sun and one sky is what a document would have
-## produced anyway.
+## A clear afternoon, the family's look (game-arena's built-in maps): a warm sun high and
+## to one side, a blue sky that continues under the horizon (the field floats forty metres
+## up and the showdown higher, so the lower half of the sky is in every falling frame), a
+## pale cool fill, a little haze far out, filmic tone map and glow.
+##
+## [b]The sun is high on purpose.[/b] A low sun over a field of platforms puts every deck
+## in the shadow of its neighbour, and a deck a player cannot see the tilt of is a deck they
+## cannot play on — which is the one thing this map's lighting has to protect. The angles
+## are dot-lighting's source convention (a negative pitch is a sun in the sky); the
+## brightness is divided by the profile's reference and square-rooted. The ambient is the
+## light in the shade, a pale cool grey: the underside of a platform is what a falling
+## player looks at, and black there is the wrong answer. `sky_top` is this game's (the rig
+## draws the zenith in the ambient colour); the fog distances are source units (metres /
+## 0.01905): haze from 120 m, so nothing a player has to react to is hidden in it.
+const DAYLIGHT := {
+	"sun": {
+		"pitch_src": -58.0,
+		"yaw_src": -35.0,
+		"colour": [1.0, 0.93, 0.80],
+		"brightness": 380.0,
+		"spread_degrees": 1.0,
+		"ambient_colour": [0.74, 0.78, 0.92],
+	},
+	"fog": {
+		"enabled": true,
+		"colour": [0.80, 0.89, 1.0],
+		"start": 6300.0,
+		"end": 31500.0,
+		"max_density": 0.35,
+	},
+	"sky_top": [0.30, 0.56, 0.96],
+}
+
+
 func _build_light() -> void:
-	var sun := DirectionalLight3D.new()
-	sun.name = "Sun"
-	# High and a little to one side. Low sun over a field of platforms puts every deck in
-	# the shadow of its neighbour, and a deck a player cannot see the tilt of is a deck
-	# they cannot play on — which is the one thing this map's lighting has to protect.
-	sun.rotation = Vector3(deg_to_rad(-56.0), deg_to_rad(38.0), 0.0)
-	# [b]Measured against a rendered frame, not chosen.[/b] At 1.05 with an ambient of 0.42
-	# and a filmic curve, every surface in this map came back within a few percent of white:
-	# the platforms, the pillars and the floor were three shades of the same nothing and the
-	# prototype grid — the one thing a player reads a tilt off — was gone. This game renders
-	# under `gl_compatibility` because the browser is the client shell's target, and
-	# game-buses-from-hell found out the same way that a scene lit for Forward+ is blown out
-	# there with nothing reporting it.
-	sun.light_energy = 0.82
-	sun.light_color = Color(1.0, 0.97, 0.91)
-	sun.shadow_enabled = true
-	add_child(sun)
+	var holder := Node3D.new()
+	holder.name = "Lighting"
+	add_child(holder)
+	var sun := DotLightRig.apply(holder, DotLightDocument.from_dictionary(DAYLIGHT), light_profile())
+	for node in holder.get_children():
+		if node is WorldEnvironment and (node as WorldEnvironment).environment.sky != null:
+			var material := (node as WorldEnvironment).environment.sky.sky_material as ProceduralSkyMaterial
+			if material != null:
+				var top: Array = DAYLIGHT["sky_top"]
+				material.sky_top_color = Color(float(top[0]), float(top[1]), float(top[2]))
+				material.ground_bottom_color = material.sky_top_color
+	if sun != null:
+		sun.shadow_blur = 1.5
 
-	var env := Environment.new()
-	env.background_mode = Environment.BG_SKY
 
-	var sky := Sky.new()
-	var material := ProceduralSkyMaterial.new()
-	material.sky_top_color = Color(0.29, 0.45, 0.72)
-	material.sky_horizon_color = Color(0.71, 0.78, 0.86)
-	material.ground_bottom_color = Color(0.22, 0.24, 0.29)
-	material.ground_horizon_color = Color(0.62, 0.66, 0.72)
-	sky.sky_material = material
-	env.sky = sky
-
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	# Higher than a ground-level map wants and lower than it was. Everything here is seen
-	# from above or from below, and the underside of a platform lit only by a sun overhead is
-	# black — which on the one surface a falling player is looking at is the wrong answer. At
-	# 0.42 it was the other failure: no surface had any shading left at all.
-	env.ambient_light_energy = 0.34
-
-	# Filmic rather than Godot's default, which is not a tone map at all — it is a clip.
-	# game-g2gfast measured the difference over imported maps and it is the single largest
-	# change for the cost.
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 0.62
-
-	# Enough to put the far end of the map behind some air, and far enough out that
-	# nothing a player has to react to is hidden in it. A prop arriving out of fog is a
-	# prop nobody could have moved away from.
-	env.fog_enabled = true
-	env.fog_light_color = Color(0.70, 0.76, 0.84)
-	env.fog_density = 0.0014
-
-	var world_env := WorldEnvironment.new()
-	world_env.name = "Environment"
-	world_env.environment = env
-	add_child(world_env)
+## What this machine draws of [constant DAYLIGHT].
+##
+## [b]Shadows stay on in the browser[/b], unlike dot-lighting's `web()`: the field is a
+## few dozen boxes, and a platform's shadow on the deck below is how a player sees where a
+## deck is from above. [b]The Compatibility renderer, which this game and the client shell
+## use, has no headroom above white[/b]: at Forward+'s numbers every sunlit deck clipped to
+## flat white and the grid (the tilt) was gone, which this map found once before by hand.
+## So under `gl_compatibility` the sun is divided by 700 instead of 200 and the fill is
+## 0.62, game-arena's numbers, checked here against a rendered frame in both renderers.
+static func light_profile() -> DotLightProfile:
+	var p := DotLightProfile.web() if OS.has_feature("web") else DotLightProfile.high()
+	p.sun_shadows = true
+	p.sky_below_horizon = true
+	p.ambient_energy = 1.0
+	if RenderingServer.get_current_rendering_method() == "gl_compatibility":
+		p.brightness_reference = 700.0
+		p.ambient_energy = 0.62
+	return p
 
 
 # --- The floor --------------------------------------------------------------
@@ -203,13 +213,15 @@ func _build_floor() -> void:
 	var box := BoxMesh.new()
 	box.size = shape.size
 	mesh.mesh = box
-	# [b]Dark, and the first render is why.[/b] The floor was the hazard colour, on the
-	# reasoning that it is the one surface nobody survives — and it came out as four hundred
-	# metres of bright red filling ninety percent of every frame, with the platforms a player
-	# actually has to read reduced to pale specks on top of it. The thing that says "do not
-	# go there" is the drop, which is forty metres of nothing; the floor's job is to be far
-	# away and to carry a grid so the drop can be counted.
-	mesh.material_override = ScTextures.surface(ScTextures.Role.PILLAR)
+	# [b]Its own muted colour, and the first render is why.[/b] The floor was the hazard
+	# colour, on the reasoning that it is the one surface nobody survives — and it came out
+	# as four hundred metres of bright red filling ninety percent of every frame, with the
+	# platforms a player actually has to read reduced to pale specks on top of it. The thing
+	# that says "do not go there" is the drop, which is forty metres of nothing; the floor's
+	# job is to be far away and to carry a grid so the drop can be counted. It was then the
+	# pillars' charcoal; it is a muted sky blue (`ScTextures.Role.FLOOR`), which says "far
+	# below" in a sunny sky without being a dark hole under the field.
+	mesh.material_override = ScTextures.surface(ScTextures.Role.FLOOR)
 	body.add_child(mesh)
 
 	_classify(body, &"world")
