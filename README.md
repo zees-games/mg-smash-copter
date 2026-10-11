@@ -1,6 +1,6 @@
 This is a game to demonstrate the capabilities of the [**Dot collection**](https://moddingcommunity.com/co/4-dot-assets) built on-top of [Godot 4](https://godotengine.org/) and [TMC's gaming platform](https://moddingcommunity.com/play). In this 3D game, players spawn on top of platforms balanced on single pillars while a cannon in the middle shoots props up into the air that may knock them off. Players must survive in teams or individually to win (depending on server setup). This is heavily inspired off of a classic Counter-Strike: Source MiniGames map called [**mg_3k_smash_lego_copter**](https://gamebanana.com/mods/127650) ([gameplay video](https://www.youtube.com/watch?v=xZED7S1dfBY)).
 
-![Preview](https://github.com/gamemann/mg-smash-copter/blob/main/images/preview.gif?raw=true)
+![Preview](https://github.com/zees-games/mg-smash-copter/blob/main/images/preview.gif?raw=true)
 
 *Play on my test server [here](https://moddingcommunity.com/godot/s/smash01/play)!*
 
@@ -27,7 +27,7 @@ A round has two halves.
 
 **Shift is a brake, not a sprint.** Running is the default speed, and running is what tips a platform. A running player leans it about three times as far as a standing one, so the way to cross a platform somebody else is standing on is to slow down.
 
-**The last ninety seconds are a fight.** Everybody still standing is teleported to a corner pad in the sky with random weapons from [zee-dot-weapons](https://github.com/gamemann/zee-dot-weapons). Catwalks join the corners to a ring in the middle. The last team standing wins.
+**The last ninety seconds are a fight.** Everybody still standing is teleported to a corner pad in the sky with random weapons from [zee-dot-weapons](https://github.com/zees-games/zee-dot-weapons). Catwalks join the corners to a ring in the middle. The last team standing wins.
 
 A third of rounds are **special rounds**, which change the rules for a while: `barrage`, `heavy`, `feather` (low gravity), `slick` (ice), `gale` (wind), `quake`, `jelly` (loose pillars), `downpour` and `rush`. Two can overlap.
 
@@ -132,7 +132,7 @@ The server counts rounds survived, showdowns won, people knocked out in the corn
 - The sounds are generated stand-ins. Dropping a file such as `audio/cannon_fire.ogg` in replaces one.
 
 ## Credits
-The surfaces are Kenney's Prototype Textures, and everything the cannon throws is from Kenney's Survival and Car kits ([kenney.nl](https://kenney.nl), CC0). The weapons are from [zee-dot-weapons](https://github.com/gamemann/zee-dot-weapons). Each kit's licence is next to its files. The chopper is plain geometry, because none of the kits has a helicopter.
+The surfaces are Kenney's Prototype Textures, and everything the cannon throws is from Kenney's Survival and Car kits ([kenney.nl](https://kenney.nl), CC0). The weapons are from [zee-dot-weapons](https://github.com/zees-games/zee-dot-weapons). Each kit's licence is next to its files. The chopper is plain geometry, because none of the kits has a helicopter.
 
 ## License
 MIT. See [LICENSE](LICENSE). The Kenney art is CC0, which is public domain.
