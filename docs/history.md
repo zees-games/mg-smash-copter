@@ -45,3 +45,7 @@ dot-match warned "no usable spawn point at all" once per player per round, for a
 ## The message that preloaded itself
 
 `sc_event.gd` and `sc_request.gd` preloaded themselves for a typed factory; here that line was the whole of the exit leak (ObjectDB instances, resources, dummy RIDs). Removed; see [netcode.md](netcode.md#messages-never-preload-yourself).
+
+## A full chat log over the health number
+
+The health number was lifted above the chat box's first line, not its full log: eight rows reached y 518 at 1280x720 and drew over the "100" (seen in a game-ballot frame, 2026-10-11). The box is six rows now and the number 170 px off the bottom; `headless_run` checks the arithmetic, both being bottom-anchored.

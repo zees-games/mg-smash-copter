@@ -51,6 +51,9 @@ func _build_window() -> void:
 	# reads, because two copies of one limit is the duplication this family guards hardest
 	# against.
 	window.max_length = ScServices.chat_rules().max_length
+	# Six rows, not eight: a full log of eight reached the health number (ScHud puts it 170
+	# pixels off the bottom; six rows end 162 off it). A wrapped vote line takes two.
+	window.max_lines = 6
 
 	# [b]On its own layer, above the HUD's, and an admin's blind is the reason.[/b] Parented
 	# straight to this Node the window draws in the default canvas, which is UNDER every

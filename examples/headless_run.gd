@@ -9,6 +9,7 @@ const ScCopter := preload("../game/sc_copter.gd")
 const ScFigure := preload("../game/sc_figure.gd")
 const ScGame := preload("../game/sc_game.gd")
 const ScHud := preload("../game/sc_hud.gd")
+const ScClientChat := preload("../game/sc_client_chat.gd")
 const ScLayouts := preload("../game/sc_layouts.gd")
 const ScPlatforms := preload("../game/sc_platforms.gd")
 const ScPaths := preload("../game/sc_paths.gd")
@@ -44,7 +45,7 @@ const SECTIONS := 36
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 264
+const CHECKS := 265
 
 const TICK_RATE := 64
 const TICK := 1.0 / float(TICK_RATE)
@@ -3092,6 +3093,20 @@ func _test_blind_and_beacon_drawn() -> void:
 		hud.blind_overlay.get_index() == 0,
 		"under every number the HUD draws, which still say the round is going on"
 	)
+
+	# The chat box's full log against the health number, both bottom-anchored, so the
+	# arithmetic holds at any height: eight rows once drew over the "100".
+	var chat := ScClientChat.new()
+	add_child(chat)
+	var w: DotChatWindow = chat.window
+	var log_top := w.margin_bottom + w.entry_height + float(w.max_lines) * (w.line_height + w.line_gap)
+	var health: Label = hud.get("_health")
+	_check(
+		-health.offset_bottom >= log_top,
+		"a full chat log stays under the health number",
+		"log reaches %.0f px off the bottom, the number starts %.0f off it" % [log_top, -health.offset_bottom]
+	)
+	chat.queue_free()
 
 	me.blinded = false
 	for _i in range(30):
