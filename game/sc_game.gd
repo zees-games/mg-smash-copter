@@ -228,6 +228,10 @@ var round_elapsed: float = 0.0
 
 var phase: int = Phase.IDLE
 
+## The layout the next round plays, set by the players' vote ([code]game/sc_vote.gd[/code]) and
+## used once. Empty lets the weighted draw choose.
+var next_layout_id: StringName = &""
+
 ## Which arrangement of platforms this round is being played on.
 var layout: ScLayouts.Layout = null
 
@@ -1193,7 +1197,17 @@ func _lay_out_round() -> void:
 	_bot_hands.clear()
 
 	var stream := random.stream(&"layout")
-	layout = ScLayouts.pick(config, stream)
+	var voted: ScLayouts.Layout = null
+
+	# What the players voted for, once, if this server still plays it (an operator can narrow
+	# `layout_ids` between the vote and the round). The draw otherwise.
+	if next_layout_id != &"":
+		for allowed in ScLayouts.allowed(config):
+			if allowed.id == next_layout_id:
+				voted = allowed
+
+	next_layout_id = &""
+	layout = voted if voted != null else ScLayouts.pick(config, stream)
 
 	platforms.gravity = config.gravity * maxf(active.gravity_scale, 0.05)
 	platforms.build(layout, physics)

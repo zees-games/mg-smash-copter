@@ -3,6 +3,7 @@ extends Node
 const ScGame := preload("../game/sc_game.gd")
 const ScPlatforms := preload("../game/sc_platforms.gd")
 const ScLayouts := preload("../game/sc_layouts.gd")
+const ScVote := preload("../game/sc_vote.gd")
 
 ## Renders the game and exits. The check no assertion in this repository makes.
 ##
@@ -32,6 +33,7 @@ const ScLayouts := preload("../game/sc_layouts.gd")
 ## tools/shot.sh --view=beacon    # an admin's beacon on a stand-in, from across the field
 ## tools/shot.sh --view=blind     # the local player's own eyes, blinded, through the real HUD
 ## tools/shot.sh --view=spectate  # the local player, out, through the camera the server gave them
+## tools/shot.sh --ballot          # the layout vote's ballot over any view, mid-vote
 ## [/codeblock]
 
 # No `const CHANNEL`: this is a command-line tool, and what it says is its output (`print`),
@@ -46,6 +48,7 @@ func _run() -> void:
 	var seconds := 4.0
 	var out := "res://screenshots/smash.png"
 	var view := "eyes"
+	var ballot := false
 
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--seconds="):
@@ -54,6 +57,8 @@ func _run() -> void:
 			out = arg.substr(6)
 		elif arg.begins_with("--view="):
 			view = arg.substr(7)
+		elif arg == "--ballot":
+			ballot = true
 
 	var client: Node = load("res://game/sc.tscn").instantiate()
 	add_child(client)
@@ -90,6 +95,12 @@ func _run() -> void:
 	elif game != null and view != "eyes":
 		await _place_camera(game, view)
 
+	if game != null and ballot:
+		var list: Array = []
+		for layout in ScLayouts.allowed(game.config):
+			list.append([layout.id, layout.display_name])
+		await _show_ballot(list, game.layout.id if game.layout != null else &"")
+
 	await RenderingServer.frame_post_draw
 
 	var image := get_viewport().get_texture().get_image()
@@ -102,6 +113,54 @@ func _run() -> void:
 			print(line)
 
 	get_tree().quit(0)
+
+
+## A real ballot from this game's vote: every layout this server plays there is, four voters, three of whom
+## have voted, drawn the way the client shell's notice overlay draws a `map_ballot` — a
+## [DotBallotPanel] down the right-hand side. Waits a second for the voters' discs to slide
+## to the row they chose; a frame too soon catches one between rows.
+func _show_ballot(list: Array, current: StringName) -> void:
+	var names := {&"1": "you", &"2": "bo", &"3": "quiet_one", &"4": "ana"}
+	var states: Array = []
+	var vote: Node = ScVote.new()
+	vote.set("config_path", "")
+	vote.set("layouts_fn", func() -> Array: return list)
+	vote.set("voters_fn", func() -> Array: return names.keys())
+	vote.set("people_fn", func(voter: StringName) -> Dictionary: return {"name": names.get(voter, "?"), "avatar": ""})
+	vote.set("ballot_fn", func(state: Dictionary) -> void: states.append(state))
+	add_child(vote)
+	var _set: DotResult = vote.call("setup")
+	vote.call("note_layout", current)
+	var director: DotVoteDirector = vote.get("director")
+	var _opened := director.open_vote(DotVoteClock.REASON_MANUAL)
+	var options := director.ballot.option_ids()
+	var _a := director.cast_one(&"1", options[0])
+	var _b := director.cast_one(&"2", options[1 % options.size()])
+	var _c := director.cast_one(&"3", options[0])
+	(vote.get("feed") as DotVoteBallotFeed).poll()
+
+	var layer := CanvasLayer.new()
+	layer.layer = 50
+	add_child(layer)
+	var box := VBoxContainer.new()
+	box.anchor_left = 1.0
+	box.anchor_right = 1.0
+	box.anchor_bottom = 1.0
+	box.offset_left = -376.0
+	box.offset_right = -16.0
+	box.offset_top = 110.0
+	box.offset_bottom = -16.0
+	layer.add_child(box)
+	var panel := DotBallotPanel.new()
+	panel.ui_theme = DotUiTheme.space()
+	panel.local_voter = "1"
+	box.add_child(panel)
+	panel.show_state(states.back() if not states.is_empty() else {})
+
+	var waited := 0.0
+	while waited < 1.0:
+		waited += get_process_delta_time()
+		await get_tree().process_frame
 
 
 ## Puts a camera somewhere a first-person one can never be.

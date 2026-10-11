@@ -52,3 +52,16 @@ Decided 2026-09-23. **A level is a change to where a player can stand or go** (t
 - dot-match's `max_difference` is 0, because `sides` decides a team; the default 1 refuses a join that puts a side two ahead (`force_balance = false` does not reach it) and left offline stand-ins on no team. A refused join logs at ERROR.
 - **`DotDamageResolver` needs a `team_of` callable**, or `_same_team` answers false and friendly fire is on whatever the rules say. A free-for-all is right without one; a team game is silently wrong.
 - **Tell spectating and progress about a death before dot-match**: `report_kill` can end the round synchronously (the last of a side is an elimination), which files the round, and the winning kill was counted in no round.
+
+## The layout vote
+
+A layout is drawn per round, so the players vote for the next one over dot-vote (`game/sc_vote.gd`, a `DotVoteDirector` over a `DotVoteListSource` of `ScLayouts.allowed`). dot-vote's ROUND_END trigger opens a ballot at a round's end and applies it at the next, one layout late; `ScVote` uses MANUAL instead: a ballot opens `sc_vote_after` (20) seconds into every round and is applied at the round's end (`apply: END_OF_ROUND`), setting `ScGame.next_layout_id`, which the next `_lay_out_round` uses once instead of the weighted draw (and drops if `layout_ids` no longer allows it). The module advances the director once a server tick (`self_advance` off, `round_based` on) and calls `note_round_end` from `DotMatch.round_ended`.
+
+- **Rock the vote opens the ballot in the game, not in dot-vote.** Under MANUAL the director hands every opening to its host, a passed rock-the-vote included: without `ScVote`'s handler on `director.clock.expired` (reason `rtv`), `!rtv` answered "Rocked. 1 of 1." and nothing opened. A rocked vote still waits for the round's end (`rtv_apply`): changing the layout mid-round tears every platform down under the people standing on it. `rtv_delay_sec` is 0, because dot-vote's two minutes are as long as a whole survival phase.
+- **`vary_layout` off means no ballot**: the operator asked for one layout all evening. The list is read again on every layout laid, so `layout_ids` changed between rounds reaches the ballot.
+- No time limit (`duration_sec` 0), the current layout is on the ballot, no cooldown in plays. Stand-ins do not vote, so a server of stand-ins never opens one.
+- dot-vote's commands (`vote`, `rtv`, `nominate`, …) are the module's, so `!vote 2` in chat reaches them through `_on_chat_command` as the player who typed it.
+- The client shell draws the ballot from the `map_ballot` notice (`DotVoteBallotFeed` → `DotBallotPanel` down the right-hand side); nothing of it is in this game's client. `tools/shot.sh --ballot` draws the same panel from this game's own vote over any view.
+- An owner reshapes it in `user://cfg/smash_vote.json` or `game.yml`'s `metadata: layout_vote:`, keyed as `DotVoteRules`; `{"enabled": false}` leaves the draw alone.
+
+`examples/dedicated`'s "the layout vote" section drives it through the console as a player's chat would: a nomination, the ballot opening on its own clock with the nomination on it, a vote by number, the round's end laying the winner, and rock-the-vote opening the next one early. Not yet tried in a browser.

@@ -8,6 +8,7 @@ const ScLayouts := preload("sc_layouts.gd")
 const ScPlayer := preload("sc_player.gd")
 const ScSpecials := preload("sc_specials.gd")
 const ScAvatars := preload("sc_avatars.gd")
+const ScVote := preload("sc_vote.gd")
 
 ## This game, as a module a dedicated server loads.
 ##
@@ -59,6 +60,12 @@ var _since_roster_check: float = 0.0
 
 ## How many stand-ins this module has put in, so it can take them out again.
 var _bot_ids: Array[StringName] = []
+
+## The players' vote for the next layout; null when it could not be built.
+var vote: ScVote = null
+
+## The drawn ballot's notice topic. The client shell draws one menu per topic.
+const LAYOUT_BALLOT_TOPIC := &"map_ballot"
 
 
 func _module_name() -> String:
@@ -159,6 +166,7 @@ func _game_load() -> DotResult:
 	_wire_map(world)
 	_wire_progress(world)
 	_add_tunables(world)
+	_build_vote(world)
 
 	_bots = add_cvar(
 		"sc_bots", "1",
@@ -363,6 +371,17 @@ func _tunable(
 func _game_unload() -> void:
 	_bot_ids.clear()
 
+	if vote != null:
+		vote.queue_free()
+		vote = null
+
+
+## The server slept or woke. The vote's director follows it on its own (DotGameModule finds
+## it); the layout ballot's timer is this game's, so it starts again here on waking.
+func _game_hibernation(hibernating: bool) -> void:
+	if not hibernating and vote != null:
+		vote.note_woke()
+
 
 ## Keeps enough people in the round for there to be one.
 ##
@@ -375,6 +394,9 @@ func _game_unload() -> void:
 ## A stand-in is removed the moment a person takes their place. They are here to make the
 ## game exist, not to take the fun half from the people who came to play it.
 func _game_tick(_tick: int, delta: float) -> void:
+	if vote != null:
+		vote.advance(delta)
+
 	_since_roster_check += delta
 
 	if _since_roster_check < ROSTER_INTERVAL:
@@ -457,6 +479,112 @@ func _wire_chat() -> void:
 ## The layout is this game's map: the field the round is played on, picked per round. Said
 ## on every round rather than once, because dot-server forgets the map whenever a game
 ## unloads and a layout changes between rounds.
+## The players' vote for the next layout, over dot-vote: `!vote`, `!rtv`, `!nominate`.
+##
+## [b]Opened [member ScVote.open_after_sec] into every layout and applied when the round
+## ends[/b], because a round here is a layout (one is drawn per round); see
+## [code]game/sc_vote.gd[/code]. A server owner turns it off or reshapes it in
+## `user://cfg/smash_vote.json` or `game.yml`'s `metadata: layout_vote:`, keyed as dot-vote's
+## [DotVoteRules]. A vote that cannot be built is a WARN and the weighted draw alone, never a
+## server that will not start.
+func _build_vote(world: ScGame) -> void:
+	vote = ScVote.new()
+	vote.name = "LayoutVote"
+	# Nothing to vote on when the operator turned the per-round draw off: they asked for one
+	# layout all evening.
+	vote.layouts_fn = func() -> Array:
+		var out: Array = []
+
+		if not world.config.vary_layout:
+			return out
+
+		for layout in ScLayouts.allowed(world.config):
+			out.append([layout.id, layout.display_name])
+
+		return out
+	vote.apply_fn = func(id: StringName) -> DotResult:
+		world.next_layout_id = id
+		return DotResult.success(id)
+	# People only: a stand-in is not a voter, and a ballot it could swing is not the players'.
+	vote.voters_fn = func() -> Array:
+		var out: Array = []
+
+		for id: Variant in world.players:
+			var player: ScPlayer = world.players[id]
+
+			if player == null or player.is_bot:
+				continue
+
+			var userid := ScNetBridge.session_of(StringName(str(id)))
+
+			if userid > 0:
+				out.append(StringName(str(userid)))
+
+		return out
+	vote.announce_fn = func(line: String) -> void:
+		var chat: Object = services.get("chat") if services != null else null
+
+		if chat != null:
+			var _said: Variant = chat.call("announce", line, ScServices.CH_ALL)
+		elif server != null:
+			server.broadcast_message(line)
+	vote.is_admin_fn = func(voter: StringName) -> bool:
+		var session := server.session_by_userid(String(voter).to_int()) if server != null else null
+		return session != null and session.has_permission(DotAdminFlags.CHANGEMAP)
+	vote.ballot_fn = func(state: Dictionary) -> void:
+		if server == null:
+			return
+
+		for session in server.playing_sessions():
+			var data := state.duplicate()
+			data["you"] = str(session.userid)
+			server.send_notice(session, DotNotice.make(
+				&"", "", float(state.get("seconds", -1.0)), LAYOUT_BALLOT_TOPIC, data
+			))
+	vote.people_fn = func(voter: StringName) -> Dictionary:
+		var session := server.session_by_userid(String(voter).to_int()) if server != null else null
+
+		if session == null:
+			return {}
+
+		var avatar: Variant = session.identity.get("avatar_url") if session.identity != null else ""
+		return {"name": session.display_name, "avatar": avatar if avatar is String else ""}
+
+	add_child(vote)
+	var ready := vote.setup()
+
+	if not ready.ok:
+		DotLog.result(CHANNEL, "the layout vote; the draw alone chooses", ready)
+		vote.queue_free()
+		vote = null
+		return
+
+	var commanded := vote.install_commands(self)
+	DotLog.result(CHANNEL, "the layout vote's commands", commanded)
+
+	_tunable("sc_vote_after", vote.open_after_sec,
+		"Seconds into a round before the vote for the next layout opens",
+		func(value: float) -> void:
+			if vote != null:
+				vote.open_after_sec = maxf(value, 0.0))
+
+	# Every layout laid is a world_rebuilt, the warmup's included, and each is one play.
+	world.world_rebuilt.connect(func() -> void:
+		if vote != null and world.layout != null:
+			vote.note_layout(world.layout.id)
+	)
+	world.match_node.round_ended.connect(func(_number: int, _winner: int, _outcome: int) -> void:
+		if vote != null:
+			vote.note_round_end()
+	)
+
+	if server != null:
+		server.client_disconnected.connect(func(session: DotClientSession, _reason: String) -> void:
+			if vote != null:
+				vote.forget_voter(StringName(str(session.userid)))
+		)
+
+
 func _wire_map(world: ScGame) -> void:
 	if world.layout != null:
 		report_map(String(world.layout.id))

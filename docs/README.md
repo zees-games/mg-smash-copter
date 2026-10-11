@@ -4,7 +4,7 @@ One subject per file. [CLAUDE.md](../CLAUDE.md) has the rules in one line each; 
 
 | File | What it covers |
 | --- | --- |
-| [design.md](design.md) | what the game is and its decisions: platforms not rigid bodies, shift is a brake, the cannon's tiers and aim, the map as a description, no dot-spawn, the showdown elsewhere, the chopper chassis, what a level is, teams and friendly fire |
+| [design.md](design.md) | what the game is and its decisions: platforms not rigid bodies, shift is a brake, the cannon's tiers and aim, the map as a description, no dot-spawn, the showdown elsewhere, the chopper chassis, what a level is, teams and friendly fire, the layout vote |
 | [platforms.md](platforms.md) | the platform model, integration, the normal's sign, load gain, slopes, bridges resting on lips, falls (`FLOOR_REACH`, the `pillar` layer), freeing the field, readability |
 | [map.md](map.md) | layouts, jump reach both ways, islands, the throat, the layouts rebuilt to their blurbs, the showdown complex (ring cover, flanks, dais, catwalks, kerbs) |
 | [netcode.md](netcode.md) | authority and prediction, what crosses (platforms, layout, clock, weapon counter, dealt weapons, spectating, identity), two builds on one wire, lag compensation and combat wiring, freed bodies, self-preloading messages, the module |

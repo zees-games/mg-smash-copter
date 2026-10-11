@@ -9,7 +9,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 | Read | Before |
 | --- | --- |
 | [docs/README.md](docs/README.md) | the index |
-| [docs/design.md](docs/design.md) | changing a rule of the game, the cannon, the chopper, what counts as a level, teams |
+| [docs/design.md](docs/design.md) | changing a rule of the game, the cannon, the chopper, what counts as a level, teams, the layout vote |
 | [docs/platforms.md](docs/platforms.md) | touching `sc_platforms.gd`, bridges, falling, the field's teardown, what the floor looks like |
 | [docs/map.md](docs/map.md) | a layout, a jump, the throat, the showdown complex in `sc_arena.gd` |
 | [docs/netcode.md](docs/netcode.md) | `game/net/`, the module, prediction, anything replicated, combat and lag compensation |
@@ -29,7 +29,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 | `game/sc_arena.gd`, `sc_cannon.gd`, `sc_copter.gd` | the sky, floor, tube and showdown complex in code; what the cannon throws and where; the helicopter chassis |
 | `game/sc_player.gd` | one person: movement, the carry, health, weapons |
 | `game/sc_config.gd`, `sc_paths.gd`, `sc_textures.gd` | every number (metres and seconds, layered); `rebase`/`rebase_onto`; prototype textures by role |
-| `game/sc_module.gd`, `sc_server.gd`, `sc_services.gd` | the dot-server module over `DotGameModule`, the game scene, chat/voice/moderation over `DotGameServices` |
+| `game/sc_module.gd`, `sc_server.gd`, `sc_services.gd`, `sc_vote.gd` | the dot-server module over `DotGameModule`, the game scene, chat/voice/moderation over `DotGameServices`, the layout vote over dot-vote |
 | `game/net/` | codec, behaviours, link, and `sc_net_bridge.gd`, the only file naming both halves |
 | `game/sc_client.gd`, `sc_client_chat.gd`, `sc_hud.gd`, `sc_spectate.gd`, `sc_audio.gd`, `sc_figure.gd`, `sc_settings.gd`, `sc_avatars.gd`, `sc.tscn` | the client (spectate is built on both ends) |
 | `game/sc_progress.gd` | stats and achievements, authority only |
@@ -37,7 +37,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 | `assets/kenney/`, `assets/{blaster-kit,melee,arms}/`, `textures/prototype/` | vendored CC0 art, one folder per kit; the weapon pack's art; six prototype textures |
 | `scenes/sc_server.tscn`, `game.yml` | what a deployed server instantiates; the descriptor in the pack |
 | `examples/` | `headless_run`, `headless_net`, `dedicated` |
-| `tools/` | `shot.sh` (`--view=…`, any `--sc-*` is config), `net_shot` (`--view=walk`), `audio_probe.sh` |
+| `tools/` | `shot.sh` (`--view=…`, `--ballot`, any `--sc-*` is config), `net_shot` (`--view=walk`), `audio_probe.sh` |
 
 ## Running and testing
 
@@ -81,6 +81,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 - Gravity is `ScConfig.gravity` on the world's own space; the renderer is `gl_compatibility`.
 
 **The game** ([services](docs/services.md), [client](docs/client.md))
+- The layout vote opens `sc_vote_after` into a round and applies at its end (MANUAL, `END_OF_ROUND`), rocked votes too; under MANUAL `ScVote` opens a passed rock-the-vote itself, or `!rtv` does nothing. [design](docs/design.md#the-layout-vote)
 - dot-match `max_difference` is 0; `DotMatch.spawns_ref` is the match node itself; no dot-spawn.
 - Stand-ins are never counted and a player is begun on their first number; progress in memory, reporting off.
 - Refused moderation tools (respawn, give, strip) are refused for a reason `modtools` prints.
