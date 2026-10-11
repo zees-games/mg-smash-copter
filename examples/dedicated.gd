@@ -24,7 +24,7 @@ const ScProgress := preload("../game/sc_progress.gd")
 ## and those are what this is about.
 
 const SECTIONS := 12
-const CHECKS := 102
+const CHECKS := 103
 
 ## Everything this run writes, and it is deleted on the way in and on the way out.
 ##
@@ -386,6 +386,16 @@ func _test_the_commands() -> void:
 	var said := _run_command("sc_say hello from the server")
 	_check(_said(said, "hello"), "sc_say says something")
 
+	# And it is REPLICATED: dot-server sends it to every client before its scene loads and on
+	# every change, so a client's own combat manager (following its link) predicts tracers
+	# under the server's level rather than its default.
+	var shared := server.console.find_cvar("mp_teammate_passthrough")
+	var _two := _run_command("mp_teammate_passthrough 2")
+	_check(shared != null and shared.has_flag(DotConVar.FLAG_REPLICATED)
+			and server.console.replicated_values().get("mp_teammate_passthrough", "") == "2",
+		"mp_teammate_passthrough is replicated: a client is sent the server's level",
+		str(server.console.replicated_values()))
+	var _one := _run_command("mp_teammate_passthrough 1")
 	_finished()
 
 
