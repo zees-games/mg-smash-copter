@@ -91,6 +91,7 @@ sc_cannon_interval 1.9      // seconds between shots
 sc_cannon_max_tier 4        // 2 = nothing that destroys a platform outright
 sc_special_chance 34        // percent of rounds that are special
 sc_chopper 1                // 0 = no chopper on any layout
+mp_teammate_passthrough 1   // shots and team-mates: 0 a team-mate is hit and blocks, 1 through one at the muzzle, 2 through every team-mate
 bot_quota 4                 // players a round is kept at with bots; each person who joins replaces one
 bot_quota_mode fill         // fill (as above), fixed (that many bots), per_player (that many per person) or off
 sc_bots 1                   // 0 = no automatic bots at all
@@ -99,6 +100,8 @@ sc_spectate_camera 1        // 0 = anybody may watch anybody, 1 = own side only,
 ```
 
 The bot cvars are the family's shared ones (dot-server's `DotBotQuota`). `sc_min_players` still works and sets `bot_quota`; it is deprecated.
+
+`mp_teammate_passthrough` is the family's shared one from dot-combat, live from the next shot. At 2 a team-mate in the line never stops a shot; splash still reaches them.
 
 `--sc-layout-ids=checker` (or `SC_LAYOUT_IDS=checker`) plays one layout all evening. An empty server fills itself with bots, because a round needs two sides.
 
