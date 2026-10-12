@@ -88,6 +88,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 - Stand-ins are never counted and a player is begun on their first number; progress in memory, reporting off.
 - Refused moderation tools (respawn, give, strip) are refused for a reason `modtools` prints.
 - Spectating defaults to own side; no delay; the server's automatic choice prefers a team-mate.
+- `ScPlayer.retune` (every respawn and special) gives the sampler new tunables; offline, `ScClient._follow_look` rebinds the settings' look to them each tick, or a respawn reverts the sensitivity to the addon's default. `headless_run` checks it after a retune.
 - The creak is derived on the client with hysteresis; the cannon's bang is a prop arriving at the muzzle; the beacon's ping stays in `DotFxBeacon`.
 
 **Tests** ([testing](docs/testing.md))

@@ -44,7 +44,7 @@ const SECTIONS := 36
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 268
+const CHECKS := 270
 
 const TICK_RATE := 64
 const TICK := 1.0 / float(TICK_RATE)
@@ -2944,6 +2944,31 @@ func _test_zee_art_root() -> void:
 		"the client's settings are read by its sampler and its camera",
 		str(settings.describe()) if settings != null else "no settings"
 	)
+
+	# [b]The sensitivity survives a respawn.[/b] `ScPlayer.retune` (every respawn, every
+	# special) hands the sampler a fresh tunables object at DotFpsTunables' default, and the
+	# settings stayed bound to the old one: offline, the first respawn put the view back to
+	# 0.25 degrees per count whatever the slider said. Armed: without `_follow_look` both fail.
+	var me: ScPlayer = client.get("player")
+	if me != null:
+		me.retune(me.active)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var per_count := DotMenuApplier.DEGREES_PER_COUNT
+	var look_after: DotFpsTunables = me.sampler.tunables if me != null and me.sampler != null else null
+	_check(
+		look_after != null and settings != null and is_equal_approx(look_after.mouse_sensitivity,
+			settings.settings.get_float(&"sensitivity") * per_count),
+		"a respawn's fresh tunables still turn at the player's sensitivity",
+		"%.4f" % (look_after.mouse_sensitivity if look_after != null else -1.0)
+	)
+	# Read off the applier rather than by moving the slider: this client is on the player's
+	# real settings document, and `sensitivity` is ACCOUNT scope, shared by every game.
+	_check(
+		look_after != null and settings != null and settings.applier._look.has(look_after),
+		"and the slider is bound to them, so moving it after a respawn still turns the view"
+	)
+
 	var escape := InputEventAction.new()
 	escape.action = &"ui_cancel"
 	escape.pressed = true

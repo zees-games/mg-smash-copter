@@ -93,6 +93,9 @@ var _started_msec: int = Time.get_ticks_msec()
 var _offline: bool = true
 var _sampler: DotFpsSampler = null
 
+## The tunables the settings' look is bound to offline. See [method _follow_look].
+var _look_tunables: DotFpsTunables = null
+
 ## Which session this client is, once the server has said. -1 until then, so nothing matches
 ## before it does.
 var _watch_id: int = -1
@@ -334,8 +337,7 @@ func _adopt(candidate: ScPlayer) -> void:
 	if settings != null:
 		settings.bind_camera(camera)
 		# Offline the player samples for themselves, from their controller's own tunables.
-		if player.sampler != null:
-			settings.bind_look(player.sampler.tunables)
+		_follow_look()
 
 	if hud != null:
 		hud.bind(game, player)
@@ -918,10 +920,33 @@ func _physics_process(delta: float) -> void:
 	_drive_view_model(move)
 
 
+## Keeps the settings' sensitivity and invert bound to the tunables the offline sampler
+## reads now.
+##
+## [b]A respawn hands the sampler new tunables.[/b] `ScPlayer.retune` (every respawn, every
+## special) builds a fresh object at DotFpsTunables' default, and the settings stayed bound to
+## the old one, so the first respawn put the view back to 0.25 degrees per count whatever the
+## slider said. Asked every tick rather than from `retune` because the player knows nothing
+## of the settings; one identity comparison is the whole cost. The old object is unbound so a
+## long session does not collect one per round.
+func _follow_look() -> void:
+	if settings == null or player == null or player.sampler == null:
+		return
+	var now := player.sampler.tunables
+	if now == _look_tunables or now == null:
+		return
+	if _look_tunables != null and settings.applier != null:
+		settings.applier.unbind(_look_tunables)
+	_look_tunables = now
+	settings.bind_look(now)
+
+
 ## Offline the world samples for itself; what is left is the buttons this file owns.
 func _drive_offline(_delta: float) -> void:
 	if player == null or player.sampler == null:
 		return
+
+	_follow_look()
 
 	var pending := player.controller.current_command
 
