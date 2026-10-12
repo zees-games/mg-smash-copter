@@ -46,7 +46,7 @@ const ScRequest := preload("../game/net/sc_request.gd")
 ## and LAYOUT correct it.
 
 const SECTIONS := 21
-const CHECKS := 212
+const CHECKS := 213
 
 ## Who the client is, on both ends.
 const CLIENT_PEER := 7
@@ -594,10 +594,16 @@ func _build() -> bool:
 func _test_a_client_joins() -> void:
 	_section("a client joins")
 
+	# The READY first, as over ENet with loss: a client is PLAYING by its own reckoning once it has
+	# sent `loaded`, on another channel, so its READY can reach the server before its seat. Kept,
+	# and answered by the seat; a bridge that drops it never tells this client who it is.
+	_client_bridge.ask_ready()
+	_exchange()
+	_check(_client_bridge.local_player_id != SESSION, "a READY before the seat is told nothing yet")
+
 	var seated := _server_bridge.add_player(CLIENT_PEER, SESSION, "Ada")
 	_check(seated.ok, "the server seats them", str(seated.error) if not seated.ok else "")
 
-	_client_bridge.ask_ready()
 	_exchange()
 	_exchange()
 

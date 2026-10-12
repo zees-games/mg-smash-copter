@@ -76,6 +76,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 - dot-combat: lag compensation turned on by the bridge together with its callables; `team_of` given to the damage resolver; `setup()` not called twice; `ScPlayer.component()` is the weapon bridge's seam.
 - Tell spectating and progress about a death before dot-match (`report_kill` can end the round).
 - A `DotNetMessage` script never preloads its own file; `dedicated` checks the source.
+- **A READY before the player is seated is kept** (`_ready_unseated` in the bridge) and answered by `add_player`: over ENet with loss it overtakes the link's `loaded`, and a dropped READY left the client waiting for ever. `headless_net` sends it first (armed). [history](docs/history.md)
 - `is_instance_valid` before casting anything the bridge looks up after a disconnect.
 
 **Delivery** ([delivery](docs/delivery.md))
