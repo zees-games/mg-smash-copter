@@ -48,6 +48,8 @@ When you fall, you are out until the next round and watch somebody on your own s
 | **F5** | First or third person |
 | **Y** / **U** | Chat / chat to your side |
 | **V** | Push to talk |
+| **H** | Help: the rules and every key as you have it bound |
+| **Esc** | Menu: settings (every key above can be rebound), help, and leave |
 
 While you are out: **Mouse 1** / **Mouse 2** watch the next or previous player, and **F5** switches between their eyes and behind them (if the server allows it).
 

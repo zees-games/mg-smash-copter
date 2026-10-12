@@ -1,5 +1,6 @@
 extends Node
 
+const ScBindings := preload("sc_bindings.gd")
 const ScAudio := preload("sc_audio.gd")
 const ScSettings := preload("sc_settings.gd")
 const ScServices := preload("sc_services.gd")
@@ -42,8 +43,6 @@ const LINK_SERVICE := &"dot_client_link"
 const CHASE_BACK := 4.6
 const CHASE_UP := 2.1
 
-## Which key swaps the camera over. Physical, because the letter differs across layouts.
-const VIEW_KEY := KEY_F5
 
 @export var config_file: String = "user://cfg/smash-copter.json"
 
@@ -1294,7 +1293,7 @@ static func drawn_position(body: ScPlayer, remote: bool) -> Vector3:
 
 func _unhandled_input(event: InputEvent) -> void:
 	# The Tab board, held: shown while the key is down, like every scoreboard in the genre.
-	if event is InputEventKey and (event as InputEventKey).physical_keycode == KEY_TAB and not event.is_echo():
+	if event.is_action(ScBindings.SCOREBOARD) and not event.is_echo():
 		_show_board(event.is_pressed())
 		return
 
@@ -1317,10 +1316,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			settings.open()
 		return
 
-	if event is InputEventKey and (event as InputEventKey).pressed:
-		var key := event as InputEventKey
-
-		if key.physical_keycode == VIEW_KEY:
+	# The game's keys, each a row of [ScBindings] read through its action, so a key moved on
+	# the Controls page moves what it does here.
+	if event is InputEventKey:
+		if event.is_action_pressed(ScBindings.VIEW):
 			# Out, the key swaps the SPECTATOR's camera, which the server decides.
 			if is_spectating():
 				spectate_step(0)
@@ -1329,15 +1328,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 
 		# The slots. One to five, which is what the pack uses.
-		if key.physical_keycode >= KEY_1 and key.physical_keycode <= KEY_5:
-			_slot = key.physical_keycode - KEY_1 + 1
+		for i in range(ScBindings.SLOTS.size()):
+			if event.is_action_pressed(ScBindings.SLOTS[i]):
+				_slot = i + 1
+				return
+
+		if event.is_action(ScBindings.RELOAD):
+			_reloading = event.is_pressed()
 			return
 
-		if key.physical_keycode == KEY_R:
-			_reloading = true
-			return
-
-		if key.physical_keycode == KEY_E:
+		if event.is_action_pressed(ScBindings.BOARD):
 			# Getting into a chopper is a REQUEST rather than a button: it happens once, it
 			# must not be lost, and it is resolved against where the server thinks you are
 			# rather than where you were a round trip ago.
@@ -1346,10 +1346,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif game != null and player != null:
 				var _boarded := game.try_board(player.player_id)
 			return
-
-	if event is InputEventKey and not (event as InputEventKey).pressed:
-		if (event as InputEventKey).physical_keycode == KEY_R:
-			_reloading = false
 
 	if event is InputEventMouseButton:
 		var button := event as InputEventMouseButton

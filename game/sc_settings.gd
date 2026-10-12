@@ -1,5 +1,7 @@
 extends DotMenuSettings
 
+const ScBindings := preload("sc_bindings.gd")
+
 ## A player's own settings and the menu that changes them: how fast the view turns, how wide
 ## it is, how loud things are, the window, and the look of the menu itself.
 ##
@@ -48,9 +50,10 @@ func _init() -> void:
 	schema = schema_for()
 	config = DotMenuConfig.new()
 	config.brand_name = "Smash Copter"
-	# Nothing to leave to and no keys table to help with; Escape and Resume close the menu.
-	config.show_help = false
-	config.show_leave = false
+	# Help and Leave are dot-menu's stock: H opens help, Leave leaves the server or quits a
+	# solo game. Every game in the family has both (the first play test found this one without
+	# them). The keys are a table now ([ScBindings]), so the help screen lists them.
+	bindings = ScBindings.make()
 	var _layered := config.load_layered()
 
 
@@ -63,3 +66,11 @@ static func schema_for() -> DotSettingsSchema:
 		DotSettingsDef.Scope.SERVER_CLAMPED
 	))
 	return DotMenuStock.declare(s, DotMenuStock.DEFAULT_GROUPS, null, NOT_APPLIED)
+
+
+## The help screen's goal and rules; the keys come from [ScBindings].
+func _fill_help(help: DotMenuHelp) -> void:
+	help.about = "Two to six teams stand on platforms balanced on pillars forty metres up while a cannon in the middle throws props at them. A platform leans toward whoever stands on it, and past sixteen degrees it comes off and takes everybody down. Stay up."
+	help.add_text("Staying up", "Shift is a brake, not a sprint: running leans a platform about three times as far as standing, so slow down to cross one somebody else is on. When you fall you are out until the next round, watching somebody on your side.")
+	help.add_text("The fight", "The last ninety seconds put everybody still standing on a corner pad in the sky with random weapons. The last team standing wins. Some layouts park a chopper: the pilot flies it with the movement keys and drops crates, and the passenger can shoot.")
+	help.add_section("Mouse", [["Left", "Fire in the fight; drop a crate from the chopper; watch the next player while out"], ["Right", "Alternate fire; watch the one before while out"]], &"keys")
