@@ -139,7 +139,7 @@ The server counts rounds survived, showdowns won, people knocked out in the corn
 - The sounds are generated stand-ins. Dropping a file such as `audio/cannon_fire.ogg` in replaces one.
 
 ## Credits
-The surfaces are Kenney's Prototype Textures, and everything the cannon throws is from Kenney's Survival and Car kits ([kenney.nl](https://kenney.nl), CC0). The weapons are from [zee-dot-weapons](https://github.com/zees-games/zee-dot-weapons). Each kit's licence is next to its files. The chopper is plain geometry, because none of the kits has a helicopter.
+The surfaces are Kenney's Prototype Textures, and everything the cannon throws is from Kenney's Survival and Car kits ([kenney.nl](https://kenney.nl), CC0). The players are the family's animated people from Quaternius' [Zombie Apocalypse Kit](https://quaternius.com/packs/zombieapocalypsekit.html) (CC0 1.0, credited in dot-player-char). The weapons are from [zee-dot-weapons](https://github.com/zees-games/zee-dot-weapons). Each kit's licence is next to its files. The chopper is plain geometry, because none of the kits has a helicopter.
 
 ## License
 MIT. See [LICENSE](LICENSE). The Kenney art is CC0, which is public domain.

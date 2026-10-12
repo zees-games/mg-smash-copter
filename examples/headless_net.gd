@@ -1379,7 +1379,7 @@ func _test_somebody_else_is_drawn() -> void:
 		"%.1f deg" % rad_to_deg(theirs.figure.rotation.y)
 	)
 	_check(
-		clips[clips.size() - 1] == &"sprint",
+		clips[clips.size() - 1] == &"run",
 		"and running, rather than sliding across in a standing pose",
 		String(clips[clips.size() - 1])
 	)
@@ -1580,8 +1580,8 @@ func _test_a_weapon_crosses() -> void:
 	)
 	_check(
 		hand != null and copy.figure.held.get_parent() == hand
-			and String(hand.get_parent().name) == "arm-right",
-		"at the end of the figure's right arm",
+			and hand.get_parent() is BoneAttachment3D,
+		"in the person's gun hand (a bone attachment)",
 		str(hand.get_parent().name) if hand != null else "no hand"
 	)
 

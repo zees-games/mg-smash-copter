@@ -31,10 +31,10 @@ The cannon is behind you as often as in front, and the creak is the platform und
 
 ## Figures, and a gun in somebody else's hand
 
-`ScFigure` is the Blocky Character, one of six atlases (`ScAvatars.SKINS` in `ScFigure.ATLASES` order), the side a torso tint. The stock person is the old id hash, exactly (`ScAvatars.stock_avatar`), so a server with no platform draws everybody as before.
+`ScFigure` is one of the family's animated people: it wraps dot-player-char's `DotHumanoidFigure` (its docs/people.md), the person the avatar's blocky atlas letter names (`ScAvatars.SKINS` in `ScFigure.ATLASES` order, `DotHumanoidLook.from_letter`), the side on the top. The stock person is the old id hash, exactly (`ScAvatars.stock_avatar`), so a server with no platform draws everybody as the same people as before. It is told the floor, the vertical speed and the crouch, so a jump and a crouch are drawn.
 
-- **The hand is at the end of the kit's own right arm, as its child.** The character is not skinned: `arm-right` is a node pivoting at the shoulder, and the kit's `holding-right` clip is that node turned -90 degrees about X (measured). The figure plays its walk or sprint and then holds the arm up itself (`HOLD_ARM`), so its `AnimationPlayer` is advanced by hand in `pose()` (`ANIMATION_CALLBACK_MODE_PROCESS_MANUAL`): left to the engine, the clip writes the arm before the hold in some frames and after it in others. The hand is scaled back to metres, or the gun reads as a toy.
-- **A watched melee use is a swing**: `ScFigure.fired` samples the kit's `attack-melee-right` rotation track for `arm-right` alone, so the legs keep their clip.
+- **The gun is in the person's own gun hand** (`DotHumanoidFigure.attachment`, a bone attachment on the kit's gun hand, the left), so it moves with the gun clips (idle, walk and run holding a gun); the figure advances its clip by hand, so the arms are written after the legs.
+- **A watched melee use is a swing**: `ScFigure.fired` plays the person's slash on the upper body, so the legs keep their clip.
 - **The flash and tracer are the hand's; the report is the game's.** The world model is built with zee-dot-weapons' `sounds` off, set **by name**, because a shell older than that property fails to parse a pack that names it.
 
 ## HUD, admin overlays, chat

@@ -607,6 +607,11 @@ func present_body(own_view: bool, at: Vector3, team_colour: Color) -> bool:
 
 	if shown and controller != null:
 		var velocity := controller.state.velocity
+		figure.set_motion({
+			"on_floor": controller.state.mode == DotFpsState.Mode.GROUND,
+			"vertical": velocity.y,
+			"crouched": controller.state.crouch_fraction > 0.5,
+		})
 		figure.pose(
 			at,
 			deg_to_rad(controller.state.yaw),

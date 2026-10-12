@@ -3067,24 +3067,35 @@ func _test_a_swing_is_drawn() -> void:
 	add_child(figure)
 	figure.build(1.8, str(ScFigure.ATLASES[0]), Color.WHITE)
 	figure.hold(&"knife", false)
-	var arm: Node3D = figure.find_child("arm-right", true, false)
+	# The person's arms are bones: how far both upper arms are turned from where they were.
+	var bones: Skeleton3D = figure.person.skeleton() if figure.person != null else null
+	var arms: Array[int] = []
+	if bones != null:
+		arms = [bones.find_bone("UpperArm.L"), bones.find_bone("UpperArm.R")]
 	figure.pose(Vector3.ZERO, 0.0, 0.0)
 	await get_tree().process_frame
 	figure.pose(Vector3.ZERO, 0.0, 0.0)
-	var held_at := arm.rotation if arm != null else Vector3.ZERO
+	var held_at: Array[Quaternion] = []
+	for b in arms:
+		held_at.append(bones.get_bone_pose_rotation(b))
+	var turned := func() -> float:
+		var most := 0.0
+		for i in arms.size():
+			most = maxf(most, bones.get_bone_pose_rotation(arms[i]).angle_to(held_at[i]))
+		return most
 
 	figure.fired(1, ZeeWeaponNet.KIND_SWING)
 	var furthest := 0.0
 	for i in 40:
 		await get_tree().process_frame
 		figure.pose(Vector3.ZERO, 0.0, 0.0)
-		furthest = maxf(furthest, arm.rotation.distance_to(held_at))
+		furthest = maxf(furthest, turned.call() if bones != null else 0.0)
 	_check(furthest > 0.5, "the arm swings away from the hold", "%.2f rad at most" % furthest)
 
 	for i in 60:
 		await get_tree().process_frame
 		figure.pose(Vector3.ZERO, 0.0, 0.0)
-	_check(arm.rotation.distance_to(held_at) < 0.01 and not bool(figure.describe()["swinging"]),
+	_check(bones != null and turned.call() < 0.3 and not bool(figure.describe()["swinging"]),
 		"and comes back to it when the swing is over")
 	figure.queue_free()
 	_finished()
