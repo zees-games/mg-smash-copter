@@ -49,3 +49,8 @@ The cannon is behind you as often as in front, and the creak is the platform und
 ## Settings and the menu
 
 `ScSettings` is dot-menu's `DotMenuSettings` with this game's schema (the same as mg-buses-from-hell's): sensitivity (ACCOUNT, the family's 0.022 degrees per unit), field of view (SERVER_CLAMPED, default 92), three volumes. Escape opens it over the field, walking suspended while it is up. The config file (`user://cfg/smash-copter.json`) is the server's rules; the settings document is the player's (`user://smash_settings`).
+
+## Cameras and bodies
+
+F5 switches first and third person under the server's `mp_forceview` (dot-player-controller's `DotPlayerViewRules`, bound REPLICATED by the module and followed through the link). The third-person camera is a dot-core `DotCameraBoom` swept from the eye, `CHASE_UP` above it added as `lift` (seated in the chopper too), stopping against the decks and props: backing up to a deck's edge and looking up used to be a view from inside the floor. A `DotCameraFade` on the camera is handed every other player and hides one at the lens. dot-spectate is handed the level for its chase and death cameras. Players pass through each other by default here (`mp_solidplayers 0`: a shove on a leaning deck is a load the model never saw); an owner who sets 1 gets a hull on every body, and on a deck that carries two players into each other they walk out through each other rather than lock. `tools/camera_check.sh [--render]` flies both cameras round every deck with the pitch to 1.2 rad (armed), checks the default and a walk into another player both ways, and draws both views and the walk-in before and after.
+

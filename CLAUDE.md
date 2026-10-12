@@ -42,6 +42,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 ## Running and testing
 
 - `./game.sh` plays offline; `./game.sh online` runs a local server and browser client; `./game.sh test` parses and runs the three suites; `./game.sh shot` renders. Addon links come from `.gitignore` through dot-bootstrap.
+- After touching a camera, the view key or player collision: `tools/camera_check.sh` (cameras round every deck, armed; `--render` for frames). [client](docs/client.md#cameras-and-bodies)
 - **Render after any change to what is drawn**; `tools/shot.sh` is never `--headless` (a black PNG). [testing](docs/testing.md#renders-and-sound-what-no-assertion-reaches)
 - **The suites cannot see delivery.** After touching paths, art or addon APIs, import, pack and join with a real client (dot-server-deploy `examples/smash_client.tscn`). [testing](docs/testing.md#the-deployment)
 

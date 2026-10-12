@@ -212,6 +212,19 @@ var physics: DotPhysicsLayout = null
 ## link, because the client draws the bodies. The game's, not the map's.
 var ragdoll_rules: DotPlayerRagdollRules = DotPlayerRagdollRules.new()
 
+## dot-player-controller's `mp_forceview` (may a player switch to third person) and
+## `mp_solidplayers` (do players and stand-ins block each other). Bound by the module
+## (REPLICATED) and followed by a client through its link: the client places its camera
+## under the first and predicts its own player under the second.
+var view_rules: DotPlayerViewRules = DotPlayerViewRules.new()
+var body_rules: DotPlayerBodyRules = DotPlayerBodyRules.new()
+
+
+func _init() -> void:
+	# This game's pick: players pass through each other (see `_build_physics`). An owner who
+	# wants bodies sets `mp_solidplayers 1`.
+	body_rules.solid = false
+
 ## The weapon definitions by id, for the death reaction a weapon asks for. Built on first use.
 var _weapon_defs: Dictionary = {}
 var effects: DotFxManager = null
@@ -309,6 +322,8 @@ func _ready() -> void:
 	_layout_seed = config.seed_value
 
 	_build_physics()
+	if not body_rules.changed.is_connected(_on_body_rules_changed):
+		body_rules.changed.connect(_on_body_rules_changed)
 	_apply_gravity()
 	_build_random()
 	_build_arena()
@@ -346,6 +361,25 @@ func _exit_tree() -> void:
 
 # --- Building ---------------------------------------------------------------
 
+## The player's motor mask under `mp_solidplayers`, and the standing hull the others stop at
+## (a player's body has no shape of its own). Through `apply_to`: `set_collision_mask`, which
+## a style does not undo, and the players' layer as one a player may walk out of. With the rule
+## on, a stand-in stops at your shoulder instead of walking through your face (the first
+## play test).
+func _apply_body_mask(player: ScPlayer) -> void:
+	if physics == null or player == null or player.controller == null:
+		return
+	body_rules.apply_to(player.controller, physics.collision_mask(&"player"), physics.layer_mask(&"player"))
+	var tunables := player.controller.tunables
+	body_rules.apply_hull(player, tunables.stand_height, tunables.radius)
+
+
+## `mp_solidplayers` changed: every player's mask and hull now.
+func _on_body_rules_changed() -> void:
+	for id in players:
+		_apply_body_mask(players[id] as ScPlayer)
+
+
 ## The named collision layers everything in this world is put on.
 ##
 ## [b]Built rather than taken from a preset, and applied rather than merely assigned.[/b]
@@ -363,7 +397,9 @@ func _build_physics() -> void:
 			&"player":
 				# Not other players. Two capsules that push each other on a platform that
 				# leans toward the heavier side is a game decided by who walked into whom,
-				# and the shove would be a load the model never saw.
+				# and the shove would be a load the model never saw. So `mp_solidplayers` is 0
+				# by default here (see `body_rules`); the camera fade keeps a player who walks
+				# through you out of the lens.
 				#
 				# [b]And not a pillar.[/b] See `pillar` below.
 				layer.collides_with = [&"world", &"prop", &"vehicle"]
@@ -841,7 +877,7 @@ func add_player(
 		# And the motor's own mask, which is a separate number and defaults to 1. A
 		# controller left on the default sweeps against layer one only — which after a
 		# layout has moved the world off bit zero is a player who falls through the map.
-		player.controller.tunables.collision_mask = physics.collision_mask(&"player")
+		_apply_body_mask(player)
 
 	var opened := entities.open(
 		DotEntity.KIND_PLAYER,
