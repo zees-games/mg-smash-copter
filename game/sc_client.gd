@@ -1189,6 +1189,7 @@ func _present_effects(delta: float) -> void:
 	if audio != null:
 		audio.listen_from(camera.global_position)
 		var _creaked := audio.present(game.platforms, game.config.platform_collapse_lean)
+		audio.keep_walkers(game.players.values())
 
 	if game.effects != null:
 		game.effects.viewer_position = camera.global_position

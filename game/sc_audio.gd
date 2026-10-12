@@ -93,6 +93,12 @@ const CREAK_CLEARS_AT := 0.5
 
 var manager: DotAudioManager = null
 
+## Everybody's footsteps by what they stand on, and the bed under the whole game: dot-audio's
+## stock (Kenney's footsteps, generated beds, all CC0; the addon's stock/CREDITS.md).
+## Forty metres up on a slab in the open: wind is the whole world's sound.
+var steps: DotAudioFootsteps = null
+var ambience: DotAudioAmbience = null
+
 ## Where the cannon's mouth is. [ScClient] sets it from `ScArena.muzzle()`, which is the one
 ## place that number is written.
 var muzzle := Vector3.INF
@@ -105,7 +111,7 @@ var _creaking: Dictionary = {}
 
 ## Every id, in the order a reader would look for them.
 static func ids() -> Array[StringName]:
-	return [
+	var out: Array[StringName] = [
 		CANNON_FIRE, IMPACT_LIGHT, IMPACT_HEAVY, PLATFORM_CREAK, PLATFORM_COLLAPSE,
 		BARREL_BLAST, PLAYER_FELL, PLAYER_DOWN, YOU_ARE_OUT,
 		ROUND_START, ROUND_END, SHOWDOWN_TELEPORT, SHOWDOWN_GO, SPECIAL,
@@ -115,6 +121,9 @@ static func ids() -> Array[StringName]:
 		DotPlayerDeathReactions.SOUND_THUD, DotPlayerDeathReactions.SOUND_FACE_PLANT,
 		DotPlayerDeathReactions.SOUND_SLUMP, DotPlayerDeathReactions.SOUND_WHOOSH,
 	]
+	# A typed array plus a typed array is an untyped one: appended, not added.
+	out.append_array(DotAudioStock.ids())
+	return out
 
 
 ## What this game makes a noise about, and the rules for each.
@@ -144,6 +153,9 @@ static func sound_catalogue() -> DotAudioCatalogue:
 	c.add(_placed(BARREL_BLAST, 200.0, 24.0, 3, 88, 0.9, 1.1))
 	c.add(_placed(PLAYER_FELL, 120.0, 14.0, 3, 60, 0.9, 1.1))
 	c.add(_placed(PLAYER_DOWN, 120.0, 14.0, 3, 65, 0.95, 1.05))
+
+	# Footsteps and ambience beds, the family's stock.
+	DotAudioStock.add_to(c)
 
 	c.add(_flat(YOU_ARE_OUT, &"SFX", 1, 100))
 	c.add(_flat(ROUND_START, &"UI", 1, 80))
@@ -300,12 +312,27 @@ func setup() -> DotResult:
 	manager.register_as_service = false
 	# A barrage, a collapse and a firefight at once is the busiest this game gets.
 	manager.voices = 24
+	# Measured toward the family's -17 LUFS (dot-audio docs/loudness.md): a 40 s stand-in round
+	# read -21.5 LUFS integrated with the wind and the steps in.
+	manager.loudness_trim_db = 4.0
 	add_child(manager)
 
 	var ready_now := manager.setup()
 
 	if not ready_now.ok:
 		return ready_now.wrap("smash-copter audio")
+
+	steps = DotAudioFootsteps.new()
+	steps.name = "Footsteps"
+	steps.manager = manager
+	steps.default_surface = &"concrete"
+	add_child(steps)
+	ambience = DotAudioAmbience.new()
+	ambience.name = "Ambience"
+	ambience.manager = manager
+	ambience.fallback_bed = &"amb_wind"
+	add_child(ambience)
+	ambience.set_map_bed(&"amb_wind")
 
 	# Only on a real sink: the manager has already decided whether there is a device, and a
 	# headless process has nothing to bake for.
@@ -319,6 +346,20 @@ func setup() -> DotResult:
 		})
 
 	return DotResult.success(null)
+
+
+## Everybody this client knows steps, once a frame: players and bots alike.
+func keep_walkers(bodies: Array) -> void:
+	if steps != null:
+		steps.keep(bodies)
+
+
+## A map arrived: its bed and its ground. Empty keeps what is playing.
+func on_map(bed: StringName, surface: StringName = &"") -> void:
+	if ambience != null and bed != &"":
+		ambience.set_map_bed(bed)
+	if steps != null and surface != &"":
+		steps.default_surface = surface
 
 
 ## Where the ears are, once a frame. The camera, which is the spectator's camera too.

@@ -3456,7 +3456,10 @@ func _test_the_game_makes_a_noise() -> void:
 		"the id list and the catalogue name the same sounds",
 		"unlisted %s, uncatalogued %s" % [unlisted, uncatalogued])
 
-	var silent := catalogued.filter(func(id: StringName) -> bool: return not recipes.has(id))
+	# dot-audio's stock footsteps and beds are files the addon ships, so they need no stand-in.
+	var stock := DotAudioStock.ids()
+	var synthesised := catalogued.filter(func(id: StringName) -> bool: return not stock.has(id))
+	var silent := synthesised.filter(func(id: StringName) -> bool: return not recipes.has(id))
 	_check(silent.is_empty(), "every catalogued id has a stand-in voice", str(silent))
 
 	var nowhere: Array = recipes.keys().filter(
@@ -3465,7 +3468,7 @@ func _test_the_game_makes_a_noise() -> void:
 	_check(nowhere.is_empty(), "and every stand-in names an id the catalogue has", str(nowhere))
 
 	var bank := DotAudioSynth.bank(catalogue, recipes)
-	var unbaked := catalogued.filter(func(id: StringName) -> bool: return not bank.has(id))
+	var unbaked := synthesised.filter(func(id: StringName) -> bool: return not bank.has(id))
 	_check(unbaked.is_empty(), "the synthesiser bakes all of them", str(unbaked))
 
 	var kinds := [
