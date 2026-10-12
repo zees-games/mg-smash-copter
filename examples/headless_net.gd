@@ -46,7 +46,7 @@ const ScRequest := preload("../game/net/sc_request.gd")
 ## and LAYOUT correct it.
 
 const SECTIONS := 21
-const CHECKS := 211
+const CHECKS := 212
 
 ## Who the client is, on both ends.
 const CLIENT_PEER := 7
@@ -460,6 +460,12 @@ func _build() -> bool:
 	_client_net = _make_manager(
 		false, &"client", CLIENT_PEER, client_side, _client_game.tick_rate
 	)
+	# This harness stamps every command itself (`_tick + INPUT_LEAD`), not from the client's
+	# clock, so the client must not ask for dot-net's input-lead report: steered by reports
+	# about commands it never stamped, the clock runs away from them (only dot-net's cap
+	# holds it). By the constant map, so this parses against a dot-net from before the report.
+	var lead_bit := int((DotNetMessageRegistry as Script).get_script_constant_map().get("FEATURE_INPUT_LEAD", 0))
+	_client_net.messages.features &= ~lead_bit
 
 	_server_bridge = ScNetBridge.new()
 	_server_bridge.name = "Bridge"
@@ -1158,6 +1164,12 @@ func _test_who_somebody_is_crosses() -> void:
 		return
 
 	var _shown := ScClient.present_frame(_client_net, _client_game, mine, true, 1.0 / 60.0, 0.0)
+	# Your own player is drawn at the clock's render alpha (dot-player-controller's
+	# `render_clock`), so a clock slip does not stall or double the eye.
+	_check(
+		mine.controller != null and mine.controller.get(&"render_clock") == _client_net.clock,
+		"your own player is drawn on the client clock's render alpha"
+	)
 	_check(
 		theirs.avatar != null and theirs.avatar.digest() == face.digest(),
 		"a player seated with a face arrives wearing it"
