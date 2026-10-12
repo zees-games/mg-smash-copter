@@ -149,7 +149,7 @@ const DAYLIGHT := {
 		"colour": [0.80, 0.89, 1.0],
 		"start": 6300.0,
 		"end": 31500.0,
-		"max_density": 0.35,
+		"max_density": 0.2,
 	},
 	"sky_top": [0.30, 0.56, 0.96],
 }
@@ -171,23 +171,19 @@ func _build_light() -> void:
 		sun.shadow_blur = 1.5
 
 
-## What this machine draws of [constant DAYLIGHT].
+## What this machine draws of [constant DAYLIGHT]: dot-lighting's `painted()`.
 ##
 ## [b]Shadows stay on in the browser[/b], unlike dot-lighting's `web()`: the field is a
 ## few dozen boxes, and a platform's shadow on the deck below is how a player sees where a
-## deck is from above. [b]The Compatibility renderer, which this game and the client shell
-## use, has no headroom above white[/b]: at Forward+'s numbers every sunlit deck clipped to
-## flat white and the grid (the tilt) was gone, which this map found once before by hand.
-## So under `gl_compatibility` the sun is divided by 700 instead of 200 and the fill is
-## 0.62, game-arena's numbers, checked here against a rendered frame in both renderers.
+## deck is from above. `painted()` is the family's profile for a world of flat colours: a
+## longer filmic shoulder and a lower exposure (a sunlit deck was 30 % pure white under
+## Compatibility and the grid, which is what a player reads a tilt off, went with it), a
+## shadowless fill from the side the sun is not on (a deck's underside and its pillar keep
+## their edges in shade), and its numbers matched to the renderer.
 static func light_profile() -> DotLightProfile:
-	var p := DotLightProfile.web() if OS.has_feature("web") else DotLightProfile.high()
+	var p := DotLightProfile.painted()
 	p.sun_shadows = true
 	p.sky_below_horizon = true
-	p.ambient_energy = 1.0
-	if RenderingServer.get_current_rendering_method() == "gl_compatibility":
-		p.brightness_reference = 700.0
-		p.ambient_energy = 0.62
 	return p
 
 
