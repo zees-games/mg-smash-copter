@@ -111,6 +111,9 @@ static func ids() -> Array[StringName]:
 		ROUND_START, ROUND_END, SHOWDOWN_TELEPORT, SHOWDOWN_GO, SPECIAL,
 		WEAPON_SHOT, WEAPON_SWING, WEAPON_LAUNCH, WEAPON_BEAM, WEAPON_THROW,
 		UI_CLICK, UI_DENY,
+		# dot-player-char's dead bodies.
+		DotPlayerDeathReactions.SOUND_THUD, DotPlayerDeathReactions.SOUND_FACE_PLANT,
+		DotPlayerDeathReactions.SOUND_SLUMP, DotPlayerDeathReactions.SOUND_WHOOSH,
 	]
 
 
@@ -178,6 +181,15 @@ static func sound_catalogue() -> DotAudioCatalogue:
 	deny.cooldown_ms = 250
 	c.add(deny)
 
+	# A body landing: dot-player-char's stock death sounds (Kenney, CC0), shipped in the addon.
+	for row: Dictionary in DotPlayerDeathSounds.rows():
+		var fall := _placed(row["id"], 45.0, 8.0, 3, 50, float(row["pitch_min"]), float(row["pitch_max"]))
+		fall.path = row["path"]
+		fall.variants = row["variants"]
+		fall.gain_db = float(row["gain_db"])
+		fall.cooldown_ms = int(row["cooldown_ms"])
+		c.add(fall)
+
 	return c
 
 
@@ -213,6 +225,11 @@ static func sound_recipes() -> Dictionary:
 		WEAPON_THROW: DotAudioSynth.Voice.CLICK,
 		UI_CLICK: DotAudioSynth.Voice.CLICK,
 		UI_DENY: DotAudioSynth.Voice.DENY,
+		# Stand-ins only for a build without dot-player-char's files.
+		DotPlayerDeathReactions.SOUND_THUD: DotAudioSynth.Voice.IMPACT,
+		DotPlayerDeathReactions.SOUND_FACE_PLANT: DotAudioSynth.Voice.IMPACT,
+		DotPlayerDeathReactions.SOUND_SLUMP: DotAudioSynth.Voice.STEP,
+		DotPlayerDeathReactions.SOUND_WHOOSH: DotAudioSynth.Voice.SPAWN,
 	}
 
 
@@ -424,6 +441,11 @@ func present(platforms: ScPlatforms, collapse_lean: float) -> int:
 		var _heard := _at(PLATFORM_CREAK, deck.centre)
 
 	return creaked
+
+
+## A dead body's sound (dot-player-char's ragdolls), where it landed.
+func on_body(id: StringName, at: Vector3, volume: float) -> bool:
+	return _at(id, at, clampf(volume, 0.3, 1.0))
 
 
 func _at(id: StringName, at: Vector3, volume: float = 1.0) -> bool:

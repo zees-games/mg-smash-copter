@@ -42,6 +42,7 @@
 /addons/dot_platform
 /addons/dot_vote
 /addons/zee_weapons
+/addons/dot_player_char
 
 # Exports
 build/

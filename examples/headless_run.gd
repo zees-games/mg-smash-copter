@@ -13,6 +13,7 @@ const ScLayouts := preload("../game/sc_layouts.gd")
 const ScPlatforms := preload("../game/sc_platforms.gd")
 const ScPaths := preload("../game/sc_paths.gd")
 const ScClient := preload("../game/sc_client.gd")
+const ScEvents := preload("../game/net/sc_events.gd")
 const ScPlayer := preload("../game/sc_player.gd")
 const ScProgress := preload("../game/sc_progress.gd")
 const ScSpecials := preload("../game/sc_specials.gd")
@@ -44,7 +45,7 @@ const SECTIONS := 36
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 270
+const CHECKS := 275
 
 const TICK_RATE := 64
 const TICK := 1.0 / float(TICK_RATE)
@@ -689,6 +690,32 @@ func _test_falling_off() -> void:
 	_check(not player.is_alive(), "below the floor is dead")
 	_check(deaths.has(ScGame.DIED_FELL), "and it is recorded as a fall",
 		", ".join(Array(deaths).map(func(v: Variant) -> String: return String(v))))
+
+	# How the body falls: the server picked it, it travels on DEATH, and a client builds it from
+	# the figure it draws. A death with no figure drawn here is nothing to build, which _fall
+	# must survive.
+	_check(player.death != null and DotPlayerDeathReactions.stock().has(player.death.reaction),
+		"the server picked how the body falls", str(player.death.describe()) if player.death != null else "none")
+	var carried: Dictionary = ScEvents.read_death(DotNetReader.new(ScEvents.write_death(5, 0, ScGame.DIED_FELL, player.death)))
+	_check(bool(carried["ok"]) and carried.has("death") and (carried["death"] as DotPlayerDeath).reaction == player.death.reaction,
+		"DEATH carries it")
+	var bare := ScEvents.read_death(DotNetReader.new(ScEvents.write_death(5, 0, ScGame.DIED_FELL)))
+	_check(bool(bare["ok"]) and not bare.has("death"), "and a DEATH without it still reads")
+	var client := ScClient.new()
+	client.game = game
+	client._build_ragdolls()
+	client.remove_child(client.ragdolls)
+	add_child(client.ragdolls)
+	client._fall(player)
+	_check(client.ragdolls.live().is_empty(), "no figure drawn, no body, and no error")
+	var other: ScPlayer = game.players[&"other"]
+	var _drawn := other.present_body(false, other.controller.state.position, Color.WHITE)
+	other.death = player.death
+	client._fall(other)
+	_check(client.ragdolls.live().size() == 1 and client.ragdolls.rules == game.ragdoll_rules,
+		"a drawn figure falls as a body, under the game's rules")
+	client.ragdolls.queue_free()
+	client.free()
 
 	# [b]dot-combat keeps a health record per entity and nothing else tells it to let
 	# go.[/b] game-buses-from-hell leaked one per player who ever joined, pointing at a node

@@ -141,6 +141,10 @@ var beacon_marker: DotFxBeacon = null
 ## [method present_body], never on a server, which draws nothing.
 var figure: ScFigure = null
 
+## How this player's body falls on their death: the server's pick ([method ScGame.decide_death]),
+## carried on DEATH and set here before anybody hears of it. Null before a first death.
+var death: DotPlayerDeath = null
+
 # --- What a watcher draws in their hand. Client side --------------------------
 #
 # A player this process SIMULATES (an offline stand-in, or yourself in third person) is read

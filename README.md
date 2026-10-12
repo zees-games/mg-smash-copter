@@ -101,6 +101,8 @@ sc_spectate_camera 1        // 0 = anybody may watch anybody, 1 = own side only,
 
 The bot cvars are the family's shared ones (dot-server's `DotBotQuota`). `sc_min_players` still works and sets `bot_quota`; it is deprecated.
 
+Dead players fall as ragdolls ([dot-player-char](https://github.com/modcommunity/dot-player-char)); the server picks how each one goes down and everybody sees the same fall. `sv_ragdoll 0` makes it a quick fall with no physics, `sv_ragdoll_style` picks ragdoll, stiff, topple or hide, `sv_ragdoll_time` and `sv_ragdoll_max` say how long and how many, and `sv_ragdoll_reactions` weights the falls (`limp`, `face_plant`, `crumple`, `headshot_launch`, `power_launch`; 0 turns one off).
+
 `mp_teammate_passthrough` is the family's shared one from dot-combat, live from the next shot. At 2 a team-mate in the line never stops a shot; splash still reaches them.
 
 `--sc-layout-ids=checker` (or `SC_LAYOUT_IDS=checker`) plays one layout all evening. An empty server fills itself with bots, because a round needs two sides.

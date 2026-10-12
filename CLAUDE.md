@@ -47,6 +47,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 
 ## Rules
 
+- A dead body falls as dot-player-char's ragdoll: the server picks the fall (`ScGame.decide_death`, on `player.death`), it rides DEATH last and optional, and the client copies it from the figure it draws (`ScClient._fall`). The `sv_ragdoll*` cvars are bound in the module, REPLICATED, and followed by the client. See dot-player-char's [docs/ragdolls.md](../dot-player-char/docs/ragdolls.md).
 **The floor** ([platforms](docs/platforms.md), [design](docs/design.md))
 - A platform is never a rigid body: four floats integrated semi-implicitly by `ScPlatforms`, decided by the server, adopted by clients. Never explicit Euler.
 - Check a platform by its SURFACE, not its state.
