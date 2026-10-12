@@ -611,6 +611,8 @@ func present_body(own_view: bool, at: Vector3, team_colour: Color) -> bool:
 			"on_floor": controller.state.mode == DotFpsState.Mode.GROUND,
 			"vertical": velocity.y,
 			"crouched": controller.state.crouch_fraction > 0.5,
+			# The view's pitch: the upper body, the arms and the weapon follow it.
+			"aim": deg_to_rad(controller.state.pitch),
 		})
 		figure.pose(
 			at,
