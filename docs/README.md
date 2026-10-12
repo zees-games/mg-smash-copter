@@ -11,5 +11,6 @@ One subject per file. [CLAUDE.md](../CLAUDE.md) has the rules in one line each; 
 | [client.md](client.md) | the camera, being out, sound, figures and a gun in somebody's hand, HUD and admin overlays, settings |
 | [services.md](services.md) | moderation tools and refusals, progress and achievements, identity and admission |
 | [delivery.md](delivery.md) | the pack: no `class_name`, `rebase` at definition, the seventh form and `rebase_onto`, models by path, the weapon pack's asset root, gravity and renderer, import before packing |
+| [bots.md](bots.md) | the stand-ins: dot-bot's aim and `bot_difficulty`, the `sc_bot_*` cvars, the showdown route round the cover, the trigger per weapon, measured presets |
 | [testing.md](testing.md) | the three suites, their rules, asserting the mechanism, renders and the audio probe, the deployment check |
 | [history.md](history.md) | bug narratives worth recognising again |

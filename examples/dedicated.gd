@@ -24,7 +24,7 @@ const ScProgress := preload("../game/sc_progress.gd")
 ## and those are what this is about.
 
 const SECTIONS := 13
-const CHECKS := 110
+const CHECKS := 116
 
 ## Everything this run writes, and it is deleted on the way in and on the way out.
 ##
@@ -652,6 +652,35 @@ func _test_the_stand_ins() -> void:
 		_check(false, "and a stand-in comes back when they leave", "no module")
 
 	var _restored := _run_command("sc_min_players 4")
+
+	# How the stand-ins aim and shoot is dot-bot's, the family's names: bot_difficulty sets the
+	# bundle, a single setting overrides it, and the old sc_bot_spread still means bot_aim_error.
+	var bot_settings := DotBotSettings.of(game)
+	_check(server.console.get_string("bot_difficulty", "") == "medium" and bot_settings.difficulty() == "medium",
+		"bot_difficulty is the module's and medium is the default")
+	var _hard := _run_command("bot_difficulty hard")
+	_check(bot_settings.difficulty() == "hard" and is_equal_approx(server.console.get_float("bot_reaction"), DotBotProfile.preset_value("hard", "reaction")),
+		"bot_difficulty hard writes every bot_* setting", server.console.get_string("bot_reaction"))
+	var _old := _run_command("sc_bot_spread 9")
+	_check(is_equal_approx(bot_settings.profile.aim_error, 9.0) and server.console.get_string("bot_aim_error") == "9",
+		"the old sc_bot_spread sets bot_aim_error", server.console.get_string("bot_aim_error"))
+	var _reset := _run_command("bot_settings_reset")
+	var _medium := _run_command("bot_difficulty medium")
+	_check(is_equal_approx(bot_settings.profile.aim_error, DotBotProfile.preset_value("medium", "aim_error")),
+		"and bot_settings_reset puts the preset back", "%.2f" % bot_settings.profile.aim_error)
+	var _lean := _run_command("sc_bot_lean_notice 4")
+	_check(is_equal_approx(game.config.bot_lean_notice_degrees, 4.0), "sc_bot_lean_notice is this game's own",
+		"%.2f" % game.config.bot_lean_notice_degrees)
+	var _lean_back := _run_command("sc_bot_lean_notice 1.15")
+
+	# Named from this game's list through DotBotNames: never twice.
+	var names := {}
+	var named := true
+	for id: StringName in game.players:
+		var who := (game.players[id] as ScPlayer).display_name
+		named = named and not names.has(who) and (ScGame.BOT_NAMES.has(who) or who.contains(" "))
+		names[who] = true
+	_check(named, "every stand-in has its own name from the list", ", ".join(PackedStringArray(names.keys())))
 
 	# Turned off, they go away. A stand-in that could not be removed would be an operator
 	# with no way to run an empty server.

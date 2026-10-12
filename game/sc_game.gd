@@ -1261,10 +1261,11 @@ func _lay_out_round() -> void:
 	world_clearing.emit()
 	_clear_world()
 
-	# A new round is a new hand for every stand-in. Kept across the round so a bot's aim is
-	# slightly wrong rather than shaking, and dropped here so the next one is a different
-	# fight — which is the whole reason it exists.
-	_bot_hands.clear()
+	# A new round is a new aim for every stand-in, seeded with the round, so the next fight
+	# between stand-ins is a different one (see [method _bot_aim_of]).
+	_bot_aims.clear()
+	_bot_triggers.clear()
+	_bot_charges.clear()
 
 	var stream := random.stream(&"layout")
 	var voted: ScLayouts.Layout = null
@@ -2352,10 +2353,25 @@ func try_board(player_id: StringName) -> DotResult:
 ##
 ## [b]They play the actual game rather than walking a route.[/b] A bot here has one
 ## decision to make and it is the same one a person has: the platform is leaning, so move
-## toward the high side, and if it is going over, get off it. That is four lines and it is
-## enough to make an empty server show somebody what the map does.
-## One aim error per bot, for this round. Cleared when the next one is laid out.
-var _bot_hands: Dictionary = {}
+## toward the high side, and if it is going over, get off it. In the showdown it turns on the
+## nearest enemy and shoots, through dot-bot's [DotBotAim] (see [method _aim_bot]).
+##
+## [b]How it aims is the family's, how it balances is this game's.[/b] The view, the reaction,
+## the aim error and the trigger are dot-bot's `bot_difficulty` and `bot_*` settings, the
+## names every game uses; what is only true here (how much lean a stand-in notices, how far it
+## walks to a fight) is `sc_bot_*` ([ScConfig]).
+
+## What the stand-ins are called, solo and on a server; past the end dot-bot numbers them.
+const BOT_NAMES := ["Wobble", "Teeter", "Lurch", "Tilt", "Keel", "Sway", "Pitch", "Yaw"]
+
+## Each stand-in's eyes and trigger finger for this round, player id -> [DotBotAim]. Cleared
+## when the next round is laid out, and the round is in the seed (see [method _bot_aim_of]).
+var _bot_aims: Dictionary = {}
+
+## Whether each stand-in's trigger was down last tick, and when it started a charge: see
+## [method _bot_trigger].
+var _bot_triggers: Dictionary = {}
+var _bot_charges: Dictionary = {}
 
 
 func _drive_bots(_delta: float) -> void:
@@ -2368,7 +2384,11 @@ func _drive_bots(_delta: float) -> void:
 		var command := DotFpsCommand.new()
 		command.yaw = player.controller.state.yaw
 		command.pitch = player.controller.state.pitch
+		_bot_aim_of(player).view_from(command.yaw, command.pitch)
 
+		# Where it wants to walk, in the world: turned into stick movement once the view is
+		# decided, so turning at a person's speed never walks it the wrong way.
+		var walk := Vector3.ZERO
 		var deck := platforms.deck_at(player.standing_on)
 
 		if deck != null:
@@ -2376,8 +2396,9 @@ func _drive_bots(_delta: float) -> void:
 			var wanted := deck.centre
 
 			# Uphill, which on a leaning platform is the opposite of the lean — and is also
-			# the way back toward the pillar, so one target serves both reasons.
-			if deck.tilt() > 0.02:
+			# the way back toward the pillar, so one target serves both reasons. A lean under
+			# `sc_bot_lean_notice` degrees goes unnoticed, as it does by a person.
+			if deck.tilt() > deg_to_rad(config.bot_lean_notice_degrees):
 				wanted = deck.centre - Vector3(deck.lean.x, 0.0, deck.lean.y).normalized() \
 					* deck.half * 0.4
 
@@ -2385,9 +2406,7 @@ func _drive_bots(_delta: float) -> void:
 			toward.y = 0.0
 
 			if toward.length() > 0.6:
-				var facing := rad_to_deg(atan2(-toward.x, -toward.z))
-				command.yaw = facing
-				command.move = Vector2(0.0, 1.0)
+				walk = toward
 
 				# Walking rather than running when it is nearly there, which is the control
 				# this whole game is about and the one thing a bot should be seen using.
@@ -2397,13 +2416,31 @@ func _drive_bots(_delta: float) -> void:
 			if not deck.is_standing():
 				command.set_button(DotFpsCommand.BUTTON_JUMP, true)
 
-		if phase == Phase.SHOWDOWN and player.weapons != null:
-			_aim_bot(player, command)
+		var aimed := false
 
+		if phase == Phase.SHOWDOWN and player.weapons != null:
+			var advance := _aim_bot(player, command)
+			aimed = advance != Vector3.INF
+
+			if aimed and advance != Vector3.ZERO:
+				walk = advance
+
+		if not aimed and walk != Vector3.ZERO:
+			var eye := player.eye_position()
+			_bot_look(player, command, Vector3(eye.x + walk.x, eye.y, eye.z + walk.z))
+
+		command.move = _bot_walk(command.yaw, walk)
 		player.controller.apply_command(command)
 
 
-func _aim_bot(player: ScPlayer, command: DotFpsCommand) -> void:
+## Turns a stand-in on the nearest enemy and fires when dot-bot says it may. Returns the way
+## it walks toward the fight (flat, world space; ZERO to hold), or [constant Vector3.INF] when
+## there is nobody to fight.
+##
+## [b]It sees through dot-bot's eyes[/b]: inside `bot_fov` and `bot_sight`, with nothing in
+## the way. An enemy it cannot see is one it turns toward (everybody knows where the corners
+## are) without engaging, so the first shot still waits `bot_reaction` from first sight.
+func _aim_bot(player: ScPlayer, command: DotFpsCommand) -> Vector3:
 	var best: ScPlayer = null
 	var closest := INF
 
@@ -2424,67 +2461,354 @@ func _aim_bot(player: ScPlayer, command: DotFpsCommand) -> void:
 			closest = distance
 			best = other
 
+	var aim := _bot_aim_of(player)
+
 	if best == null:
-		return
+		aim.release()
+		return Vector3.INF
 
-	var toward := best.eye_position() - player.eye_position()
+	var eye := player.eye_position()
+	# The chest, not the eyes: a person aims at the middle of what they can see.
+	var at := best.eye_position() - Vector3(0.0, 0.35, 0.0)
 
-	if toward.length() < 0.01:
-		return
+	if eye.distance_to(at) < 0.01:
+		return Vector3.ZERO
 
-	# [b]A hand of its own, per bot per round, and without it an empty server plays the same
-	# round for ever.[/b] The corners are symmetric, the arrival slots are symmetric, and the
-	# bot brain is four lines with no state — so a showdown between stand-ins is a pure
-	# function of the arrangement, and the arrangement does not change with the round seed.
-	# Measured: twelve rounds, twelve wins for the same side, with the same bot getting the
-	# only kill in every one of them. Nothing was wrong; nothing was deciding, either.
-	#
-	# The stream is the ROUND's, so both halves of a networked world draw the same numbers
-	# and a watching client is not shown a different fight from the one the server is running.
-	var hand := _bot_jitter(player)
+	var profile := _bot_settings_of(player).profile
+	var distance := eye.distance_to(at)
+	var reach_standing := _bot_weapon_reach(player, false)
+	# Where it would rather fight from: `bot_range`, or arm's length with a hatchet or a mallet.
+	var hold_at := minf(profile.range, reach_standing * 0.6)
+	var sees := _bot_sees(player, eye, at)
+	var wants := false
 
-	command.yaw = rad_to_deg(atan2(-toward.x, -toward.z)) + hand.x
-	command.pitch = clampf(
-		rad_to_deg(asin(clampf(toward.normalized().y, -1.0, 1.0))) + hand.y, -89.0, 89.0
-	)
-	command.set_button(DotFpsCommand.BUTTON_USER_0, true)
+	if sees:
+		wants = _bot_shoot(player, command, best.entity_id, at, best.controller.state.velocity)
+	else:
+		aim.release()
+		_bot_look(player, command, at)
+
+	# [b]Standing still to shoot from range, as often as `bot_stop_to_shoot` says[/b], decided
+	# once an engagement so it does not stutter, and only where it may open fire at all (inside
+	# `bot_max_range` and the gun's reach): two stand-ins that stopped where neither would
+	# fire stood fifty metres apart until the clock ran out. See [method _bot_weapon_reach]
+	# for why a stand-in that keeps walking holds its fire until it is much closer.
+	var holds := closest <= hold_at or closest >= config.bot_advance_metres \
+		or (sees and distance <= minf(reach_standing, profile.max_range) \
+			and _bot_stops_to_shoot(player, profile))
+	# Walking by what the body is doing, which is what the gun's spread follows: a stand-in
+	# that means to walk but is stopped against something is standing.
+	var velocity := player.controller.state.velocity
+	var walking := Vector2(velocity.x, velocity.z).length() > 1.0
+	var reach := _bot_weapon_reach(player, walking and not holds)
+	command.set_button(DotFpsCommand.BUTTON_USER_0, _bot_trigger(player, wants and distance <= reach))
+
+	if holds:
+		return Vector3.ZERO
 
 	# [b]Close, but not from the far side of the map.[/b] Advancing whenever the nearest
 	# enemy is further than six metres marched every stand-in off its own pad and down a
 	# catwalk 3.4 m wide toward somebody sixty metres away — which is why two thirds of the
 	# deaths in a bot showdown were falls rather than shots. Past the walk limit a bot holds
 	# its corner and shoots from it, which is also the right thing for a person to do.
-	if closest > 6.0 and closest < config.bot_advance_metres:
-		command.move = Vector2(0.0, 1.0)
+	var from := player.controller.state.position
+	var goal := _showdown_goal(from, best.controller.state.position)
+
+	if _showdown_zone(from).where == &"ring":
+		goal = _bot_round_cover(player, from, goal)
+
+	return Vector3(goal.x - from.x, 0.0, goal.z - from.z)
 
 
-## A bot's personal aim error, in degrees of yaw and pitch.
+## On the ring, [param goal] or a step to one side of whatever stands between it and
+## [param from]: the blocks facing each pad and the dais in the middle are on every
+## catwalk's line, so a stand-in walking that line straight stopped against the first block
+## and stood there for the rest of the round. Measured at knee height, under which a kerb is
+## nothing and over which every block is something. Each stand-in prefers its own side, so
+## it does not dither between two.
+func _bot_round_cover(player: ScPlayer, from: Vector3, goal: Vector3) -> Vector3:
+	if combat == null or combat.trace == null:
+		return goal
+
+	var knee := Vector3.UP * 0.5
+
+	if combat.trace.line_of_sight(from + knee, goal + knee):
+		return goal
+
+	var flat := Vector3(goal.x - from.x, 0.0, goal.z - from.z)
+
+	if flat.length() < 0.5:
+		return goal
+
+	var ahead := flat.normalized()
+	var aside := Vector3(-ahead.z, 0.0, ahead.x)
+	var side := 1.0 if hash(String(player.player_id)) % 2 == 0 else -1.0
+	var middle := arena.showdown_centre()
+	var inside := arena.ring_half() - 0.8
+
+	for offset: float in [3.5 * side, -3.5 * side, 6.0 * side, -6.0 * side]:
+		var step := from + ahead * minf(flat.length(), 5.0) + aside * offset
+		if absf(step.x - middle.x) > inside or absf(step.z - middle.z) > inside:
+			continue
+		if combat.trace.line_of_sight(from + knee, step + knee):
+			return step
+
+	return goal
+
+
+## Where a stand-in walking from [param from] toward somebody at [param to] heads next in the
+## showdown: down the middle of its own catwalk to the ring, across the ring to the mouth of
+## theirs, and up the middle of that one. Only a pad or the ring is walked straight across.
 ##
-## Drawn once per player per round and cached, because a value redrawn every tick is a bot
-## whose aim shakes rather than one that is slightly wrong — and a shaking bot hits nothing
-## at all, which is the same broken showdown from the other end.
-func _bot_jitter(player: ScPlayer) -> Vector2:
-	var found: Variant = _bot_hands.get(player.player_id)
+## [b]A straight line from pad to pad is a fall.[/b] The slots are spread across each pad, so
+## the line from one to another's mirror image leaves a 3.4 m catwalk on the diagonal: measured
+## with the line, every stand-in in a showdown walked off its catwalk about thirty metres out,
+## all four on the same tick, and not one shot was fired in twenty rounds.
+func _showdown_goal(from: Vector3, to: Vector3) -> Vector3:
+	if arena == null:
+		return to
+
+	var here := _showdown_zone(from)
+	var there := _showdown_zone(to)
+	var middle := arena.showdown_centre()
+	var ring := arena.ring_half()
+
+	# On the same arm (or both on the ring): straight at them, except along a catwalk, where
+	# it keeps to the middle line toward them.
+	if here.arm == there.arm:
+		if here.where != &"catwalk":
+			return to
+		var ahead := (here.s as float) + (3.0 if (there.s as float) > (here.s as float) else -3.0)
+		return _on_arm(middle, here.out, ahead, from.y)
+
+	# Off the ring on its own arm: inward along the middle of its catwalk (or across its pad
+	# to the catwalk's mouth).
+	if here.where == &"pad":
+		return _on_arm(middle, here.out, arena.config.corner_distance - arena.config.corner_size * 0.5 - 1.0, from.y)
+	if here.where == &"catwalk":
+		return _on_arm(middle, here.out, (here.s as float) - 3.0, from.y)
+
+	# On the ring, they are out along another arm: to its mouth, then up its middle.
+	var lateral: float = absf(Vector2(from.x - middle.x, from.z - middle.z).dot(there.across))
+	if lateral < 0.8:
+		return _on_arm(middle, there.out, Vector2(from.x - middle.x, from.z - middle.z).dot(there.out) + 3.0, from.y)
+
+	return _on_arm(middle, there.out, ring - 1.5, from.y)
+
+
+## A point [param along] metres out from the ring's middle along [param out], at height [param y].
+static func _on_arm(middle: Vector3, out: Vector2, along: float, y: float) -> Vector3:
+	return Vector3(middle.x + out.x * along, y, middle.z + out.y * along)
+
+
+## Which part of the showdown [param at] is on: `where` is `ring`, `catwalk` or `pad`, `arm`
+## the catwalk's index (-1 on the ring), `out` and `across` its directions, `s` how far out.
+func _showdown_zone(at: Vector3) -> Dictionary:
+	var middle := arena.showdown_centre()
+	var flat := Vector2(at.x - middle.x, at.z - middle.z)
+	var ring := arena.ring_half()
+
+	if absf(flat.x) <= ring and absf(flat.y) <= ring:
+		return {"where": &"ring", "arm": -1, "out": Vector2.ZERO, "across": Vector2.ZERO, "s": 0.0}
+
+	var count := maxi(config.team_count, 1)
+	var best := 0
+	var best_dot := -INF
+
+	for index in range(count):
+		var corner := arena.corner_point(index, count)
+		var out := Vector2(corner.x - middle.x, corner.z - middle.z).normalized()
+		var along := flat.normalized().dot(out)
+		if along > best_dot:
+			best_dot = along
+			best = index
+
+	var corner_at := arena.corner_point(best, count)
+	var out_dir := Vector2(corner_at.x - middle.x, corner_at.z - middle.z).normalized()
+	var s := flat.dot(out_dir)
+	var pad_inner := config.corner_distance - config.corner_size * 0.5
+	return {
+		"where": &"pad" if s >= pad_inner else &"catwalk",
+		"arm": best,
+		"out": out_dir,
+		"across": Vector2(out_dir.y, -out_dir.x),
+		"s": s,
+	}
+
+
+## Whether this engagement is one [param player] stands still for: `bot_stop_to_shoot` is a
+## chance per engagement, drawn from the engagement itself so it is the same answer every tick.
+func _bot_stops_to_shoot(player: ScPlayer, profile: DotBotProfile) -> bool:
+	var aim := _bot_aim_of(player)
+	var roll := float(hash("%s#%d#%.4f" % [String(player.player_id), aim.target_id, aim.engaged_at]) & 0xffff) / 65535.0
+	return roll < profile.stop_to_shoot
+
+
+## How far the weapon in [param player]'s hands is worth firing, metres, standing or
+## [param moving]: where its spread still lands within `sc_bot_spray` metres of the aim
+## point, and never past its ballistics' `max_range` (a melee weapon's is its arm's length).
+## No limit for a weapon that says neither.
+##
+## [b]Every gun here is far less accurate walking[/b] (the rifle's spread is five times its
+## standing spread), and the stand-ins opened fire wherever dot-bot's `bot_max_range` let them,
+## walking. The presets that see and shoot from further emptied a magazine into the air from
+## sixty metres, reloaded at the moment they arrived and lost: measured over twenty showdowns
+## each, nightmare lost 18 of 20 to the reference player and medium 12. A person who is
+## walking holds their fire until it can land, or stops to shoot ([method _bot_stops_to_shoot]).
+func _bot_weapon_reach(player: ScPlayer, moving: bool) -> float:
+	var def := _bot_weapon(player)
+	var ballistics := def.tuning as DotWeaponBallistics if def != null else null
+
+	if ballistics == null:
+		return INF
+
+	var reach := ballistics.max_range if ballistics.max_range > 0.0 else INF
+	var spread := ballistics.spread_moving if moving else ballistics.spread
+
+	if spread > 0.01 and ballistics.pellets <= 1:
+		reach = minf(reach, config.bot_spray_metres / tan(deg_to_rad(spread)))
+
+	return reach
+
+
+func _bot_weapon(player: ScPlayer) -> DotWeaponDef:
+	if player.weapons == null or player.weapons.arsenal == null:
+		return null
+
+	return player.weapons.arsenal.current_def()
+
+
+## The trigger a stand-in actually presses this tick, when it [param wants] to fire, for the
+## weapon in its hands.
+##
+## [b]Held down, most of this game's weapons fire once.[/b] A revolver, a marksman rifle, a
+## shotgun and a hatchet are one use per PRESS (dot-weapon's `SEMI`), a burst rifle one burst
+## per press, and a charge rifle fires on RELEASE. The stand-ins held the button for as long as
+## they meant to shoot, so with any of those they fired once and then stood aiming at somebody
+## for the rest of the showdown, and with the charge rifle never fired at all. So: held for an
+## automatic, tapped on every other tick for one a press, and held for the charge and let go.
+func _bot_trigger(player: ScPlayer, wants: bool) -> bool:
+	var def := _bot_weapon(player)
+	var was_down: bool = _bot_triggers.get(player.player_id, false)
+	var down := wants
+
+	if def != null:
+		match def.fire_mode:
+			DotWeaponDef.Fire.SEMI, DotWeaponDef.Fire.BURST:
+				down = wants and not was_down
+			DotWeaponDef.Fire.CHARGE:
+				var since: int = _bot_charges.get(player.player_id, -1)
+
+				if wants and not was_down:
+					_bot_charges[player.player_id] = _tick
+				elif was_down and since >= 0 \
+						and _tick - since >= player.weapons.arsenal.ticks_for(def, def.charge_ticks):
+					down = false
+
+	_bot_triggers[player.player_id] = down
+	return down
+
+
+## Whether [param player] can see [param at] from [param eye]: inside its view cone and sight
+## (`bot_fov`, `bot_sight`) and nothing of the world in the way.
+func _bot_sees(player: ScPlayer, eye: Vector3, at: Vector3) -> bool:
+	var profile := _bot_settings_of(player).profile
+	var aim := _bot_aim_of(player)
+	var toward := at - eye
+
+	if toward.length() > profile.sight:
+		return false
+
+	# Already engaged, a target just behind the shoulder is still the target: the cone is
+	# for noticing somebody, and a person tracking one does not lose them by turning.
+	var engaged := aim.target_id >= 0 and _bot_now() - aim.last_seen_at <= DotBotAim.CONTINUE_WINDOW
+
+	if not engaged and rad_to_deg(DotBotAim.direction(aim.yaw, aim.pitch).angle_to(toward)) > profile.fov * 0.5:
+		return false
+
+	if profile.through_walls > 0.5 or combat == null or combat.trace == null:
+		return true
+
+	return combat.trace.line_of_sight(eye, at)
+
+
+## Aims a stand-in at [param at] (target [param id]) and says whether it fires this tick:
+## dot-bot's [DotBotAim], so the view turns at `bot_turn_rate`, the first shots miss by
+## `bot_aim_error` and settle, and the trigger waits `bot_reaction` after first sight.
+func _bot_shoot(player: ScPlayer, command: DotFpsCommand, id: int, at: Vector3, velocity: Vector3) -> bool:
+	var aim := _bot_aim_of(player)
+	var eye := player.eye_position()
+	var now := _bot_now()
+	var _new := aim.engage(id, eye, at, now)
+	var view := aim.track(eye, at, velocity, now, delta_for_tick())
+	command.yaw = view.x
+	command.pitch = clampf(view.y, -89.0, 89.0)
+	var fire := aim.trigger(now, eye.distance_to(at))
+
+	if fire:
+		aim.note_shot(eye, at, now)
+
+	return fire
+
+
+## Turns a stand-in toward [param at] the way a person turns: at `bot_turn_rate`, never in one
+## tick. Writes the view into [param command].
+func _bot_look(player: ScPlayer, command: DotFpsCommand, at: Vector3) -> void:
+	var view := _bot_aim_of(player).look_at_point(player.eye_position(), at, delta_for_tick())
+	command.yaw = view.x
+	command.pitch = clampf(view.y, -89.0, 89.0)
+
+
+## Stick movement for walking along [param world_dir] (flat, world space) with the view at
+## [param yaw] degrees.
+static func _bot_walk(yaw: float, world_dir: Vector3) -> Vector2:
+	var flat := Vector3(world_dir.x, 0.0, world_dir.z)
+
+	if flat.length() < 0.01:
+		return Vector2.ZERO
+
+	flat = flat.normalized()
+	var turned := deg_to_rad(yaw)
+	var forward := Vector3(-sin(turned), 0.0, -cos(turned))
+	var right := Vector3(cos(turned), 0.0, -sin(turned))
+	return Vector2(flat.dot(right), flat.dot(forward)).limit_length(1.0)
+
+
+## A stand-in's [DotBotAim] for this round, made on first use.
+##
+## [b]The round is in the seed, and leaving it out makes every round the same fight.[/b] The
+## corners are symmetric, the arrival slots are symmetric, and a bot's randomness is its own
+## stream seeded from what it is given: seeded from the id alone, an empty server's showdown
+## is a pure function of an arrangement the round does not change. Measured with the old
+## fixed aim offset drawn on the id alone: twelve rounds, twelve wins for the same side, the
+## same bot taking the only kill in every one.
+func _bot_aim_of(player: ScPlayer) -> DotBotAim:
+	var found: Variant = _bot_aims.get(player.player_id)
 
 	if found != null:
-		return found as Vector2
+		return found as DotBotAim
 
-	# [b]The ROUND is mixed into the subject, and leaving it out made this line do
-	# nothing.[/b] `stream_for(name, subject)` is reproducible by construction: the same world
-	# seed and the same subject give the same numbers for ever, and an entity id is the same
-	# every round. The first version drew on the id alone, and twelve rounds came out
-	# byte-identical to twelve rounds with no jitter at all — the same winner, the same
-	# survivor, the same bot taking the only kill. Reproducibility was doing exactly what it
-	# promises; what was missing was anything that varied.
-	var draw := random.stream_for(
-		&"bot_aim", round_number * 8192 + int(player.entity_id % 8192)
+	var aim := DotBotAim.new(
+		hash("%s#%d" % [String(player.player_id), round_number]), _bot_settings_of(player)
 	)
-	var spread := config.bot_aim_spread_degrees
-	var hand := Vector2(
-		draw.next_range_f(-spread, spread), draw.next_range_f(-spread * 0.4, spread * 0.4)
-	)
-	_bot_hands[player.player_id] = hand
-	return hand
+	aim.view_from(player.controller.state.yaw, player.controller.state.pitch)
+	_bot_aims[player.player_id] = aim
+	return aim
+
+
+## The settings a stand-in plays by: the game's (`bot_difficulty` and the `bot_*` cvars), or
+## its own when something attached one to the player ([method DotBotSettings.attach]), which is
+## how a measurement pins a reference player whatever the server's preset is.
+func _bot_settings_of(player: ScPlayer) -> DotBotSettings:
+	if player.has_meta(DotBotSettings.META):
+		return DotBotSettings.of(player)
+
+	return DotBotSettings.of(self)
+
+
+## The game clock in seconds, for the bots' aim.
+func _bot_now() -> float:
+	return float(_tick) * delta_for_tick()
 
 
 # --- Reacting ---------------------------------------------------------------

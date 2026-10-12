@@ -38,7 +38,7 @@ const ScSettings := preload("../game/sc_settings.gd")
 ## `set_physics_process(false)` goes on first and every section advances the world itself.
 
 ## Sections entered, against sections that ran to their last line.
-const SECTIONS := 39
+const SECTIONS := 40
 
 ## And the total this counter cannot be.
 ##
@@ -46,7 +46,7 @@ const SECTIONS := 39
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 290
+const CHECKS := 295
 
 const TICK_RATE := 64
 const TICK := 1.0 / float(TICK_RATE)
@@ -94,6 +94,7 @@ func _run() -> void:
 	await _test_sides_agree()
 	await _test_specials()
 	await _test_a_shot_lands()
+	await _test_a_stand_in_aims()
 	await _test_the_chopper()
 	await _test_reach()
 	await _test_the_throat()
@@ -637,6 +638,77 @@ func _test_an_impact() -> void:
 	var _gone := platforms.collapse(2)
 	var missed := platforms.report_impact(2, 900.0, 40.0, platforms.deck_at(2).centre)
 	_check(missed == ScPlatforms.Impact.NONE, "a platform that has gone cannot be hit again")
+
+	await _dispose(game)
+	_finished()
+
+
+## [b]A stand-in in the showdown turns and fires like a person[/b]: through dot-bot's
+## [DotBotAim] on the game's `bot_difficulty`, driven by the game's own [method ScGame._drive_bots].
+##
+## Until fpt-bots-mg-smash-copter-1 a stand-in's view was set straight onto the nearest enemy
+## every tick, off by a fixed offset per round, with the trigger held from the first tick. So
+## the turn is held to `bot_turn_rate` (the old snap turned a 150 degree corner in one tick),
+## the first shot to `bot_reaction` after it first saw the enemy, and it still hits.
+func _test_a_stand_in_aims() -> void:
+	_section("a stand-in turns, waits and then hits, at bot_difficulty")
+
+	var game := await _world(func(c: ScConfig) -> void:
+		c.survival_seconds = 2.0
+		c.showdown_warmup_seconds = 0.5
+		c.showdown_seconds = 60.0
+		c.warmup_seconds = 0.0
+		c.cannon_enabled = false
+	)
+
+	var shooter := game.add_player(&"shooter", "Shooter", 1)
+	var target := game.add_player(&"target", "Target", 2)
+	game.start()
+
+	await _step(game, int(3.0 * TICK_RATE))
+
+	_check(game.phase == ScGame.Phase.SHOWDOWN and shooter.weapons != null,
+		"the showdown is running and the stand-in is armed", ScGame.Phase.keys()[game.phase])
+
+	# The target eight metres off, and the stand-in facing 150 degrees away from it: outside
+	# every preset's view cone but nightmare's, so it has to turn before it can see.
+	var stand := shooter.controller.state.position
+	var toward := game.arena.showdown_centre() - stand
+	toward.y = 0.0
+	toward = toward.normalized()
+	var facing := rad_to_deg(atan2(-toward.x, -toward.z))
+	shooter.place_at(stand, facing + 150.0)
+	target.place_at(stand + toward * 8.0, rad_to_deg(atan2(toward.x, toward.z)))
+	await _step(game, 2)
+
+	shooter.is_bot = true
+	var profile := DotBotSettings.of(game).profile
+	var before := target.health.health
+	var fastest := 0.0
+	var hit_after := -1.0
+
+	var aim: DotBotAim = null
+	var waited := NAN
+
+	# Stopped at the first hit: a kill ends the round, and the next one is a new aim.
+	for i in range(int(4.0 * TICK_RATE)):
+		var yaw_before := shooter.controller.state.yaw
+		await _step(game, 1)
+		fastest = maxf(fastest, absf(wrapf(shooter.controller.state.yaw - yaw_before, -180.0, 180.0)) * TICK_RATE)
+		aim = game._bot_aim_of(shooter)
+		waited = aim.first_shot_at - aim.engaged_at
+
+		if target.health.health < before:
+			hit_after = float(i + 1) / TICK_RATE
+			break
+
+	_check(fastest <= profile.turn_rate * 1.02, "it turns no faster than bot_turn_rate",
+		"%.0f of %.0f deg/s" % [fastest, profile.turn_rate])
+	_check(fastest > 30.0, "and it does turn", "%.0f deg/s" % fastest)
+	_check(not is_nan(waited) and waited >= profile.reaction * 0.85,
+		"its first shot waits bot_reaction after it first sees the target",
+		"%.2f s against %.2f" % [waited, profile.reaction])
+	_check(hit_after > 0.0, "and then it hits", "after %.2f s" % hit_after)
 
 	await _dispose(game)
 	_finished()

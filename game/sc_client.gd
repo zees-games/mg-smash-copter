@@ -230,7 +230,7 @@ func _start_offline() -> void:
 	# elimination rule ends every round on its first tick.
 	for i in range(offline_bots):
 		var bot := game.add_player(
-			StringName("bot%d" % i), "Stand-in %d" % (i + 1), (i % (game.config.team_count - 1)) + 2
+			StringName("bot%d" % i), _bot_name(i), (i % (game.config.team_count - 1)) + 2
 		)
 		bot.is_bot = true
 
@@ -248,6 +248,38 @@ func _start_offline() -> void:
 	# No bridge: the box still opens and still echoes, because a chat box that does nothing
 	# at all reads as broken rather than as absent.
 	DotLog.result(CHANNEL, "chat, offline", chat.attach(null))
+
+
+## A solo stand-in's name: the server's list through dot-bot's pick, so solo and a server name
+## them alike and never twice.
+static func _bot_name(index: int) -> String:
+	var taken: Array = []
+
+	for i in range(index):
+		taken.append(DotBotNames.pick(taken, i, ScGame.BOT_NAMES))
+
+	return DotBotNames.pick(taken, index, ScGame.BOT_NAMES)
+
+
+## Solo, `bot_difficulty` and every `bot_*` setting at the console, the names a server has, and
+## `-- --bot_difficulty hard` at launch. Connected, the server's console holds them and a local
+## copy would shadow it.
+func _bind_bot_console() -> void:
+	if not _offline or console == null or game == null:
+		return
+
+	var sources: Array = console.sources()
+
+	if sources.is_empty() or not (sources[0] is DotConsoleLocal):
+		return
+
+	var _bound := DotBotSettings.of(game).bind_console(sources[0])
+	var args := OS.get_cmdline_user_args()
+	var index := args.find("--bot_difficulty")
+
+	if index >= 0 and index + 1 < args.size():
+		DotLog.result(CHANNEL, "bot difficulty from the command line",
+			DotBotSettings.of(game).set_difficulty(args[index + 1]))
 
 
 # --- Connected -------------------------------------------------------------
@@ -542,6 +574,7 @@ func _build_settings() -> void:
 		# the server's console when one runs in this process. One of the menu's overlays, so
 		# opening it stops the player and frees the pointer exactly as the menu does.
 		console = DotConsoleKit.build(self, settings.settings, settings.menu)
+		_bind_bot_console()
 		# The HUD in the menu's theme and at the player's HUD size, live.
 		if hud != null:
 			hud.follow_menu(settings.menu)

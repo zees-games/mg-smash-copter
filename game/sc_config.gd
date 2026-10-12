@@ -443,17 +443,27 @@ extends DotConfig
 ## apart their corners are, and both of those are configurable too.
 @export_range(5.0, 400.0, 1.0) var bot_advance_metres: float = 200.0
 
-## How far a stand-in's aim is off, in degrees, drawn once per bot per round.
+## Degrees of lean a stand-in has to feel before it walks uphill (`sc_bot_lean_notice`).
 ##
-## [b]Zero makes an empty server play the same round for ever.[/b] The corners are
-## symmetric, the arrival slots are symmetric and the bot brain has no state, so a showdown
-## between stand-ins is a pure function of an arrangement that the round seed does not
-## change. Measured at zero: twelve rounds, twelve wins for the same side, the same bot
-## taking the only kill in every one.
+## [b]This game's own mistake, on top of dot-bot's.[/b] How a stand-in turns, aims and how soon
+## it fires are dot-bot's `bot_difficulty` and `bot_*` settings, shared by every game; how it
+## keeps its footing on a platform is only this game's. At about a degree it corrects a lean as
+## soon as it starts, which is what it always did; raised, it lets a platform tip further before
+## it moves, which is the mistake a person makes and the one that puts a crowded deck over.
+@export_range(0.0, 15.0, 0.05) var bot_lean_notice_degrees: float = 1.15
+
+## How wide a miss, in metres, a stand-in accepts when it decides to fire (`sc_bot_spray`).
 ##
-## Pitch gets forty percent of it, because a shot that is a little wide still passes a
-## standing body and one that is a little high goes over every time.
-@export_range(0.0, 45.0, 0.5) var bot_aim_spread_degrees: float = 7.0
+## [b]This game's weapons, not dot-bot's aim.[/b] A gun is worth firing out to where its spread
+## still lands within this of the aim point, standing or walking, and a stand-in that is
+## walking holds its fire until then (see `ScGame._bot_weapon_reach`). At 0.6, about a body's
+## half-width, the rifle reaches 76 m standing and 16 walking. Raised, stand-ins spray from
+## further and run dry sooner.
+@export_range(0.1, 5.0, 0.05) var bot_spray_metres: float = 0.6
+
+# How far a stand-in's aim is off is dot-bot's `bot_aim_error` (and its settling, reaction and
+# turn rate): the old per-round fixed offset, `bot_aim_spread_degrees`, is gone, and its cvar
+# `sc_bot_spread` is a deprecated name for `bot_aim_error`.
 
 # --- Watching --------------------------------------------------------------
 

@@ -97,11 +97,14 @@ mp_teammate_passthrough 1   // shots and team-mates: 0 a team-mate is hit and bl
 bot_quota 4                 // players a round is kept at with bots; each person who joins replaces one
 bot_quota_mode fill         // fill (as above), fixed (that many bots), per_player (that many per person) or off
 sc_bots 1                   // 0 = no automatic bots at all
-sc_bot_spread 7             // bot aim error in degrees (lower is sharper)
+bot_difficulty medium       // easy, medium, hard or nightmare: how bots turn, aim and react (every bot_* setting)
+sc_bot_advance 200          // how far a bot walks toward a fight in the showdown, metres
+sc_bot_lean_notice 1.15     // degrees of lean a bot feels before it walks uphill (higher is clumsier)
+sc_bot_spray 0.6            // metres of miss a bot accepts when it fires (higher sprays from further)
 sc_spectate_camera 1        // 0 = anybody may watch anybody, 1 = own side only, 2 = nobody
 ```
 
-The bot cvars are the family's shared ones (dot-server's `DotBotQuota`). `sc_min_players` still works and sets `bot_quota`; it is deprecated.
+The bot count cvars are the family's shared ones (dot-server's `DotBotQuota`), and so are `bot_difficulty` and every `bot_*` setting (dot-bot; `bot_settings` lists them). `sc_min_players` still works and sets `bot_quota`, and `sc_bot_spread` sets `bot_aim_error`; both are deprecated. Solo, the same names are at the console, and `./game.sh -- --bot_difficulty hard` sets the preset at launch.
 
 Dead players fall as ragdolls ([dot-player-char](https://github.com/modcommunity/dot-player-char)); the server picks how each one goes down and everybody sees the same fall. `sv_ragdoll 0` makes it a quick fall with no physics, `sv_ragdoll_style` picks ragdoll, stiff, topple or hide, `sv_ragdoll_time` and `sv_ragdoll_max` say how long and how many, and `sv_ragdoll_reactions` weights the falls (`limp`, `face_plant`, `crumple`, `headshot_launch`, `power_launch`; 0 turns one off).
 
@@ -134,7 +137,6 @@ The server counts rounds survived, showdowns won, people knocked out in the corn
 
 ## Not done yet
 - Other players' guns aren't drawn in their hands yet (yours is).
-- Bots fall off more than they shoot.
 - There is no settings menu, so volume, mouse sensitivity and field of view can't be changed yet.
 - The sounds are generated stand-ins. Dropping a file such as `audio/cannon_fire.ogg` in replaces one.
 

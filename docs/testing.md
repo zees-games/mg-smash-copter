@@ -15,7 +15,8 @@
 - **Measure surfaces and outcomes, not state.** The platform-normal sign was only caught because the check measured the surface. A fall must be a real fall off an edge or a collapse, never a teleport under the floor (that hid that nobody ever died).
 - **A route bot releases the key on arrival**: the motor repeats the last command, and a runner out of the chopper once ran on off the far side and ended the round.
 - **Wait for the floor to settle** before asking for a quiet stretch with no corrections; a platform swinging to a new lean under a predicted player is a one-centimetre correction.
-- **Stand-ins need per-round variety**: a bot's aim error is drawn from the game's reproducible stream with the round number mixed into the subject. Drawn on the entity id alone, twelve showdowns were byte-identical and one bot won every round.
+- **Stand-ins need per-round variety**: each stand-in's `DotBotAim` is seeded with its id and the round number. Seeded on the entity id alone, twelve showdowns were byte-identical and one bot won every round.
+- **How the stand-ins play at each `bot_difficulty` is measured, not asserted**: `tools/bot_difficulty.sh` ([bots](bots.md#measured)); rerun it after touching `_drive_bots` or anything under it.
 
 ## Assert the mechanism, not the symptom
 

@@ -297,15 +297,29 @@ func _add_tunables(world: ScGame) -> void:
 	_tunable("sc_showdown_seconds", config.showdown_seconds,
 		"Seconds the fight in the corners lasts",
 		func(value: float) -> void: config.showdown_seconds = value)
-	# The two that decide what an EMPTY server looks like, which is most servers most of the
-	# time. Both take effect on the next round, because a bot's hand is drawn when the round
-	# is laid out.
+	# [b]How the stand-ins aim and shoot is dot-bot's[/b]: `bot_difficulty` (easy, medium, hard,
+	# nightmare; medium by default) and every `bot_*` setting it bundles, the names every game in
+	# the family uses. On the world as metadata, where its bots read it; never the registry,
+	# since two servers in one process must not share it. `sc_bot_spread` (the old fixed aim
+	# offset, per bot per round) stays as a deprecated name for `bot_aim_error`, so a server
+	# config that set it still sharpens or loosens the stand-ins.
+	var bot_settings := DotBotSettings.of(world)
+	var _bot_cvars := bot_settings.bind_cvars(add_cvar, DotConVar.FLAG_NOTIFY, add_command)
+	_tunable("sc_bot_spread", bot_settings.profile.aim_error,
+		"Deprecated, sets bot_aim_error. Degrees off a stand-in's aim when it opens fire",
+		func(value: float) -> void:
+			var _set := bot_settings.set_value("aim_error", str(value)))
+	# What only this game's stand-ins do: how far they walk to a fight in the showdown, how
+	# much lean they feel before they walk uphill, and how wide a miss they fire at.
 	_tunable("sc_bot_advance", config.bot_advance_metres,
 		"How far a stand-in walks toward an enemy in the showdown, in metres",
 		func(value: float) -> void: config.bot_advance_metres = clampf(value, 5.0, 400.0))
-	_tunable("sc_bot_spread", config.bot_aim_spread_degrees,
-		"How far a stand-in's aim is off, in degrees, per bot per round",
-		func(value: float) -> void: config.bot_aim_spread_degrees = clampf(value, 0.0, 45.0))
+	_tunable("sc_bot_lean_notice", config.bot_lean_notice_degrees,
+		"Degrees of lean a stand-in feels before it walks uphill. Higher is clumsier",
+		func(value: float) -> void: config.bot_lean_notice_degrees = clampf(value, 0.0, 15.0))
+	_tunable("sc_bot_spray", config.bot_spray_metres,
+		"Metres of miss a stand-in accepts when it fires. Higher sprays from further",
+		func(value: float) -> void: config.bot_spray_metres = clampf(value, 0.1, 5.0))
 	_tunable("sc_teams", float(config.team_count), "How many sides play, two to six",
 		func(value: float) -> void: config.team_count = clampi(int(value), 2, 6))
 	_tunable("sc_columns", float(config.columns), "Platforms along each row, next round",
@@ -464,7 +478,7 @@ func _keep_the_round_full() -> void:
 		wanted = _quota.wanted(humans, slots)
 
 	for _i in range(maxi(wanted - _bot_ids.size(), 0)):
-		var bot: ScPlayer = bridge.call("add_bot", _bot_name())
+		var bot: ScPlayer = bridge.call("add_bot", _bot_name(world))
 
 		if bot == null:
 			break
@@ -478,12 +492,16 @@ func _keep_the_round_full() -> void:
 		bridge.call("remove_player", ScNetBridge.session_of(leaving))
 
 
-## Names for the stand-ins, so a scoreboard of four of them is readable.
-static func _bot_name() -> String:
-	var names := PackedStringArray([
-		"Wobble", "Teeter", "Lurch", "Tilt", "Keel", "Sway", "Pitch", "Yaw",
-	])
-	return String(names[randi() % names.size()])
+## Names for the stand-ins, so a scoreboard of four of them is readable: this game's own names
+## through dot-bot's [DotBotNames], never one already in [param world] (drawn at random they
+## could double up), and the same from run to run.
+static func _bot_name(world: ScGame) -> String:
+	var taken: Array = []
+
+	for id: StringName in world.players:
+		taken.append((world.players[id] as ScPlayer).display_name)
+
+	return DotBotNames.pick(taken, world.players.size(), ScGame.BOT_NAMES)
 
 
 ## Joins the bridge's chat seam to the services layer's router.

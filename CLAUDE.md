@@ -16,6 +16,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 | [docs/client.md](docs/client.md) | the camera, spectating, sound, figures and held weapons, HUD, settings |
 | [docs/services.md](docs/services.md) | moderation tools, stats and achievements, identity |
 | [docs/delivery.md](docs/delivery.md) | any `res://` path, art, a new script, project settings, a newer addon API |
+| [docs/bots.md](docs/bots.md) | touching the stand-ins (`_drive_bots` and below), a `bot_*` or `sc_bot_*` cvar |
 | [docs/testing.md](docs/testing.md) | adding a check, believing a green run, rendering |
 | [docs/history.md](docs/history.md) | a bug that "cannot be happening"; what this game found and how it looked |
 
@@ -37,7 +38,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 | `assets/kenney/`, `assets/{blaster-kit,melee,arms}/`, `textures/prototype/` | vendored CC0 art, one folder per kit; the weapon pack's art; Kenney's light prototype grid |
 | `scenes/sc_server.tscn`, `game.yml` | what a deployed server instantiates; the descriptor in the pack |
 | `examples/` | `headless_run`, `headless_net`, `dedicated` |
-| `tools/` | `shot.sh` (`--view=…`, `--ballot`, any `--sc-*` is config), `net_shot` (`--view=walk`), `audio_probe.sh` |
+| `tools/` | `shot.sh` (`--view=…`, `--ballot`, any `--sc-*` is config), `net_shot` (`--view=walk`), `audio_probe.sh`, `bot_difficulty.sh` (stand-ins at each preset against a pinned reference) |
 
 ## Running and testing
 
@@ -97,6 +98,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 - Refused moderation tools (respawn, give, strip) are refused for a reason `modtools` prints.
 - Spectating defaults to own side; no delay; the server's automatic choice prefers a team-mate.
 - `ScPlayer.retune` (every respawn and special) gives the sampler new tunables; offline, `ScClient._follow_look` rebinds the settings' look to them each tick, or a respawn reverts the sensitivity to the addon's default. `headless_run` checks it after a retune.
+- **Stand-ins aim through dot-bot's `DotBotAim` on `DotBotSettings.of(world)`** (`bot_difficulty`, bound by the module and at the solo console); what is only this game's is `sc_bot_*`. In the showdown they walk the catwalks and round the ring's cover, fire only where the gun lands (`sc_bot_spray`) and press the trigger the way the weapon wants. Rerun `tools/bot_difficulty.sh` after touching them. [bots](docs/bots.md)
 - The creak is derived on the client with hysteresis; the cannon's bang is a prop arriving at the muzzle; the beacon's ping stays in `DotFxBeacon`.
 
 **Tests** ([testing](docs/testing.md))
