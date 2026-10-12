@@ -38,7 +38,7 @@ const ScSettings := preload("../game/sc_settings.gd")
 ## `set_physics_process(false)` goes on first and every section advances the world itself.
 
 ## Sections entered, against sections that ran to their last line.
-const SECTIONS := 40
+const SECTIONS := 41
 
 ## And the total this counter cannot be.
 ##
@@ -46,7 +46,7 @@ const SECTIONS := 40
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 295
+const CHECKS := 300
 
 const TICK_RATE := 64
 const TICK := 1.0 / float(TICK_RATE)
@@ -117,6 +117,7 @@ func _run() -> void:
 	await _test_help_and_menu()
 	await _test_the_map_menu()
 	await _test_offline_trigger()
+	await _test_the_drawn_gun()
 
 	for world in _worlds.duplicate():
 		await _dispose(world)
@@ -3817,6 +3818,79 @@ func _test_offline_trigger() -> void:
 	var pressed := game.weapon_command_for(me).is_pressed(DotWeaponCommand.BUTTON_ATTACK)
 	_check(me.sampler != null and pressed, "the world's weapon command has the trigger the client holds")
 	client.free()
+	_finished()
+
+
+## The play test's weapons, at the handover: offline the hands were never armed at all (the
+## client heard the handover only from a bridge it does not have), and connected the drawn rig
+## was given the whole pack, so a slot held whatever was given last; nothing counted the
+## magazine; nothing said a shot had landed. Armed: without the offline handover the first check
+## fails, with `give_everything` back the second, without `correct_drawn` the fourth, without
+## the HIT path the last.
+func _test_the_drawn_gun() -> void:
+	_section("at the handover the hands draw the server's guns, counted on the HUD, with a marker for a hit")
+	var client: Node = ScClient.new()
+	client.force_offline = true
+	client.offline_bots = 1
+	client.config_file = "user://cfg/headless-none.json"
+	add_child(client)
+	for i in 8:
+		await get_tree().process_frame
+	var world: ScGame = client.get("game")
+	var me: ScPlayer = client.get("player")
+	world._begin_handover()
+	for i in 4:
+		await get_tree().physics_frame
+
+	var drawn: ZeeWeaponRig = client.get("weapons")
+	_check(drawn != null and me.weapons != null and drawn != me.weapons, "offline, the handover arms the hands")
+	var held: Array[String] = []
+	var same := drawn != null and me.weapons != null
+	for slot in range(1, 6):
+		var mine := drawn.arsenal.slot_at(slot) if drawn != null else null
+		var theirs := me.weapons.arsenal.slot_at(slot) if me.weapons != null else null
+		var a := String(mine.def.id) if mine != null else "-"
+		var b := String(theirs.def.id) if theirs != null else "-"
+		held.append("%d:%s/%s" % [slot, a, b])
+		same = same and a == b
+	_check(same and drawn.arsenal.current_slot() == me.weapons.arsenal.current_slot(),
+		"the drawn gun holds exactly the server's weapons, slot for slot, the same one out", " ".join(held))
+
+	var hud: Node = client.get("hud")
+	hud.call("_process", 0.0)
+	var counter: DotAmmoCounter = hud.get("ammo")
+	var def := drawn.current_def() if drawn != null else null
+	var expected := "?"
+	if def != null and def.ammo_type != &"":
+		expected = "%d | %d" % [drawn.arsenal.current().magazine, drawn.arsenal.ammo().count(def.ammo_type)] \
+			if def.magazine > 0 else "%d" % drawn.arsenal.ammo().count(def.ammo_type)
+	_check(counter != null and counter.visible and def != null and counter.weapon_name == def.display_name
+		and (def.ammo_type == &"" or counter.count_text() == expected),
+		"the HUD has DotAmmoCounter, counting the drawn gun",
+		"%s %s, want %s" % [counter.weapon_name if counter else "-", counter.count_text() if counter else "-", expected])
+
+	var corrected := true
+	var detail := "melee in hand"
+	if def != null and def.magazine > 0:
+		var world_count := me.weapons.arsenal.current().magazine
+		drawn.arsenal.current().magazine = maxi(world_count - 1, 0)
+		client.set("_drawn_quiet", 0.0)
+		for i in 10:
+			await get_tree().physics_frame
+		var early := drawn.arsenal.current().magazine
+		for i in 60:
+			await get_tree().physics_frame
+		corrected = early == maxi(world_count - 1, 0) and drawn.arsenal.current().magazine == world_count
+		detail = "after 10 ticks %d, after 70 %d, server %d" % [early, drawn.arsenal.current().magazine, world_count]
+	_check(corrected, "the drawn gun takes the server's count once quiet, and not before", detail)
+
+	var marker: DotHitMarker = hud.get("hit_marker")
+	world.hit_landed.emit(&"local", Vector3(0.0, 1.0, -4.0), true, false)
+	_check(marker != null and marker.alpha() > 0.9 and marker.kill, "a hit the world confirms flashes the marker, a kill's")
+
+	remove_child(client)
+	client.free()
+	await get_tree().process_frame
 	_finished()
 
 

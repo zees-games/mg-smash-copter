@@ -96,6 +96,8 @@ signal seat_changed(player_id: int, seated: bool)
 
 ## A survivor was handed a weapon. The HUD names it.
 signal armed_received(player_id: int, weapon_id: StringName)
+## Your shot landed (see [signal ScGame.hit_landed]); only ever to the shooter.
+signal hit_received(point: Vector3, killed: bool, headshot: bool)
 
 signal notice_received(text: String)
 
@@ -277,6 +279,11 @@ func attach(p_game: Object, p_net: DotNetManager) -> DotResult:
 		game.phase_changed.connect(_on_phase_changed)
 		game.special_changed.connect(_on_special_changed)
 		game.player_died.connect(_on_player_died)
+		# To the shooter alone: a hit marker is that player's business.
+		game.hit_landed.connect(func(id: StringName, point: Vector3, killed: bool, headshot: bool) -> void:
+			var hit_peer := peer_for_player(session_of(id))
+			if hit_peer > 0:
+				_tell(hit_peer, ScEvents.Kind.HIT, ScEvents.write_hit(point, killed, headshot)))
 		game.platform_collapsed.connect(_on_platform_collapsed)
 		game.platform_struck.connect(_on_platform_struck)
 		game.blast.connect(_on_blast)
@@ -1482,6 +1489,11 @@ func _on_event(message: DotNetMessage) -> void:
 
 			if bool(went_off["ok"]):
 				blast_received.emit(went_off["position"], float(went_off["radius"]))
+		ScEvents.Kind.HIT:
+			var hit := ScEvents.read_hit(reader)
+
+			if bool(hit["ok"]):
+				hit_received.emit(hit["point"], bool(hit["killed"]), bool(hit["headshot"]))
 		ScEvents.Kind.ARMED:
 			var armed := ScEvents.read_armed(reader)
 

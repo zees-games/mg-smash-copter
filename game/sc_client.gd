@@ -4,6 +4,7 @@ const ScBindings := preload("sc_bindings.gd")
 const ScAudio := preload("sc_audio.gd")
 const ScSettings := preload("sc_settings.gd")
 const ScServices := preload("sc_services.gd")
+const ScPlayerNet := preload("net/sc_player_net.gd")
 const ScNetBridge := preload("net/sc_net_bridge.gd")
 const ScNetCommand := preload("net/sc_net_command.gd")
 
@@ -243,6 +244,21 @@ func _start_offline() -> void:
 		if player != null and id == player.player_id and chat != null:
 			chat.say_locally("Achievement: %s (+%d)" % [title, points], Color(0.98, 0.84, 0.40))
 	)
+	# Offline the world's handover is what arms the hands: `_on_phase` hears it only from the
+	# bridge, and without these the offline player went into the showdown with nothing drawn.
+	game.phase_changed.connect(func(to: int) -> void:
+		if to == ScGame.Phase.HANDOVER:
+			_arm_locally()
+		elif to == ScGame.Phase.SURVIVAL:
+			_disarm_locally()
+	)
+	game.player_armed.connect(func(id: StringName, _weapon: StringName) -> void:
+		if id == &"local":
+			_give_dealt())
+	# Offline the world is the authority, so its own word on a hit is the confirmation.
+	game.hit_landed.connect(func(id: StringName, point: Vector3, killed: bool, headshot: bool) -> void:
+		if id == &"local":
+			_on_hit(point, killed, headshot))
 	game.start()
 
 	# No bridge: the box still opens and still echoes, because a chat box that does nothing
@@ -350,6 +366,7 @@ func _build_netcode() -> DotResult:
 	bridge.death_received.connect(_on_death)
 	bridge.collapse_received.connect(_on_collapse)
 	bridge.armed_received.connect(_on_armed)
+	bridge.hit_received.connect(_on_hit)
 	_hear_the_wire()
 	# [b]Where a refusal is drawn.[/b] The server answers a gagged or too-fast line with a
 	# notice to that one player, and a notice nothing draws is the server explaining itself
@@ -800,6 +817,9 @@ func _hear_collapse(index: int) -> void:
 
 
 func _on_armed(session_id: int, weapon_id: StringName) -> void:
+	if session_id == _watch_id and weapons != null:
+		_give_locally(weapon_id)
+
 	if session_id != _watch_id or chat == null:
 		return
 
@@ -846,11 +866,10 @@ func _arm_locally() -> void:
 		_disarm_locally()
 		return
 
-	# Everything, because the client is not told which weapons it drew until the server says
-	# so and a rig that carried nothing would have nothing to show. What decides what is
-	# actually in hand is the slot, which comes back in the ARMED event and in the player's
-	# own key presses.
-	var _given := weapons.give_everything()
+	# [b]Only what the server dealt[/b] (`_give_dealt`), never the whole pack: `give_everything`
+	# put all of it in five slots, so a slot held whichever weapon was given last and the drawn
+	# gun was not the one the server fired (mg-prop-hunt's play test).
+	_give_dealt()
 
 	# Your own shots, from your own rig: a predicted use, heard the tick it happens rather
 	# than when the server's snapshot says it did. At the camera, so it is at full volume.
@@ -860,6 +879,43 @@ func _arm_locally() -> void:
 				camera.global_position, ZeeWeaponNet.kind_number(outcome.kind)
 			)
 	)
+
+
+func _give_locally(weapon_id: StringName) -> void:
+	if weapons == null or weapon_id == &"":
+		return
+	if weapons.arsenal != null and weapons.arsenal.carries(weapon_id):
+		return
+	var given := weapons.give(weapon_id)
+	if not given.ok:
+		DotLog.warn(CHANNEL, "the drawn rig refused a weapon", {"weapon": String(weapon_id), "why": given.error.message})
+
+
+## Gives the drawn rig what this player was dealt: offline the world's own rig's weapons, the
+## selected one first; connected, every ARMED the server sent (`ScPlayer.dealt`, noted by the
+## bridge, the selected one first). An ARMED that arrives after the rig is built is given by
+## [method _on_armed].
+func _give_dealt() -> void:
+	if weapons == null or player == null:
+		return
+	var ids: Array[StringName] = []
+	var world: ZeeWeaponRig = player.weapons
+	if _offline and world != null and world != weapons and world.arsenal != null:
+		var first := world.current_def()
+		if first != null:
+			ids.append(first.id)
+		for slot in world.arsenal.slots():
+			var held := world.arsenal.slot_at(slot)
+			if held != null and held.def != null and not ids.has(held.def.id):
+				ids.append(held.def.id)
+	else:
+		ids.append_array(player.dealt)
+	for id in ids:
+		_give_locally(id)
+	if not ids.is_empty() and weapons.arsenal != null:
+		var def := weapons.arsenal.catalogue.get_def(ids[0])
+		if def != null:
+			var _selected := weapons.arsenal.select(def.slot, 0)
 
 
 func _disarm_locally() -> void:
@@ -996,6 +1052,8 @@ func _on_view_rules_changed() -> void:
 
 func _build_hud() -> void:
 	hud = ScHud.new()
+	# The counter reads the gun this player sees (corrected from the server's by correct_drawn).
+	hud.weapons_fn = func() -> ZeeWeaponRig: return weapons
 	hud.name = "Hud"
 	add_child(hud)
 
@@ -1147,6 +1205,95 @@ func _drive_view_model(command: DotFpsCommand) -> void:
 	weapon_command.slot = _slot
 
 	var _outcome := weapons.simulate_tick(weapon_command, game.round_number * 100000 + Engine.get_physics_frames())
+
+	var busy := weapon_command.is_pressed(DotWeaponCommand.BUTTON_ATTACK) \
+		or weapon_command.is_pressed(DotWeaponCommand.BUTTON_RELOAD) \
+		or weapons.arsenal.is_reloading() or weapons.arsenal.is_switching()
+	_drawn_quiet = 0.0 if busy else _drawn_quiet + 1.0 / float(maxi(game.tick_rate, 1))
+	var _corrected := correct_drawn()
+
+
+## Seconds the drawn gun must be quiet before the server's count may overwrite it: longer than a
+## shot's trip to the server and its snapshot back, so no shot still in flight is undone.
+const DRAWN_SETTLE_SEC := 0.6
+
+## Simulated seconds the drawn gun has gone without a trigger, a reload or a switch.
+var _drawn_quiet: float = 0.0
+
+
+## Brings the drawn gun's magazine and reserve (what the HUD counts) to the server's once it has
+## been quiet [constant DRAWN_SETTLE_SEC]: online from this player's owner-only snapshot fields,
+## offline from the world's own rig. True when it changed anything.
+##
+## [b]The drawn gun predicts, so it can be wrong, and nothing else puts it right.[/b] A shot the
+## server refused or a fresh round's refill leaves the counter on the client's own sum otherwise
+## (mg-prop-hunt's `correct_drawn`, game-zombie-zone's 15 / 105).
+func correct_drawn() -> bool:
+	if weapons == null or weapons.arsenal == null or _drawn_quiet < DRAWN_SETTLE_SEC:
+		return false
+
+	var source := _server_count()
+
+	if source.is_empty() or bool(source.busy):
+		return false
+
+	var arsenal := weapons.arsenal
+	var held := arsenal.current()
+
+	if held == null or int(source.slot) != arsenal.current_slot() or arsenal.is_reloading() or arsenal.is_switching():
+		return false
+
+	var changed := false
+
+	if held.def.uses_magazine() and held.magazine != int(source.magazine):
+		held.magazine = clampi(int(source.magazine), 0, held.def.magazine)
+		changed = true
+
+	if held.def.ammo_type != &"" and not held.def.infinite_reserve \
+			and arsenal.ammo().count(held.def.ammo_type) != int(source.reserve):
+		arsenal.ammo().set_count(held.def.ammo_type, maxi(int(source.reserve), 0))
+		changed = true
+
+	return changed
+
+
+## The server's count for this player's gun: `{magazine, reserve, slot, busy}`, or empty.
+func _server_count() -> Dictionary:
+	if _offline:
+		var world: ZeeWeaponRig = player.weapons if player != null else null
+		if world == null or world == weapons or world.arsenal == null or world.arsenal.current() == null:
+			return {}
+		var def := world.current_def()
+		return {
+			"magazine": world.arsenal.current().magazine,
+			"reserve": world.arsenal.ammo().count(def.ammo_type) if def.ammo_type != &"" else 0,
+			"slot": world.arsenal.current_slot(),
+			"busy": world.arsenal.is_reloading() or world.arsenal.is_switching(),
+		}
+
+	var mine: Variant = bridge._behaviours.get(_watch_id) if bridge != null else null
+	if not (mine is ScPlayerNet):
+		return {}
+	var behaviour := mine as ScPlayerNet
+	return {
+		"magazine": behaviour.net_magazine, "reserve": behaviour.net_reserve, "slot": behaviour.net_slot,
+		"busy": behaviour.net_reloading or behaviour.net_switching,
+	}
+
+
+## A hit the server confirmed for this player's shot: the marker, and zee's red burst on the body
+## at the server's point (`ZeeShotFx.play_body_hit`, by `has_method` for an older shell's zee;
+## it skips a burst its own presentation ray already drew).
+func _on_hit(point: Vector3, killed: bool, headshot: bool) -> void:
+	if hud != null:
+		hud.confirm_hit(killed, headshot)
+	if weapons == null or not is_instance_valid(weapons) or not weapons.has_method(&"shot_fx"):
+		return
+	var fx: Object = weapons.call(&"shot_fx")
+	if fx == null or not fx.has_method(&"play_body_hit"):
+		return
+	var from: Vector3 = camera.global_position if camera != null else point + Vector3.UP
+	fx.call(&"play_body_hit", point, point - from)
 
 
 func _process(delta: float) -> void:

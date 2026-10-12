@@ -7,6 +7,7 @@
 #   tools/shot.sh --view=copter       # the chopper, close
 #   tools/shot.sh --view=showdown     # the corners the round is finished in
 #   tools/shot.sh --view=armed --sc-survival-seconds=10 --seconds=12   # a stand-in's gun, close
+#   tools/shot.sh --view=hands --sc-survival-seconds=4 --seconds=1     # your own gun and its counter, in the showdown
 #   tools/shot.sh --view=ring         # the ring from a pad, at eye height: its cover
 #   tools/shot.sh --view=flank        # a perch on the flank, its catwalks, the ring side-on
 #   tools/shot.sh --view=dais         # the ring's dais, low, from where a catwalk meets it

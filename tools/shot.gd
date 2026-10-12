@@ -92,6 +92,15 @@ func _run() -> void:
 		while waited < 2.4:
 			waited += get_process_delta_time()
 			await get_tree().process_frame
+	elif game != null and view == "hands":
+		# The local player's own eyes once the showdown is on: the gun the handover dealt, in
+		# their hands, and its counter. Offline the hands were never armed (ScClient._start_offline).
+		var waited_hands := 0.0
+		while waited_hands < 60.0 and game.phase != ScGame.Phase.SHOWDOWN:
+			waited_hands += get_process_delta_time()
+			await get_tree().process_frame
+		for _i in range(60):
+			await get_tree().process_frame
 	elif game != null and view != "eyes":
 		await _place_camera(game, view)
 
