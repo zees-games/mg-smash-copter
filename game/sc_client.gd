@@ -533,6 +533,7 @@ func _build_settings() -> void:
 		# opening it stops the player and frees the pointer exactly as the menu does.
 		console = DotConsoleKit.build(self, settings.settings, settings.menu)
 		_wire_board()
+		_wire_maps()
 
 
 ## The Tab board: dot-menu's, with this game's columns.
@@ -542,6 +543,21 @@ func _build_settings() -> void:
 ## them for everybody; the side, whether somebody is still up there and how often the floor
 ## has warped them are already replicated here, so they are joined in by id. The sides are
 ## the board's teams, in their colours. Offline it is [method board_snapshot].
+## M: the layout list (dot-menu's map menu). Solo a choice changes the layout here at once;
+## connected the server decides, by the owner's `sv_map_menu_flag`, and anybody without it
+## gets a vote instead (dot-vote's map menu, wired in [ScModule]). By name, so a client shell
+## older than the map menu still runs the game without it.
+func _wire_maps() -> void:
+	if not settings.has_method(&"use_maps"):
+		return
+	var maps: Variant = settings.call(&"use_maps",
+		func() -> Array: return game.layout_rows() if game != null else [],
+		func(id: StringName) -> DotResult: return game.change_layout_now(id))
+	if maps is Object:
+		(maps as Object).set(&"title", "Change layout")
+		(maps as Object).set(&"noun", "layouts")
+
+
 func _wire_board() -> void:
 	if settings == null or settings.menu == null:
 		return

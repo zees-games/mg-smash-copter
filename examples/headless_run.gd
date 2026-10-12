@@ -38,7 +38,7 @@ const ScSettings := preload("../game/sc_settings.gd")
 ## `set_physics_process(false)` goes on first and every section advances the world itself.
 
 ## Sections entered, against sections that ran to their last line.
-const SECTIONS := 37
+const SECTIONS := 38
 
 ## And the total this counter cannot be.
 ##
@@ -46,7 +46,7 @@ const SECTIONS := 37
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 280
+const CHECKS := 285
 
 const TICK_RATE := 64
 const TICK := 1.0 / float(TICK_RATE)
@@ -114,6 +114,7 @@ func _run() -> void:
 	await _test_what_a_player_keeps()
 	await _test_a_swing_is_drawn()
 	await _test_help_and_menu()
+	await _test_the_map_menu()
 
 	for world in _worlds.duplicate():
 		await _dispose(world)
@@ -3689,6 +3690,53 @@ func _test_what_a_player_keeps() -> void:
 ## process is the ordinary case here.[/b] A registry name is global, so the last one to
 ## register wins — and dot-core's own random manager has the same problem, which is why
 ## [ScGame] turns that off too.
+## The family's rule since the first play test: M opens the layout list, and solo a choice
+## changes it now. The server's half (the owner's flag, the vote) is in `dedicated` and dot-vote.
+func _test_the_map_menu() -> void:
+	_section("M opens the layout list, and solo a choice changes it")
+	var game := await _world()
+	var _a := game.add_player(&"u1", "Ada")
+	var _b := game.add_player(&"u2", "Bo")
+	game.start()
+	await _step(game, 4)
+	var settings := ScSettings.new()
+	add_child(settings)
+	var _built: DotResult = settings.setup(DotSettingsStoreMemory.new())
+	var keys: DotMenuBindings = settings.bindings
+	_check(keys.key_for(DotMenuBindings.MAPS_ACTION) == "M" and keys.defaults_on("M").size() == 1,
+		"the map menu is on M, and nothing else in the table defaults to M",
+		str(keys.defaults_on("M").map(func(r: Dictionary) -> String: return str(r["label"]))))
+	var rows: Array = game.layout_rows()
+	_check(rows.size() > 1 and rows.filter(func(r: Dictionary) -> bool: return bool(r["current"])).size() == 1,
+		"there is more than one to choose, the one playing marked", "%d" % rows.size())
+	var _maps := settings.use_maps(game.layout_rows, game.change_layout_now)
+	var m := InputEventKey.new()
+	m.physical_keycode = KEY_M
+	m.keycode = KEY_M
+	m.pressed = true
+	_check(settings.menu.handle_event(m) and settings.menu.picker.is_open(), "M opens the picker")
+	var wanted: StringName = &""
+	var key := KEY_NONE
+	for row in range(1, DotMenuPicker.PAGE_SIZE + 1):
+		var it: Variant = settings.menu.picker.at_row(row)
+		if it is Dictionary and not bool((it as Dictionary)["current"]):
+			wanted = StringName(str((it as Dictionary)["id"]))
+			key = KEY_0 + row
+			break
+	var digit := InputEventKey.new()
+	digit.physical_keycode = key
+	digit.keycode = key
+	digit.pressed = true
+	var _k := settings.menu.handle_event(digit)
+	for _i in 4:
+		await get_tree().physics_frame
+	_check(wanted != &"" and game.layout.id == wanted, "choosing one changes to it now", "%s, now %s" % [wanted, game.layout.id])
+	_check(not settings.menu.picker.is_open(), "and the picker is closed")
+	settings.queue_free()
+	await get_tree().process_frame
+	_finished()
+
+
 func _world(configure: Callable = Callable()) -> ScGame:
 	var config := ScConfig.new()
 	config.warmup_seconds = 0.0

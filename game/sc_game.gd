@@ -1194,6 +1194,32 @@ func _on_round_ended(number: int, winner: int, _outcome: int) -> void:
 	DotLog.info(CHANNEL, "round over", {"number": number, "winner": winner})
 
 
+## Every layout this server plays, as the map menu (M) lists them: `{id, name, detail,
+## current}`, the blurb under the name. Solo the client's list, online the server's (the module
+## hands it to dot-vote's map menu), so both say the same.
+func layout_rows() -> Array:
+	var out: Array = []
+	for l in ScLayouts.allowed(config):
+		out.append({"id": String(l.id), "name": l.display_name, "detail": l.blurb,
+			"current": layout != null and l.id == layout.id})
+	return out
+
+
+## The map menu's change: [param id] now, not after this round. The next layout is set and a
+## fresh round begins on it (dot-match's `begin_round_now`: the round called off has no
+## winner); with no match running the field is simply laid out again. Authority only.
+func change_layout_now(id: StringName) -> DotResult:
+	if not authoritative:
+		return DotResult.fail(DotError.CODE_STATE, "Only the server changes the layout.")
+	if not ScLayouts.allowed(config).any(func(l: ScLayouts.Layout) -> bool: return l.id == id):
+		return DotResult.fail(DotError.CODE_INVALID, "There is no layout called '%s' here." % id)
+	next_layout_id = id
+	if match_node == null or not match_node.begin_round_now(_tick):
+		_lay_out_round()
+	DotLog.info(CHANNEL, "layout changed from the map menu", {"layout": String(id)})
+	return DotResult.success(id)
+
+
 ## Everything that happens between one round and the next.
 func _lay_out_round() -> void:
 	world_clearing.emit()

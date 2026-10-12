@@ -24,7 +24,7 @@ const ScProgress := preload("../game/sc_progress.gd")
 ## and those are what this is about.
 
 const SECTIONS := 13
-const CHECKS := 107
+const CHECKS := 110
 
 ## Everything this run writes, and it is deleted on the way in and on the way out.
 ##
@@ -985,6 +985,30 @@ func _test_the_layout_vote() -> void:
 
 	_check(ids.size() == ScLayouts.ids(game.config).size() and ids.has("checker"),
 		"it offers every layout this server plays", str(ids))
+
+	# The map menu's server half (M): the owner's flag changes the layout now, anybody else
+	# gets a nomination and a rock-the-vote. Contexts as dot-server makes them for a chat line.
+	var menu_half: Object = vote.get("commands").get("map_menu")
+	_check(menu_half != null and server.console.find_command("mapmenu") != null
+		and server.console.find_cvar("sv_map_menu_flag").get_string() == "generic"
+		and (menu_half.get("change_fn") as Callable).is_valid(),
+		"the map menu is there, staff-only by default, changing the layout now")
+	var staff := DotCmdContext.new()
+	staff.source = DotCmdContext.Source.CHAT
+	staff.permissions = PackedStringArray(["generic"])
+	var player := DotCmdContext.new()
+	player.source = DotCmdContext.Source.CHAT
+	var offered: Dictionary = menu_half.call("offer", player)
+	_check((offered["maps"] as Array).size() > 1 and not bool(offered["allowed"]) and bool(offered["vote"]),
+		"a player is offered every layout, as a vote")
+	var target: StringName = &""
+	for row: Dictionary in offered["maps"]:
+		if not bool(row["current"]):
+			target = StringName(str(row["id"]))
+			break
+	var changed: Dictionary = await menu_half.call("choose", staff, target)
+	_check(bool(changed["ok"]) and game.layout.id == target, "staff choosing one changes the layout on the spot",
+		"%s: %s" % [target, changed.get("text", "")])
 
 	# A layout that is not the one being played, so it can be nominated.
 	var playing := String(game.layout.id)

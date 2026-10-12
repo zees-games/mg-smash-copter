@@ -584,6 +584,14 @@ func _build_vote(world: ScGame) -> void:
 	var commanded := vote.install_commands(self)
 	DotLog.result(CHANNEL, "the layout vote's commands", commanded)
 
+	# The map menu (M), dot-vote's: a player holding the owner's `sv_map_menu_flag` changes the
+	# layout now, not next round, and sees the same rows a solo player does. Read by name,
+	# because a server on a dot-vote older than the menu has no `map_menu` and runs without it.
+	var menu_half: Variant = vote.commands.get(&"map_menu") if vote.commands != null else null
+	if menu_half is Object:
+		(menu_half as Object).set(&"change_fn", world.change_layout_now)
+		(menu_half as Object).set(&"rows_fn", func(_rows: Array) -> Array: return world.layout_rows())
+
 	_tunable("sc_vote_after", vote.open_after_sec,
 		"Seconds into a round before the vote for the next layout opens",
 		func(value: float) -> void:
