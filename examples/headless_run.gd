@@ -46,7 +46,7 @@ const SECTIONS := 39
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 289
+const CHECKS := 290
 
 const TICK_RATE := 64
 const TICK := 1.0 / float(TICK_RATE)
@@ -1143,6 +1143,7 @@ func _test_the_chopper() -> void:
 		# Three checks that cannot run without one. Counted anyway, because a section that
 		# quietly runs fewer checks than it says is the thing the CHECKS total exists for.
 		_check(false, "it has a chassis")
+		_check(false, "and the drag it always flew with")
 		_check(false, "it climbs on full collective")
 		_check(false, "and holds height at neutral")
 		_check(false, "and will not climb past its ceiling")
@@ -1161,6 +1162,11 @@ func _test_the_chopper() -> void:
 
 	var body := copter.body()
 	var started_at := body.global_position.y
+
+	# dot-vehicle writes the tunables' damping onto the body in REPLACE mode (4f4afaf); before,
+	# the chopper's 0.12 COMBINED with the project's 0.1. The same 0.22 either way.
+	var drag := body.linear_damp + (ProjectSettings.get_setting("physics/3d/default_linear_damp", 0.1) as float if body.linear_damp_mode == RigidBody3D.DAMP_MODE_COMBINE else 0.0)
+	_check(is_equal_approx(drag, 0.22), "and the drag it always flew with", "%.2f" % drag)
 
 	# Full collective for two seconds. A helicopter that cannot climb is one nobody can tell
 	# from a broken one.

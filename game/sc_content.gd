@@ -243,6 +243,9 @@ static func vehicles(config: ScConfig) -> DotVehicleCatalogue:
 	tunables.suspension_travel = 0.25
 	tunables.suspension_stiffness = 45.0
 	tunables.centre_of_mass_drop = 1.2
+	# The chopper's drag: dot-vehicle writes this onto the body in REPLACE mode at bind (since
+	# 4f4afaf). 0.22 is what it flew with before: its own 0.12 COMBINED with the project's 0.1.
+	tunables.linear_damp = 0.22
 	# High, because getting out of a helicopter is jumping out of one. The refusal exists
 	# so nobody leaves a car at 80 km/h; here the fall is the point.
 	tunables.max_exit_speed = 40.0

@@ -100,8 +100,8 @@ func _setup() -> DotResult:
 	# Angular damping of its own, on top of the levelling torque. The torque is a spring
 	# and a spring alone rings; this is what stops a chopper that was bumped rocking for
 	# the rest of the round.
+	# The linear damping is the tunables' (`linear_damp`), written by dot-vehicle before this.
 	body.angular_damp = 2.4
-	body.linear_damp = 0.12
 
 	return DotResult.success(self)
 
