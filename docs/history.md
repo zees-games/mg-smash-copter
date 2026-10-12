@@ -49,3 +49,7 @@ dot-match warned "no usable spawn point at all" once per player per round, for a
 ## A full chat log over the health number
 
 The health number was lifted above the chat box's first line, not its full log: eight rows reached y 518 at 1280x720 and drew over the "100" (seen in a game-ballot frame, 2026-10-11). The box is six rows now and the number 170 px off the bottom; `headless_run` checks the arithmetic, both being bottom-anchored.
+
+## Offline, the gun never fired in the world (2026-10-12)
+
+`ScClient._drive_offline` stamped fire and reload onto `controller.current_command`, and the world's tick then ran `ScPlayer.simulate`, which applied a fresh `sampler.sample()` over it: the drawn gun animated, the world's rig never saw a trigger, and no shot of the player's landed in the showdown. Found in game-zombie-zone's first play test (its counter read 15 / 60 for the whole video), and the same lines were in every game built from that skeleton. The buttons go onto the sample through `command_stamp` now; `headless_run`'s "offline, the client's trigger reaches the world's gun" fails with the call removed.
