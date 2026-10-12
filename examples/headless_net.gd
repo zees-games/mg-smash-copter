@@ -17,6 +17,8 @@ const ScPlatforms := preload("../game/sc_platforms.gd")
 const ScPlayer := preload("../game/sc_player.gd")
 const ScServices := preload("../game/sc_services.gd")
 const ScSpecials := preload("../game/sc_specials.gd")
+const ScEvent := preload("../game/net/sc_event.gd")
+const ScRequest := preload("../game/net/sc_request.gd")
 
 ## mg-smash-copter over the wire: a real server, a real client, and a lossy loopback.
 ##
@@ -44,7 +46,7 @@ const ScSpecials := preload("../game/sc_specials.gd")
 ## and LAYOUT correct it.
 
 const SECTIONS := 21
-const CHECKS := 208
+const CHECKS := 211
 
 ## Who the client is, on both ends.
 const CLIENT_PEER := 7
@@ -395,6 +397,15 @@ func _test_the_wire() -> void:
 	# as a valid message about nothing.
 	var truncated := ScEvents.read_hello(DotNetReader.new(PackedByteArray([1, 2])))
 	_check(not bool(truncated["ok"]), "and a truncated message says so rather than guessing")
+
+	# A kind goes out in a fixed field the writer masks without a word, so one past it aliases a
+	# smaller kind: game-zombie-zone sent HURT and AMMO as HELLO and MAP that way.
+	_check(ScEvent.fits(), "every event kind fits the event's kind field",
+		"%d kinds in %d bits" % [ScEvents.Kind.size(), ScEvent.KIND_BITS])
+	_check(ScRequest.fits(), "every request kind fits the request's kind field",
+		"%d kinds in %d bits" % [ScEvents.Ask.size(), ScRequest.KIND_BITS])
+	_check(ScEvents.chat_kinds_fit(), "every chat kind fits the chat line's kind field",
+		"%d kinds in %d bits" % [DotChatMessage.KIND_NAMES.size(), ScEvents.CHAT_KIND_BITS])
 
 	_finished()
 
