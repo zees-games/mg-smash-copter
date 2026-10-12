@@ -46,7 +46,7 @@ const SECTIONS := 39
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 286
+const CHECKS := 289
 
 const TICK_RATE := 64
 const TICK := 1.0 / float(TICK_RATE)
@@ -3193,6 +3193,22 @@ func _test_blind_and_beacon_drawn() -> void:
 		"log reaches %.0f px off the bottom, the plate ends %.0f off it" % [log_top, plate_bottom]
 	)
 	chat.queue_free()
+
+	# Christian's first play test: a darker HUD by default, restyled live by the menu's theme.
+	var settings := ScSettings.new()
+	add_child(settings)
+	var _built: Variant = settings.setup(DotSettingsStoreMemory.new())
+	hud.follow_menu(settings.menu)
+	var plate := hud.vitals.colour(&"plate")
+	_check(plate.get_luminance() < 0.1 and plate.a >= 0.7, "the HUD is dark by default, in the menu's theme", str(plate))
+	var _t := settings.settings.set_value(&"ui_theme", &"contrast")
+	var contrast: DotMenuPalette = settings.menu.palette()
+	_check(contrast.id == &"contrast" and hud.vitals.colour(&"plate") == contrast.hud_plate and hud.vitals.colour(&"text") == contrast.hud_text,
+		"a theme picked in the menu reaches the pieces at once")
+	_check(hud.vitals.colour(&"highlight") == Color(0.98, 0.86, 0.40) and hud._field.get_theme_color(&"font_color") == contrast.hud_text,
+		"keeping this game's accent, and the HUD's own lines follow it too")
+	_t = settings.settings.set_value(&"ui_theme", &"midnight")
+	settings.queue_free()
 
 	# Health and the clock are dot-ui's glance pieces, handed this world's numbers.
 	me.health.health = 17.4

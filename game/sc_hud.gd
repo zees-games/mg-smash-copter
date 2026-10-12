@@ -32,19 +32,33 @@ const LOW_CLOCK_SEC := 10.0
 const FINE_COLOUR := Color(0.45, 0.82, 0.48)
 
 
-## The glance pieces' colours in this game's palette: a dark slate plate under a bright sky
-## and a white floor, the platforms' yellow edge as the highlight, the tilt bar's green as
-## "fine". The numbers stay white ringed in dark, which reads over sky, floor and platform in
-## the same frame. Static so a render tool can use it.
+## This game's accent over whichever theme the player picked in the menu (its highlight and
+## the plates' edge). The plates, the words and their outline are the theme's, dark by default,
+## so a light or high-contrast theme can change them. Static so a render tool can use it.
 static func piece_theme() -> Theme:
 	var t := Theme.new()
 	var type := DotHudPiece.THEME_TYPE
-	t.set_color(&"plate", type, Color(0.05, 0.08, 0.14, 0.62))
 	t.set_color(&"plate_edge", type, Color(0.98, 0.86, 0.40, 0.3))
 	t.set_color(&"highlight", type, Color(0.98, 0.86, 0.40))
 	t.set_color(&"good", type, FINE_COLOUR)
-	t.set_color(&"low", type, Color(0.92, 0.28, 0.26))
 	return t
+
+
+## The Escape menu, whose theme this HUD follows (dot-menu's `follow_hud`): the menu sets the
+## theme on the HUD's root now and at every theme change, and applies the player's HUD size.
+## Christian's first play test (2026-10-11) asked for a darker HUD a player can restyle in
+## the menu. Duck-typed and called by name, for a client shell older than dot-menu 7.
+var _menu: Object = null
+
+
+func follow_menu(menu: Object) -> void:
+	_menu = menu
+	_follow()
+
+
+func _follow() -> void:
+	if _root != null and _menu != null and _menu.has_method(&"follow_hud"):
+		_menu.call(&"follow_hud", _root, piece_theme())
 
 var game: ScGame = null
 var player: ScPlayer = null
@@ -128,6 +142,7 @@ func _build() -> void:
 	# The glance pieces read their colours from the theme on the type DotHudPiece; set on
 	# the root, every piece under it inherits them. See [method piece_theme].
 	_root.theme = piece_theme()
+	_follow()
 
 	# The clock, and the phase line under it. Full width, because the strip centres itself
 	# on its own middle; it ends above the special line at 110.
@@ -240,11 +255,9 @@ func _build_tilt() -> void:
 func _label(size: int) -> Label:
 	var label := Label.new()
 	label.add_theme_font_size_override("font_size", size)
-	label.add_theme_color_override("font_color", Color(1, 1, 1))
 	# An outline rather than a panel behind it. This HUD is drawn over a bright sky, a dark
 	# floor and a grey platform in the same frame; white is unreadable over one and black
 	# over another, and an outline is readable over all three and costs nothing.
-	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 	label.add_theme_constant_override("outline_size", 6)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(label)

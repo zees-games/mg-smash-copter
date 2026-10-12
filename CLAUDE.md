@@ -89,6 +89,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 
 **The game** ([services](docs/services.md), [client](docs/client.md))
 - The layout vote opens `sc_vote_after` into a round and applies at its end (MANUAL, `END_OF_ROUND`), rocked votes too; under MANUAL `ScVote` opens a passed rock-the-vote itself, or `!rtv` does nothing. The match answers dot-vote's `round_in_progress_fn` (`world.match_node.is_live()`, set by name because an older shell's dot-vote lacks it), so a `time_up: finish_round` limit that runs out in warmup or between rounds changes at once instead of holding for `finish_round_max_sec`; `dedicated` checks both halves. [design](docs/design.md#the-layout-vote)
+- The HUD follows the menu's theme and HUD size (`ScHud.follow_menu`, dot-menu's `follow_hud` by name); `ScHud.piece_theme()` is the accent only (the gold, the fine green), never plate, text or ink, and the HUD's Labels set no colour of their own except the accent lines. `headless_run` checks a theme change reaches the pieces and the lines.
 - dot-match `max_difference` is 0; `DotMatch.spawns_ref` is the match node itself; no dot-spawn.
 - Stand-ins are never counted and a player is begun on their first number; progress in memory, reporting off.
 - Refused moderation tools (respawn, give, strip) are refused for a reason `modtools` prints.
