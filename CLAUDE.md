@@ -79,6 +79,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 - `ZeeModelCache.set_asset_root(ScPaths.root())` on client ready, `res://` back on exit.
 - A property or method newer than the shipped shell is set by name, or the pack fails to parse; rebuild the shell first.
 - Gravity is `ScConfig.gravity` on the world's own space; the renderer is `gl_compatibility`.
+- `project.godot` carries no comments: the editor drops them, and any key left at its default, the first time it saves the file, so the reasons for its settings live here (the line above). The canvas texture filter is Nearest so the prototype grid reads as discrete squares from forty metres up, where a player judges a platform's tilt. Texture imports keep `detect_3d/compress_to=0` (`[importer_defaults]` starts new ones that way) so the editor never re-imports one VRAM-compressed on a first open.
 - Colour is a tint per role over one light grid (`ScTextures.ROLE_COLOURS`), never a coloured tile; the light is `ScArena.DAYLIGHT` (dot-lighting), turned down under Compatibility. [platforms](docs/platforms.md#readability)
 
 **The game** ([services](docs/services.md), [client](docs/client.md))
