@@ -45,8 +45,8 @@ const ScRequest := preload("../game/net/sc_request.gd")
 ## real client is a separate program with its own export. Make them disagree, and let HELLO
 ## and LAYOUT correct it.
 
-const SECTIONS := 22
-const CHECKS := 216
+const SECTIONS := 23
+const CHECKS := 222
 
 ## Who the client is, on both ends.
 const CLIENT_PEER := 7
@@ -58,6 +58,9 @@ const OTHER_SESSION := 43
 
 ## A third person, seated with a face of their own. See `_test_who_somebody_is_crosses`.
 const FACE_PEER := 9
+## A connected player who must hear nothing of somebody else's hit.
+const BYSTANDER_PEER := 10
+const BYSTANDER_SESSION := 45
 const FACE_SESSION := 44
 
 ## Frames the client draws between two ticks: a screen faster than the tick, as nearly every
@@ -105,6 +108,9 @@ var _to_client: Array = []
 var _to_server: Array = []
 
 var _tick: int = 0
+## Every event the server sent: `[peer_id, kind]`, decoded with the client's own registry.
+var _sent_events: Array = []
+var _listening := false
 var _snapshot_count: int = 0
 
 ## Drop one snapshot in this many. Zero for a perfect link.
@@ -135,6 +141,7 @@ func _run() -> void:
 		await _test_who_somebody_is_crosses()
 		await _test_the_phases()
 		await _test_a_weapon_crosses()
+		await _test_a_hit_is_the_shooters()
 		await _test_a_special_is_announced()
 		await _test_chat_crosses()
 		await _test_a_lossy_link()
@@ -1642,6 +1649,121 @@ func _test_a_weapon_crosses() -> void:
 	_finished()
 
 
+## The weapon-feel pass's wire half (`ScGame.hit_landed` → HIT → `hit_received`, and the owner-only
+## magazine that `ScClient.correct_drawn` adopts). `headless_run` only proves the offline half,
+## where the world's own signal flashes the marker and nothing crosses. Armed: with the bridge's
+## HIT send removed the first check fails; sent with `_broadcast` the second does.
+func _test_a_hit_is_the_shooters() -> void:
+	_section("a shot that lands is told to the shooter alone, and the drawn gun takes the server's count")
+	var key := ScNetBridge.player_key(SESSION)
+	var server_me: ScPlayer = _server_game.players.get(key)
+	var mine: ScPlayer = _client_game.players.get(key)
+	var hits: Array = []
+	var heard := func(point: Vector3, killed: bool, headshot: bool) -> void:
+		hits.append([point, killed, headshot])
+	_client_bridge.hit_received.connect(heard)
+
+	# A second connected player, READY, so a HIT that went to everybody would reach somebody.
+	var _seated := _server_bridge.add_player(BYSTANDER_PEER, BYSTANDER_SESSION, "Dov")
+	_server_bridge._admit(BYSTANDER_PEER)
+	# Two seconds still: the last section's trigger lets go, and a bolt-action gun (the handover
+	# deals a sniper rifle) is ready again, so one press here is one shot.
+	var still := DotFpsCommand.new()
+	await _steps(SERVER_TICK_RATE * 2, still)
+	var full := server_me.weapons.arsenal.current().magazine if server_me.weapons != null else -1
+
+	# Point-blank, straight down the aim: the stand-in (the other side) three metres ahead.
+	var aim := DotWeaponCommand.new()
+	var ahead := aim.aim_direction()
+	_stand_in.place_at(server_me.global_position + ahead * 3.0, 180.0)
+	# Hit but never killed: a kill could end the showdown and take the gun this section counts.
+	var target_health := _server_game.combat.health_of(_stand_in.entity_id)
+	target_health.cannot_die = true
+	_sent_events.clear()
+	_listening = true
+
+	var fire := DotFpsCommand.new()
+	fire.set_button(ScNetCommand.BUTTON_FIRE, true)
+	await _steps(2, fire)
+	await _steps(INPUT_LEAD + 6, still)
+
+	var to_shooter := _events_of(ScEvents.Kind.HIT, CLIENT_PEER)
+	_check(not hits.is_empty() and to_shooter > 0, "the shooter's bridge is told the shot landed",
+		"%d heard, %d sent to the shooter, stand-in alive %s" % [hits.size(), to_shooter, str(_stand_in.is_alive())])
+	var elsewhere := _events_of(ScEvents.Kind.HIT, BYSTANDER_PEER) + _events_of(ScEvents.Kind.HIT, 0)
+	_check(elsewhere == 0, "and nobody else is: no HIT to the other player, none broadcast", "%d" % elsewhere)
+	_check(not hits.is_empty() and (hits[0][0] as Vector3).distance_to(_stand_in.global_position) < 2.5,
+		"at the server's point, on the body that was hit",
+		"%s, body at %s" % [str(hits[0][0]) if not hits.is_empty() else "-", str(_stand_in.global_position)])
+
+	# Shot back: this player the victim, and a victim is told nothing.
+	hits.clear()
+	_sent_events.clear()
+	var shot_back := DotShot.new()
+	shot_back.attacker = _stand_in.entity_id
+	var wound := DotDamage.make(_stand_in.entity_id, server_me.entity_id, 1.0, null)
+	wound.health_lost = 1.0
+	wound.point = server_me.global_position + Vector3.UP
+	shot_back.damages.append(wound)
+	_server_game._note_hits(_stand_in, shot_back)
+	await _steps(4, still)
+	_check(hits.is_empty() and _events_of(ScEvents.Kind.HIT, CLIENT_PEER) == 0,
+		"a hit somebody else landed on this player is not this player's marker", "%d" % hits.size())
+
+	# The count: the magazine the server spent arrives in the owner's snapshot fields, and a drawn
+	# gun that predicted wrong adopts it once quiet, through the client's own correct_drawn.
+	var server_mag := server_me.weapons.arsenal.current().magazine
+	var behaviour: Variant = _client_bridge._behaviours.get(SESSION)
+	var net_mag := int(behaviour.get(&"net_magazine")) if behaviour != null else -1
+	_check(server_mag < full and net_mag == server_mag,
+		"the server's magazine, spent, crosses to the owner", "full %d, server %d, client told %d" % [full, server_mag, net_mag])
+
+	var client: Node = (load("res://game/sc_client.gd") as GDScript).new()
+	var rig := ZeeWeaponRig.new()
+	rig.name = "DrawnForTest"
+	rig.role = ZeeWeaponRig.Role.SERVER
+	rig.authority = false
+	rig.tick_rate = _client_game.tick_rate
+	mine.add_child(rig)
+	var _set := rig.setup()
+	var _given := rig.give(server_me.weapons.current_def().id)
+	if rig.arsenal.current() == null or rig.arsenal.current_slot() != server_me.weapons.arsenal.current_slot():
+		var _picked := rig.arsenal.select(server_me.weapons.arsenal.current_slot(), 0)
+	rig.arsenal.current().magazine = rig.arsenal.current().def.magazine
+	client.set(&"weapons", rig)
+	client.set(&"player", mine)
+	client.set(&"bridge", _client_bridge)
+	client.set(&"_offline", false)
+	client.set(&"_watch_id", SESSION)
+	client.set(&"_drawn_quiet", 0.0)
+	var early: bool = client.call(&"correct_drawn")
+	var drawn_early := rig.arsenal.current().magazine
+	client.set(&"_drawn_quiet", 1.0)
+	var corrected: bool = client.call(&"correct_drawn")
+	_check(not early and drawn_early != server_mag and corrected and rig.arsenal.current().magazine == server_mag,
+		"the drawn gun takes the server's count once quiet, and not before",
+		"before %d, after %d, server %d" % [drawn_early, rig.arsenal.current().magazine, server_mag])
+	client.free()
+	mine.remove_child(rig)
+	rig.free()
+
+	target_health.cannot_die = false
+	_listening = false
+	_client_bridge.hit_received.disconnect(heard)
+	_server_bridge.remove_peer(BYSTANDER_PEER)
+	await _steps(2)
+	_finished()
+
+
+## How many events of [param kind] the server sent to [param peer_id] (0: broadcast).
+func _events_of(kind: int, peer_id: int) -> int:
+	var count := 0
+	for sent: Array in _sent_events:
+		if int(sent[0]) == peer_id and int(sent[1]) == kind:
+			count += 1
+	return count
+
+
 func _test_a_special_is_announced() -> void:
 	_section("something strange is announced")
 
@@ -2306,6 +2428,12 @@ func _make_manager(
 
 
 func _on_server_send(method: StringName, peer_id: int, payload: PackedByteArray) -> void:
+	# Only while a section listens: a decode on the client's registry counts what it skips.
+	if method == &"event" and _listening:
+		var decoded := _client_net.messages.decode(DotNetReader.new(payload), 1, false)
+		if decoded.ok and decoded.value is ScEvent:
+			_sent_events.append([peer_id, (decoded.value as ScEvent).kind])
+
 	if method == &"snapshot":
 		_snapshot_count += 1
 
