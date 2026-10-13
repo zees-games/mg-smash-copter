@@ -88,6 +88,15 @@ class Layout extends RefCounted:
 	## machine is replicated where it comes to rest, so this never travels.
 	var chopper_cell := Vector2i(-1, -1)
 
+	## Whether [member chopper_cell] names a BRIDGE rather than a platform: the one leaving
+	## row `y` at column `x` for the next row, the chopper parked on its middle.
+	##
+	## [b]For the Airfield, whose pad is the far bridge.[/b] A bridge is the steadiest ground
+	## on the field and it rests on a platform of each row, so the machine on it is reached
+	## along either row, and it goes when either of them does. Server-side only, like
+	## [member chopper_cell].
+	var chopper_on_bridge: bool = false
+
 	## What the configured column spacing is multiplied by.
 	##
 	## Above one is a map of islands with jumps that have to be meant; below one is a map
@@ -204,7 +213,8 @@ class Layout extends RefCounted:
 			"gaps": Gaps.keys()[gaps],
 			"bridges": Bridges.keys()[bridges],
 			"chopper": with_chopper,
-			"chopper_cell": "%d,%d" % [chopper_cell.x, chopper_cell.y],
+			"chopper_cell": "%d,%d%s" % [chopper_cell.x, chopper_cell.y,
+				" bridge" if chopper_on_bridge else ""],
 			"pitch": "%.2f" % pitch_scale,
 			"row_pitch": "%.2f" % row_pitch_scale,
 			"row_shift": "%.2f" % row_shift,
@@ -309,6 +319,18 @@ static func all(config: ScConfig) -> Array[Layout]:
 		"There is a chopper on the pad. Somebody is going to take it."
 	)
 	airfield.with_chopper = config.chopper_enabled
+	# [b]The pad is the far bridge, and until 2026-10-13 it was the second side's
+	# doorstep.[/b] The chopper was parked on the ordinary pad, a third of the way out along
+	# a 45 degree line, which on the full field is (3,1): two jumps from where the second
+	# side starts and four jumps and a bridge from the first, so "somebody" was always the
+	# same somebody (Broadside had the same pad until 2026-09-30). On the last column's
+	# bridge it is at the end of BOTH rows: the first side runs its own row, four jumps, the
+	# second its own, three, and they arrive at the two ends of one walkway with the machine
+	# in the middle of it. A bridge falls with either platform it rests on, so the cannon
+	# taking (4,0) or (4,1) takes the pad and the chopper with it. `headless_run`'s Airfield
+	# section runs both sides there.
+	airfield.chopper_cell = Vector2i(config.columns - 1, 0)
+	airfield.chopper_on_bridge = true
 	airfield.jumps = Jumps.ALONG_ROWS
 	out.append(airfield)
 

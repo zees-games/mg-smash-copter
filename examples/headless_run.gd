@@ -38,7 +38,7 @@ const ScSettings := preload("../game/sc_settings.gd")
 ## `set_physics_process(false)` goes on first and every section advances the world itself.
 
 ## Sections entered, against sections that ran to their last line.
-const SECTIONS := 42
+const SECTIONS := 43
 
 ## And the total this counter cannot be.
 ##
@@ -46,7 +46,7 @@ const SECTIONS := 42
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 303
+const CHECKS := 312
 
 const TICK_RATE := 64
 const TICK := 1.0 / float(TICK_RATE)
@@ -109,6 +109,7 @@ func _run() -> void:
 	await _test_two_islands()
 	await _test_hollow_centre()
 	await _test_broadside()
+	await _test_the_airfield()
 	await _test_a_slope_holds()
 	await _test_blind_and_beacon_drawn()
 	await _test_somebody_out_watches()
@@ -2766,6 +2767,158 @@ func _test_broadside() -> void:
 		"and it is where it was after both have landed beside it, with everybody up",
 		"moved %.2f m, %d of %d platforms up, alive %s and %s" % [now.distance_to(parked),
 			platforms.standing_count(), platforms.count(), first.is_alive(), second.is_alive()])
+
+	await _dispose(game)
+	_finished()
+
+
+func _test_the_airfield() -> void:
+	_section("the Airfield's pad is the far bridge, and both sides run their own row to it")
+
+	var game := await _world(func(c: ScConfig) -> void:
+		c.cannon_enabled = false
+		c.specials_enabled = false
+		c.chopper_enabled = true
+		c.survival_seconds = 600.0
+		c.layout_ids = PackedStringArray(["airfield"])
+	)
+	var platforms := game.platforms
+	var config := game.config
+	var last := config.columns - 1
+
+	_check(game.layout != null and game.layout.id == &"airfield",
+		"the round is laid out as the Airfield",
+		String(game.layout.id) if game.layout != null else "none")
+
+	var first := game.add_player(&"first", "First", 1)
+	var second := game.add_player(&"second", "Second", 2)
+	game.start()
+	# Long enough for the chopper to drop off its pad and come to rest.
+	await _step(game, 96)
+
+	var copter: DotVehicleInstance = null if game._copter_ids.is_empty() \
+		else game.vehicles.get_vehicle(game._copter_ids[0])
+	var parked := copter.body().global_position if copter != null else Vector3.ZERO
+	var pad := -1
+
+	for i in range(platforms.count()):
+		var deck := platforms.deck_at(i)
+
+		if deck.is_bridge and deck.column == last and deck.row == 0:
+			pad = i
+
+	var under := platforms.index_at(parked.x, parked.z) if copter != null else -1
+	var pad_centre := platforms.deck_at(pad).centre if pad >= 0 else Vector3(INF, 0.0, INF)
+
+	_check(copter != null and pad >= 0 and under == pad
+			and Vector2(parked.x - pad_centre.x, parked.z - pad_centre.z).length() < 1.0
+			and parked.y < config.deck_height + 2.5,
+		"the chopper comes to rest on the middle of the last column's bridge",
+		"on %s, %.2f m off its middle, %.2f m over the decks" % [
+			_cell_name(platforms, under) if under >= 0 else "nothing",
+			Vector2(parked.x - pad_centre.x, parked.z - pad_centre.z).length(),
+			parked.y - config.deck_height])
+
+	var home := _deck_at_cell(platforms, 0, 0)
+	var across := _deck_at_cell(platforms, 1, 1)
+	var first_on := platforms.index_at(first.controller.state.position.x,
+		first.controller.state.position.z)
+	var second_on := platforms.index_at(second.controller.state.position.x,
+		second.controller.state.position.z)
+	_check(first_on == home and second_on == across,
+		"the two sides start at (0,0) and (1,1), a row apart",
+		"%s and %s" % [
+			_cell_name(platforms, first_on) if first_on >= 0 else "nowhere",
+			_cell_name(platforms, second_on) if second_on >= 0 else "nowhere"])
+
+	# Each side along its own row to the platform the pad rests on, jump by jump, then onto
+	# the bridge and into the machine, and out again for the other.
+	var routes := []
+
+	for run: Array in [[first, 0, 0], [second, 1, 1]]:
+		var legs := []
+
+		for column in range(int(run[1]), last):
+			legs.append([_deck_at_cell(platforms, column, run[2]),
+				_deck_at_cell(platforms, column + 1, run[2])])
+
+		routes.append([run[0], legs])
+
+	var metres: Array[float] = []
+	var jumps: Array[int] = []
+	var fastest := INF
+	var took := PackedStringArray()
+	var max_speed := ScPlayer.tunables_for(config, null).max_speed
+
+	for route: Array in routes:
+		var runner: ScPlayer = route[0]
+		var made := PackedStringArray()
+		_track(runner)
+
+		for leg: Array in route[1]:
+			await _walk_to(game, runner, platforms.deck_at(leg[0]).centre)
+			var landed := await _jump_across(game, runner, leg[0], leg[1])
+			made.append("%s%s" % [_cell_name(platforms, leg[1]), "" if landed else " MISSED"])
+
+			if not landed:
+				break
+
+		var on_pad := false
+
+		if copter != null and copter.body() != null and not ", ".join(made).contains("MISSED"):
+			await _run_to(game, runner, copter.body().global_position, 3.5)
+			on_pad = runner.standing_on == pad
+
+		var boarded := game.try_board(runner.player_id)
+		await _step(game, 4)
+		metres.append(_covered)
+		jumps.append(made.size())
+		fastest = minf(fastest, _top_speed)
+		_track(null)
+		took.append("%s: %s, %.1f m, %s" % [runner.player_id, ", ".join(made), metres.back(),
+			"in" if boarded.ok and runner.riding else "not in"])
+
+		if runner.riding:
+			var _out := game.try_board(runner.player_id)
+			await _step(game, 20)
+
+		_check(boarded.ok and on_pad and not ", ".join(made).contains("MISSED"),
+			"%s runs its own row onto the bridge and gets in" % runner.player_id,
+			took[took.size() - 1])
+
+	_check(jumps.size() == 2 and jumps[0] == last and jumps[1] == last - 1 and fastest >= max_speed * 0.95,
+		"four jumps and three, at a run",
+		"%s jumps, slower top speed %.2f of %.2f m/s" % [str(jumps), fastest, max_speed])
+	# The far bridge is what makes it contested: each side has a row of its own to it.
+	var ratio: float = float(metres.max()) / maxf(float(metres.min()), 0.01)
+	_check(metres.size() == 2 and ratio <= 1.5,
+		"and neither side is much nearer it than the other",
+		"%.1f m against %.1f m, %.2f to one" % [metres[0], metres[1], ratio])
+
+	var now := copter.body().global_position if copter != null and copter.body() != null \
+		else Vector3(INF, INF, INF)
+	_check(now.distance_to(parked) < 0.5 and platforms.standing_count() == platforms.count()
+			and first.is_alive() and second.is_alive(),
+		"and it is where it was after both have boarded it, with everybody up",
+		"moved %.2f m, %d of %d platforms up, alive %s and %s" % [now.distance_to(parked),
+			platforms.standing_count(), platforms.count(), first.is_alive(), second.is_alive()])
+
+	# The pad goes with the platform it rests on: (last, 1) down, the bridge and the machine
+	# on it go with it.
+	# Both sides back home first, so nobody falls with it and the round goes on.
+	first.place_at(platforms.deck_at(home).centre + Vector3.UP * 1.2, 0.0)
+	second.place_at(platforms.deck_at(across).centre + Vector3.UP * 1.2, 0.0)
+	await _step(game, 4)
+	var lip := _deck_at_cell(platforms, last, 1)
+	var _down := platforms.collapse(lip, &"test")
+	await _step(game, 150)
+	# Gone from the world counts: a machine that reached the floor may have been taken away.
+	var after := copter.body().global_position.y \
+		if copter != null and is_instance_valid(copter.body()) else -INF
+	_check(not platforms.deck_at(pad).is_standing() and after < parked.y - 5.0,
+		"and when a platform under the pad goes, the pad and the chopper go with it",
+		"bridge standing %s, chopper %.1f m lower" % [platforms.deck_at(pad).is_standing(),
+			parked.y - after])
 
 	await _dispose(game)
 	_finished()

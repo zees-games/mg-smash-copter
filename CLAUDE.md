@@ -70,7 +70,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 - Nothing over the tube: `THROAT_CLEARANCE`, and the throat section fires every tier at every layout.
 - The cell list travels with the layout, not just its id.
 - A new level ships declared, measured, driven by a bot and rendered; see [what a level is](docs/design.md#what-a-level-is-for-the-nightly-quota).
-- A chopper's pad needs a platform under it (`Layout.chopper_cell`).
+- A chopper's pad needs a platform or a bridge under it (`Layout.chopper_cell`, `chopper_on_bridge`).
 - Showdown geometry derives from the corner angles; catwalks are cut along both edges and kerbs open where a catwalk arrives.
 
 **Netcode** ([netcode](docs/netcode.md))

@@ -34,7 +34,7 @@ The corners started directly over the field, where the tube, the arc and the par
 
 - **Three controls fit in a `DotVehicleCommand` and the fourth does not.** Collective is throttle, pedals are steer, rotor brake is brake, and the cyclic goes in `DotVehicleInstance.meta`: widening the command would be a breaking change across the family for a field only an aircraft has.
 - **It holds itself up at exactly neutral.** A machine whose neutral is a slow sink is one a player fights while trying to aim. It does not arrest a climb; that is what the ceiling is for.
-- A parked chopper rests on whatever is under its pad, so every layout with one needs a platform there. `Layout.chopper_cell` names it (-1,-1 is the ordinary pad); `ScGame.chopper_pad_on(layout, index)` is the one reader. Server-side only: the machine replicates where it comes to rest.
+- A parked chopper rests on whatever is under its pad, so every layout with one needs a platform there. `Layout.chopper_cell` names it (-1,-1 is the ordinary pad; with `chopper_on_bridge` it names a bridge, the Airfield's); `ScGame.chopper_pad_on(layout, index)` is the one reader. Server-side only: the machine replicates where it comes to rest.
 - **A rider is measured by the machine for falls**: a pilot who put the chopper down on the floor sat out of the cannon's reach, alive. A machine within two metres of the kill height has reached the floor (a parked one's origin rests 0.9 m above it).
 
 ## What a level is, for the nightly quota

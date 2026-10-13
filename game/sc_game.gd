@@ -1444,13 +1444,15 @@ func _place_players() -> void:
 
 ## Where chopper [param index] is parked on [param on_layout], whose field [member platforms]
 ## has to be built as: the middle of the platform the layout names for the first one
-## ([member ScLayouts.Layout.chopper_cell]), and the arena's ordinary pads for the rest.
+## ([member ScLayouts.Layout.chopper_cell], a bridge's middle when
+## [member ScLayouts.Layout.chopper_on_bridge]), and the arena's ordinary pads for the rest.
 func chopper_pad_on(on_layout: ScLayouts.Layout, index: int) -> Vector3:
 	if on_layout != null and index == 0 and on_layout.chopper_cell.x >= 0:
 		for i in range(platforms.count()):
 			var deck := platforms.deck_at(i)
 
-			if not deck.is_bridge and deck.column == on_layout.chopper_cell.x \
+			if deck.is_bridge == on_layout.chopper_on_bridge \
+					and deck.column == on_layout.chopper_cell.x \
 					and deck.row == on_layout.chopper_cell.y:
 				return Vector3(deck.centre.x, config.deck_height + config.chopper_pad_height,
 					deck.centre.z)
