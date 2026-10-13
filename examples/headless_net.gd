@@ -45,8 +45,8 @@ const ScRequest := preload("../game/net/sc_request.gd")
 ## real client is a separate program with its own export. Make them disagree, and let HELLO
 ## and LAYOUT correct it.
 
-const SECTIONS := 21
-const CHECKS := 213
+const SECTIONS := 22
+const CHECKS := 216
 
 ## Who the client is, on both ends.
 const CLIENT_PEER := 7
@@ -141,6 +141,7 @@ func _run() -> void:
 		await _test_blind_and_beacon()
 		await _test_what_is_heard_arrives()
 		await _test_somebody_out_watches()
+		await _test_the_toys_reach_the_client()
 		await _test_leaving()
 
 	print("")
@@ -2339,6 +2340,30 @@ func _flush() -> void:
 func _exchange() -> void:
 	_flush()
 	_flush()
+
+
+## The field's toys over the wire: a beach ball per platform, paired by index on both ends,
+## frozen copies, one pushed on the server followed on the client.
+func _test_the_toys_reach_the_client() -> void:
+	_section("the field's toys reach the client")
+	await _steps(4)
+	var count := _server_game.toys.count() if _server_game.toys != null else 0
+	_check(count > 0 and _server_bridge.toy_count() == count and _client_bridge.toy_count() == count,
+		"every ball is an entity on both ends, paired by index", "%d toys, %d and %d" % [count, _server_bridge.toy_count(), _client_bridge.toy_count()])
+	if count == 0 or _client_game.toys == null or _client_game.toys.count() == 0:
+		_finished()
+		return
+	var server_ball := _server_game.toys.toy(0)
+	var client_ball := _client_game.toys.toy(0)
+	_check(client_ball.body.freeze and not client_ball.authoritative, "the client's are frozen copies")
+	var start := client_ball.body.global_position
+	var _kicked := _server_game.toys.hit(server_ball.body, server_ball.body.global_position, Vector3(1, 0.2, 0), 1.0)
+	await _steps(40)
+	var apart := client_ball.body.global_position.distance_to(server_ball.body.global_position)
+	_check(server_ball.body.global_position.distance_to(start) > 0.5 and apart < 0.8,
+		"a ball pushed on the server is followed on the client",
+		"%.2f m moved, %.2f m apart" % [server_ball.body.global_position.distance_to(start), apart])
+	_finished()
 
 
 ## One tick on both ends, with a real physics frame between them.

@@ -216,6 +216,18 @@ var physics: DotPhysicsLayout = null
 ## link, because the client draws the bodies. The game's, not the map's.
 var ragdoll_rules: DotPlayerRagdollRules = DotPlayerRagdollRules.new()
 
+## dot-props' `sv_toys*`, bound by the module (REPLICATED) and followed by a client.
+var toy_rules: DotPropToyRules = DotPropToyRules.new()
+
+## The field's toys (dot-props' [DotPropToyBox]): a beach ball on every platform, which rides a
+## leaning deck, rolls off it at the edge, and is knocked flying by what the cannon throws.
+## Placed from the layout on both ends, in deck order (see [method build_toys]). Null between
+## fields.
+var toys: DotPropToyBox = null
+
+## The field's toys are about to go, on both ends: what the bridge releases their entities on.
+signal toys_clearing()
+
 ## dot-player-controller's `mp_forceview` (may a player switch to third person) and
 ## `mp_solidplayers` (do players and stand-ins block each other). Bound by the module
 ## (REPLICATED) and followed by a client through its link: the client places its camera
@@ -393,7 +405,7 @@ func _on_body_rules_changed() -> void:
 ## every `add_child` in this file goes through an `apply_to` whose result is checked.
 func _build_physics() -> void:
 	physics = DotPhysicsLayout.custom(&"smash_copter", [
-		&"world", &"player", &"prop", &"vehicle", &"pillar",
+		&"world", &"player", &"prop", &"vehicle", &"pillar", &"toy", &"footprint",
 	])
 
 	for layer in physics.layers:
@@ -424,6 +436,14 @@ func _build_physics() -> void:
 				# stays, as the marker ScConfig.pillar_falls_with_platform keeps it for, and a
 				# prop or a chopper still strikes it.
 				layer.collides_with = [&"prop", &"vehicle"]
+			# A beach ball on a platform (dot-props'): the decks, what the cannon throws, a
+			# chopper, the pillars and the other balls; never a person, who walks through it
+			# and pushes it (`_advance_toys`). It rides a leaning deck and rolls off it.
+			&"toy":
+				layer.collides_with = [&"world", &"prop", &"vehicle", &"pillar", &"toy"]
+			# A toy's footprint, for a walkable mesh's bake only: nothing collides with it.
+			&"footprint":
+				layer.collides_with = []
 			_:
 				layer.collides_with = [&"player", &"prop", &"vehicle", &"pillar"]
 
@@ -1287,6 +1307,7 @@ func _lay_out_round() -> void:
 	platforms.gravity = config.gravity * maxf(active.gravity_scale, 0.05)
 	platforms.build(layout, physics)
 	_refresh_overviews()
+	build_toys()
 
 	cannon.stream = random.stream(&"cannon")
 	cannon.begin_round()
@@ -1303,6 +1324,8 @@ func _lay_out_round() -> void:
 
 
 func _clear_world() -> void:
+	clear_toys()
+
 	for prop in props.all_props():
 		cannon.forget(prop.instance_id)
 		var _gone := props.remove(prop.instance_id, DotPropSpawner.REASON_CLEANUP)
@@ -1713,6 +1736,9 @@ func _step(delta: float) -> void:
 
 	for id: StringName in players:
 		(players[id] as ScPlayer).simulate(_tick, delta)
+
+	if authoritative:
+		_advance_toys(delta)
 
 	_drive_bots(delta)
 	_fly_choppers(delta)
@@ -2194,8 +2220,86 @@ func _advance_weapons() -> void:
 		for shot in outcome.shots:
 			shot.attacker = player.entity_id
 			shot.tick = _tick
+			_shoot_toys(shot)
 			var resolved := combat.resolve_shot(shot)
 			_note_hits(player, resolved)
+
+
+# --- Toys ----------------------------------------------------------------------
+
+## The field's toys from its decks: a beach ball a little off the middle of every platform (not a
+## bridge), on both ends in deck order, which is how a client pairs each with the server's
+## entity. Called after the platforms are built: by the round on the server, by LAYOUT on a
+## client.
+func build_toys() -> void:
+	clear_toys()
+	var placements: Array = []
+	for index in range(platforms.count()):
+		var deck := platforms.deck_at(index)
+		if deck == null or deck.is_bridge:
+			continue
+		# Toward the outer corner the platform leans to under nobody, never the middle: the
+		# ball is the first thing to roll when somebody walks out to the edge.
+		var off := Vector3(deck.half * 0.45, 0.0, -deck.half * 0.45).rotated(Vector3.UP, float(index) * PI * 0.5)
+		var at := deck.centre + off
+		placements.append({"toy": "beach_ball", "at": [at.x, at.y, at.z]})
+	toys = DotPropToyBox.new()
+	toys.name = "Toys"
+	toys.authoritative = authoritative
+	toys.rules = toy_rules
+	toys.gravity = config.gravity
+	toys.kill_y = -20.0
+	if physics != null:
+		toys.loose_layer = physics.layer_mask(&"toy")
+		toys.loose_mask = physics.collision_mask(&"toy")
+		toys.solid_layer = physics.layer_mask(&"prop")
+		toys.solid_mask = physics.collision_mask(&"prop")
+		toys.footprint_layer = physics.layer_mask(&"footprint")
+		toys.aim_mask = physics.layer_mask(&"world") | physics.layer_mask(&"toy")
+	add_child(toys)
+	var built := toys.build(placements)
+	if not built.ok:
+		DotLog.warn(CHANNEL, "the field's toys would not build", {"why": built.error.message})
+	var _sounds := toys.sound.connect(func(id: StringName, at: Vector3, strength: float) -> void: toy_sound.emit(id, at, strength))
+
+
+func clear_toys() -> void:
+	if toys == null:
+		return
+	toys_clearing.emit()
+	remove_child(toys)
+	toys.queue_free()
+	toys = null
+
+
+## A toy made a sound, on whichever end draws it.
+signal toy_sound(id: StringName, at: Vector3, strength: float)
+
+
+## Everybody against the toys, after they moved: a walk into a ball sends it on. Server side.
+func _advance_toys(delta: float) -> void:
+	if toys == null or toys.count() == 0:
+		return
+	for id: StringName in players:
+		var player: ScPlayer = players[id]
+		if not player.is_alive():
+			continue
+		var state := player.controller.state
+		var tunables := player.controller.tunables
+		var radius := tunables.radius if tunables != null else 0.35
+		var height := lerpf(tunables.stand_height, tunables.crouch_height, state.crouch_fraction) if tunables != null else 1.8
+		var _pushed := toys.push_from(state.position, state.velocity, radius, height)
+	toys.advance(delta)
+
+
+## A shot against the toys: the first one on its ray is pushed and the shot goes on to the
+## combat, whose trace never sees a toy, so a ball is never cover in the showdown. Server side.
+func _shoot_toys(shot: DotShot) -> void:
+	if not authoritative or toys == null or toys.count() == 0:
+		return
+	var directions: Array = shot.pellets if not shot.pellets.is_empty() else [shot.direction]
+	for raw: Variant in directions:
+		var _pushed := toys.shot_along(shot.origin, raw as Vector3, maxf(shot.max_range, 1.0), shot.damage, physics.layer_mask(&"world"))
 
 
 ## Turns a player's movement command into a weapon command.

@@ -62,6 +62,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 - Falling: a person within `FLOOR_REACH` of the kill height is dead; pillars are on the `pillar` layer, never solid to a person; a rider is measured by the machine. Test a fall by a real fall, never a teleport under the floor.
 - Free the field by taking nodes out of the tree now and freeing at frame end; emit `world_clearing` first. A round can end inside `server_tick`.
 - Shift is a brake (`can_sprint = false`), and running loads the platform (`platform_motion_gain`).
+- A beach ball on every platform (dot-props' toys, `ScGame.build_toys` on both ends from the decks): rides a leaning deck, never a load and never cover; a client registers every toy mirror on TOYS before its field is laid out. [platforms](docs/platforms.md#a-beach-ball-on-every-platform)
 
 **The map** ([map](docs/map.md))
 - A layout's blurb is a promise: declare `Layout.jumps`; the reach sweep holds declared jumps inside the reach and undeclared ones outside it.

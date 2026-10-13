@@ -38,7 +38,7 @@ const ScSettings := preload("../game/sc_settings.gd")
 ## `set_physics_process(false)` goes on first and every section advances the world itself.
 
 ## Sections entered, against sections that ran to their last line.
-const SECTIONS := 41
+const SECTIONS := 42
 
 ## And the total this counter cannot be.
 ##
@@ -46,7 +46,7 @@ const SECTIONS := 41
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 300
+const CHECKS := 303
 
 const TICK_RATE := 64
 const TICK := 1.0 / float(TICK_RATE)
@@ -82,6 +82,7 @@ func _run() -> void:
 	await _test_zee_art_root()
 	_test_layouts()
 	await _test_world_builds()
+	await _test_the_toys()
 	await _test_a_platform_leans()
 	await _test_walking_is_gentler()
 	await _test_a_platform_collapses()
@@ -339,6 +340,60 @@ func _test_world_builds() -> void:
 		", ".join(thin))
 
 	await _dispose(game)
+	_finished()
+
+
+## dot-props' toys on the field: a beach ball on every platform, standing on its deck two
+## seconds on; a walk into one sends it on; a shot pushes it and the combat's trace sees through
+## it. In a world of its own: every other world this suite builds stands on the same spot.
+func _test_the_toys() -> void:
+	_section("a beach ball on every platform")
+	var view := SubViewport.new()
+	view.own_world_3d = true
+	view.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	add_child(view)
+	var config := ScConfig.new()
+	config.warmup_seconds = 0.0
+	config.intermission_seconds = 0.0
+	config.minimum_players = 0
+	config.vary_layout = false
+	var game := ScGame.new()
+	game.name = "ToyWorld"
+	game.config = config
+	game.tick_rate = TICK_RATE
+	game.authoritative = true
+	game.register_service = false
+	view.add_child(game)
+	game.set_physics_process(false)
+	await _physics_frame()
+	await _physics_frame()
+	var platforms := 0
+	for i in range(game.platforms.count()):
+		platforms += 0 if game.platforms.deck_at(i).is_bridge else 1
+	var box := game.toys
+	_check(box != null and box.count() == platforms and platforms > 0 and box.missing.is_empty(),
+		"one for each of the %d platforms" % platforms, str(box.describe()) if box != null else "none")
+	for _i in range(TICK_RATE * 2):
+		game.simulate(TICK)
+		await _physics_frame()
+	var off: Array = []
+	for toy in box.toys:
+		if toy.body.global_position.distance_to(toy.rest.origin) > 0.6:
+			off.append("%d at %s" % [toy.index, toy.body.global_position.snapped(Vector3.ONE * 0.1)])
+	_check(off.is_empty(), "two seconds on, every ball is still on its platform", "; ".join(off))
+	var ball := box.toy(0)
+	var b0 := ball.body.global_position
+	var shot := DotShot.make(&"test", 0, 0, 0)
+	shot.origin = b0 + Vector3(0.0, 0.0, 5.0)
+	shot.direction = Vector3(0.0, 0.0, -1.0)
+	shot.damage = 25.0
+	shot.max_range = 40.0
+	game._shoot_toys(shot)
+	for _i in range(10):
+		await _physics_frame()
+	_check(ball.body.global_position.distance_to(b0) > 0.3, "a shot sends one rolling", "%.2f m" % ball.body.global_position.distance_to(b0))
+	remove_child(view)
+	view.queue_free()
 	_finished()
 
 

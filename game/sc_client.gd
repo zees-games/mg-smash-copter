@@ -149,6 +149,10 @@ func _ready() -> void:
 	game.tick_rate = int(
 		ProjectSettings.get_setting("physics/common/physics_ticks_per_second", 64)
 	)
+	# The field's toys are heard: a ball's bounce off a deck or a crate.
+	var _toys_heard := game.toy_sound.connect(func(id: StringName, at: Vector3, strength: float) -> void:
+		if audio != null:
+			var _played := audio.on_toy(id, at, strength))
 	add_child(game)
 	_build_ragdolls()
 
@@ -310,6 +314,8 @@ func _build_netcode() -> DotResult:
 	# The server's sv_ragdoll* set: this end draws the bodies.
 	if link != null:
 		var _bodies := game.ragdoll_rules.follow_cvars(link)
+		# And sv_toys*: a client hides the toys a server took away.
+		var _toys := game.toy_rules.follow_cvars(link)
 		# The server's mp_forceview and mp_solidplayers: this end places its own camera and
 		# predicts its own player.
 		var _view := game.view_rules.follow_cvars(link)
