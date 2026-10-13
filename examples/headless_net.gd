@@ -46,7 +46,7 @@ const ScRequest := preload("../game/net/sc_request.gd")
 ## and LAYOUT correct it.
 
 const SECTIONS := 23
-const CHECKS := 222
+const CHECKS := 223
 
 ## Who the client is, on both ends.
 const CLIENT_PEER := 7
@@ -123,6 +123,9 @@ func _ready() -> void:
 
 
 func _run() -> void:
+	var errors := EngineErrors.new()
+	OS.add_logger(errors)
+
 	print("smash-copter over the wire")
 	print("")
 
@@ -150,6 +153,13 @@ func _run() -> void:
 		await _test_somebody_out_watches()
 		await _test_the_toys_reach_the_client()
 		await _test_leaving()
+
+	OS.remove_logger(errors)
+	# Engine errors go to stderr and change no exit code: a toy pulled out of the tree after
+	# a field was rebuilt mid-tick printed `!is_inside_tree()` on green runs of these suites.
+	var seen := errors.seen()
+	_check(seen.is_empty(), "the engine reported no error over the whole run",
+		"%d: %s" % [seen.size(), ", ".join(seen.slice(0, 3))])
 
 	print("")
 	print("%d sections entered, %d finished" % [_sections_entered, _sections_finished])
@@ -2557,3 +2567,27 @@ func _check(ok: bool, what: String, detail: String = "") -> void:
 	var line := "%s%s" % [what, "" if detail == "" else "  (%s)" % detail]
 	_failures.append(line)
 	print("  FAIL  %s" % line)
+
+
+## Counts the engine's own errors while installed (mg-smash-copter's dedicated suite has the
+## same class): they go to stderr and change no exit code, so only this makes one fail a run.
+class EngineErrors extends Logger:
+	var _lock := Mutex.new()
+	var _seen := PackedStringArray()
+
+	func _log_error(
+		function: String, _file: String, _line: int, code: String, _rationale: String,
+		_editor_notify: bool, _error_type: int, _script_backtraces: Array[ScriptBacktrace]
+	) -> void:
+		_lock.lock()
+		_seen.append("%s (%s)" % [code, function])
+		_lock.unlock()
+
+	func _log_message(_message: String, _error: bool) -> void:
+		pass
+
+	func seen() -> PackedStringArray:
+		_lock.lock()
+		var out := _seen.duplicate()
+		_lock.unlock()
+		return out

@@ -63,6 +63,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 - Free the field by taking nodes out of the tree now and freeing at frame end; emit `world_clearing` first. A round can end inside `server_tick`.
 - Shift is a brake (`can_sprint = false`), and running loads the platform (`platform_motion_gain`).
 - A beach ball on every platform (dot-props' toys, `ScGame.build_toys` on both ends from the decks): rides a leaning deck, never a load and never cover; a client registers every toy mirror on TOYS before its field is laid out. [platforms](docs/platforms.md#a-beach-ball-on-every-platform)
+- A round lays the field out inside the netcode's own tick, so `ScToyNet.pull` skips a toy out of the tree (dot-net history #30 skips the unregistered entity too); `headless_net` fails on any engine error in its stderr. [testing](docs/testing.md)
 
 **The map** ([map](docs/map.md))
 - A layout's blurb is a promise: declare `Layout.jumps`; the reach sweep holds declared jumps inside the reach and undeclared ones outside it.
