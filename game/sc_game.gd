@@ -1026,7 +1026,8 @@ func place_one(player: ScPlayer) -> void:
 	for i in range(platforms.count()):
 		var deck := platforms.deck_at(i)
 
-		if deck != null and deck.is_standing():
+		# Never a tower: it is a small deck three steps up, the prize and not the start.
+		if deck != null and deck.is_standing() and not deck.is_tower:
 			standing.append(i)
 
 	if standing.is_empty():
@@ -1370,7 +1371,8 @@ func _place_players() -> void:
 	for i in range(platforms.count()):
 		var deck := platforms.deck_at(i)
 
-		if deck != null and deck.is_standing():
+		# Never a tower: it is a small deck three steps up, the prize and not the start.
+		if deck != null and deck.is_standing() and not deck.is_tower:
 			standing.append(i)
 
 	if standing.is_empty():
@@ -1485,6 +1487,9 @@ func _place_choppers() -> void:
 			chassis.gravity = config.gravity * maxf(active.gravity_scale, 0.05)
 
 		var body := copter.body()
+
+		if body != null:
+			body.set_meta(ScPlayer.META_CARRIER, true)
 
 		if body != null and physics != null:
 			var applied := physics.apply_to(body, &"vehicle")

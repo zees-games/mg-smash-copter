@@ -10,6 +10,7 @@ const ScFigure := preload("../game/sc_figure.gd")
 const ScGame := preload("../game/sc_game.gd")
 const ScHud := preload("../game/sc_hud.gd")
 const ScLayouts := preload("../game/sc_layouts.gd")
+const ScMapSession := preload("../game/sc_map_session.gd")
 const ScPlatforms := preload("../game/sc_platforms.gd")
 const ScPaths := preload("../game/sc_paths.gd")
 const ScClient := preload("../game/sc_client.gd")
@@ -38,7 +39,7 @@ const ScSettings := preload("../game/sc_settings.gd")
 ## `set_physics_process(false)` goes on first and every section advances the world itself.
 
 ## Sections entered, against sections that ran to their last line.
-const SECTIONS := 43
+const SECTIONS := 46
 
 ## And the total this counter cannot be.
 ##
@@ -46,7 +47,7 @@ const SECTIONS := 43
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 312
+const CHECKS := 358
 
 const TICK_RATE := 64
 const TICK := 1.0 / float(TICK_RATE)
@@ -97,6 +98,9 @@ func _run() -> void:
 	await _test_a_shot_lands()
 	await _test_a_stand_in_aims()
 	await _test_the_chopper()
+	await _test_riding_the_chopper()
+	await _test_the_pieces()
+	await _test_the_map_catalogue()
 	await _test_reach()
 	await _test_the_throat()
 	await _test_the_showdown_walk()
@@ -1375,6 +1379,267 @@ func _test_the_chopper() -> void:
 	_finished()
 
 
+## A player standing on a chopper goes where it goes.
+func _test_riding_the_chopper() -> void:
+	_section("a player standing on a chopper is carried by it")
+
+	var game := await _world(func(c: ScConfig) -> void:
+		c.cannon_enabled = false
+		c.specials_enabled = false
+		c.chopper_enabled = true
+		c.layout_ids = PackedStringArray(["airfield"])
+	)
+
+	_check(game.layout != null and game.layout.with_chopper and not game._copter_ids.is_empty(),
+		"the airfield parks a chopper")
+
+	var copter := game.vehicles.get_vehicle(game._copter_ids[0]) if not game._copter_ids.is_empty() else null
+
+	if copter == null:
+		_check(false, "and it can be stood on")
+		_check(false, "and it takes its rider with it")
+		_check(false, "and the rider is still on it")
+		_check(false, "and getting off leaves them where they stepped")
+		await _dispose(game)
+		_finished()
+		return
+
+	var body := copter.body()
+	_check(body.has_meta(ScPlayer.META_CARRIER), "it is marked as something that carries")
+
+	# Held where it is and moved by hand, so the check is the carry and not the flying.
+	body.freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
+	body.freeze = true
+	body.global_position = Vector3(0.0, game.config.deck_height + 30.0, 0.0)
+	body.global_rotation = Vector3.ZERO
+
+	var rider := game.add_player(&"rider", "Rider", 1)
+	game.add_player(&"other", "Other", 2)
+	rider.place_at(body.global_position + Vector3(0.0, 2.2, 0.0), 0.0)
+	await _step(game, 30)
+
+	var on_it := rider.controller.state.ground_id == body.get_instance_id()
+	_check(on_it, "and it can be stood on",
+		"standing on %s" % str(rider.controller.state.ground_id))
+
+	var start_x := rider.controller.state.position.x
+	var start_y := rider.controller.state.position.y
+
+	for _i in range(40):
+		body.global_position += Vector3(0.3, 0.05, 0.0)
+		game.simulate(TICK)
+		await _physics_frame()
+
+	var carried_x := rider.controller.state.position.x - start_x
+	var carried_y := rider.controller.state.position.y - start_y
+	_check(carried_x > 10.0 and carried_y > 1.0, "and it takes its rider with it",
+		"%.1f m along, %.1f m up of 12 and 2" % [carried_x, carried_y])
+	_check(rider.controller.state.ground_id == body.get_instance_id(),
+		"and the rider is still on it")
+
+	# Off it: sideways, onto nothing, and then it is no longer theirs to move.
+	rider.place_at(body.global_position + Vector3(30.0, 2.2, 0.0), 0.0)
+	var left_at := rider.controller.state.position.x
+	body.global_position += Vector3(5.0, 0.0, 0.0)
+	await _step(game, 5)
+	_check(absf(rider.controller.state.position.x - left_at) < 1.0,
+		"and getting off leaves them where they stepped",
+		"%.2f m" % (rider.controller.state.position.x - left_at))
+
+	await _dispose(game)
+	_finished()
+
+
+## Every piece the new layouts are made of stands, and comes off its pillar like any other.
+func _test_the_pieces() -> void:
+	_section("ramps, towers and stepped islands stand at their heights and fall like platforms")
+
+	var game := await _world(func(c: ScConfig) -> void:
+		c.cannon_enabled = false
+		c.specials_enabled = false
+	)
+	var config := game.config
+	var platforms := game.platforms
+
+	for id: StringName in [&"terraces", &"ring", &"watchtowers"]:
+		var layout: ScLayouts.Layout = null
+
+		for candidate in ScLayouts.all(config):
+			if candidate.id == id:
+				layout = candidate
+
+		_check(layout != null, "%s is a layout" % id)
+
+		if layout == null:
+			continue
+
+		platforms.build(layout, game.physics)
+		await _physics_frame()
+		var label := String(id)
+
+		# Bigger than the ordinary field, and not one flat height.
+		var heights: Dictionary = {}
+		var towers := 0
+		var ramps := 0
+
+		for i in range(platforms.count()):
+			var deck := platforms.deck_at(i)
+			heights["%.2f" % deck.centre.y] = true
+			towers += 1 if deck.is_tower else 0
+
+			if deck.is_bridge:
+				var near := platforms.deck_at(deck.supports.x)
+				var far := platforms.deck_at(deck.supports.y)
+
+				if absf(near.centre.y - far.centre.y) > 0.1:
+					ramps += 1
+					# A ramp is walkable: its slope is under what the motor climbs.
+					var run := deck.lips.y - deck.lips.x
+					var slope := rad_to_deg(atan2(absf(near.centre.y - far.centre.y), run))
+					_check(slope < ScPlayer.tunables_for(config, null).max_slope_angle,
+						"%s ramp (%d,%d) is walkable" % [label, deck.column, deck.row],
+						"%.1f degrees" % slope)
+
+		_check(platforms.count() >= 10 and heights.size() >= 3,
+			"%s is a bigger field at several heights" % label,
+			"%d pieces at %d heights" % [platforms.count(), heights.size()])
+		_check(towers > 0 or id == &"terraces", "%s has its towers" % label)
+		_check(ramps > 0 or id == &"terraces", "%s has ramps" % label)
+
+		# Every piece has a pillar that reaches the floor from its own height, and each is
+		# standing at first.
+		var pillars_ok := true
+
+		for i in range(platforms.count()):
+			var deck := platforms.deck_at(i)
+
+			if not deck.is_standing():
+				pillars_ok = false
+
+			if deck.pillar != null:
+				var top := deck.pillar.position.y + 0.5 * (
+					deck.pillar.get_node(^"Collision").shape as CylinderShape3D).height
+
+				if absf(top - (deck.centre.y - config.platform_thickness)) > 0.01:
+					pillars_ok = false
+
+		_check(pillars_ok, "%s: every piece is standing on a pillar of its own height" % label)
+
+		# The cells survive the wire, kinds and levels both.
+		var cells := platforms.cells()
+		var back := ScEvents.read_layout(DotNetReader.new(ScEvents.write_layout(
+			layout.id, platforms.field_columns(), platforms.field_rows(), config.column_pitch,
+			config.row_pitch, config.platform_size, config.deck_height, layout.pitch_scale,
+			layout.stiffness_scale, cells, layout.row_pitch_scale, layout.row_shift
+		)))
+		var came: Array[Vector3i] = back["cells"]
+		_check(bool(back["ok"]) and came == cells,
+			"%s: every piece's kind and level crosses the wire" % label)
+
+		# Each kind of piece comes off its pillar when it is leant on, and takes the bridges
+		# resting on it along. Tried on a fresh build for each, on the highest piece.
+		var highest := 0
+
+		for i in range(platforms.count()):
+			if not platforms.deck_at(i).is_bridge \
+					and platforms.deck_at(i).centre.y > platforms.deck_at(highest).centre.y:
+				highest = i
+
+		if platforms.deck_at(highest).is_bridge:
+			highest = 0
+
+		var piece := platforms.deck_at(highest)
+		var edge := piece.centre + Vector3(piece.half, 0.0, 0.0)
+
+		for _i in range(900):
+			if not piece.is_standing():
+				break
+
+			platforms.begin_loads()
+			platforms.add_load(highest, edge, 800.0, config.run_speed)
+			platforms.step(TICK)
+
+		_check(not piece.is_standing(), "%s: its highest piece comes off its pillar" % label,
+			"%.3f rad" % piece.tilt())
+
+		for _i in range(4):
+			platforms.begin_loads()
+			platforms.step(TICK)
+
+		var orphans := 0
+
+		for i in range(platforms.count()):
+			var deck := platforms.deck_at(i)
+
+			if deck.is_bridge and (deck.supports.x == highest or deck.supports.y == highest) \
+					and deck.is_standing():
+				orphans += 1
+
+		_check(orphans == 0, "%s: and a bridge resting on it goes too" % label,
+			"%d left standing" % orphans)
+
+		# And a shattering hit takes a bridge as it takes a platform.
+		platforms.build(layout, game.physics)
+		await _physics_frame()
+
+		for i in range(platforms.count()):
+			if platforms.deck_at(i).is_bridge:
+				var outcome := platforms.report_impact(
+					i, config.platform_shatter_impulse * 2.0, 1.0,
+					platforms.deck_at(i).centre + Vector3(0.5, 0.0, 0.0))
+				_check(outcome == ScPlatforms.Impact.SHATTERED and not platforms.deck_at(i).is_standing(),
+					"%s: a bridge shatters from one big hit" % label)
+				break
+
+	await _dispose(game)
+	_finished()
+
+
+## The layouts are dot-map's maps: listed, changeable by command, voted from the catalogue.
+func _test_the_map_catalogue() -> void:
+	_section("the layouts are listed, changed and voted as dot-map maps")
+
+	var config := ScConfig.new()
+	var catalogue := ScLayouts.catalogue(config)
+	var layouts := ScLayouts.allowed(config)
+
+	_check(catalogue.size() == layouts.size() and catalogue.problems().is_empty(),
+		"every layout is a valid map def", "%d of %d; %s" % [
+			catalogue.size(), layouts.size(), ", ".join(catalogue.problems())])
+	_check(catalogue.has(&"ring") and catalogue.has(&"terraces") and catalogue.has(&"watchtowers"),
+		"and the bigger maps are in it")
+
+	var session := ScMapSession.new()
+	session.catalogue = catalogue
+	var asked: Array[StringName] = []
+	session.apply_fn = func(id: StringName) -> DotResult:
+		asked.append(id)
+		return DotResult.success(id)
+	add_child(session)
+
+	var changed := await session.change_to(&"ring")
+	_check(changed.ok and asked == [&"ring"] and session.current != null and session.current.id == &"ring",
+		"a change through the session reaches the game and becomes current")
+
+	var refused := await session.change_to(&"nowhere")
+	_check(not refused.ok and asked.size() == 1, "and an unknown map is refused")
+
+	session.apply_fn = func(_id: StringName) -> DotResult:
+		return DotResult.fail(DotError.CODE_STATE, "no")
+	var failed := await session.change_to(&"terraces")
+	_check(not failed.ok and session.current.id == &"ring", "and a refusal leaves the map as it was")
+
+	remove_child(session)
+	session.free()
+
+	# And a server that has the module has the commands.
+	var game := await _world()
+	var ids := ScLayouts.catalogue(game.config)
+	_check(ids.size() >= 9, "the catalogue lists the whole set", "%d maps" % ids.size())
+	await _dispose(game)
+	_finished()
+
+
 ## [b]The one thing neither the suite nor the editor can see: what happens once this is a
 ## pack.[/b] Every finding in this section came from a delivered server rather than from
 ## here, and each is a check written afterwards so the next one is caught before the boot.
@@ -1429,6 +1694,10 @@ func _test_reach() -> void:
 				if declared:
 					meant += 1
 					var dip := _run_up_dip(platforms, config, way.x, way.y, air.x)
+					# A landing that is a level higher is that much more to rise: the stepped
+					# layouts put their platforms at different heights on purpose.
+					dip += maxf(
+						platforms.deck_at(way.y).centre.y - platforms.deck_at(way.x).centre.y, 0.0)
 					var reach := ScPlayer.jump_reach(config, dip)
 
 					if gap > reach:

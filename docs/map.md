@@ -1,6 +1,6 @@
 # The map: layouts, jumps, and the showdown
 
-`game/sc_layouts.gd` holds eight arrangements of the field as documents (`full`, `checker`, `islands`, `spine`, `airfield`, `gauntlet`, `broadside`, `hollow`), each with a blurb that is a promise; `game/sc_arena.gd` builds the sky, the floor, the tube and the showdown complex in code. What a "level" is for the nightly quota is in [design.md](design.md#what-a-level-is-for-the-nightly-quota).
+`game/sc_layouts.gd` holds eleven arrangements of the field as documents (`full`, `checker`, `islands`, `spine`, `airfield`, `gauntlet`, `broadside`, `hollow`, and the multi-level `terraces`, `ring`, `watchtowers`), each with a blurb that is a promise; `game/sc_arena.gd` builds the sky, the floor, the tube and the showdown complex in code. What a "level" is for the nightly quota is in [design.md](design.md#what-a-level-is-for-the-nightly-quota).
 
 ## Reach: a jump is measured, not sized by eye
 
@@ -34,3 +34,15 @@ A square ring in the middle, a pad per side at the corners, catwalks from pads t
 - **Kerbs are open where a catwalk arrives.** `_build_kerb` cuts an opening wherever a catwalk crosses an edge. A 0.34 m kerb 0.6 m deep stopped a runner dead; dot-player-controller's step-up handles it since, and the openings stay because a junction with no step is the better junction. A check that counted kerbs passed; it counts SIDES now, and the showdown walk fails without the openings.
 - **Every edge is marked.** `CORNER_LIP` was documented twice and built nowhere, and the pads were flat shapes against a flat sky. Catwalks get the band on their long sides only: a kerb across a short end is a step at the junction a player runs through.
 - The showdown is reached by teleport; its question is whether a survivor can WALK from their pad along a catwalk onto the ring, which is driven with two sides (square junctions) and three (oblique).
+
+## Pieces and levels
+
+A cell is `Vector3i(column, row, z)` with `z = kind | (level << 2)`: kind is PLATFORM, BRIDGE or TOWER (a tower is 0.62 of a platform, with a railing), level is 3 bits of `LEVEL_RISE` (0.6 m) each. A layout carries its own `columns` and `rows`; `ScArena._field_reach` is the widest over all of them, so the throat holds for the biggest. A bridge's pitch comes from the surface heights of its two lips and it falls with either. A bigger layout's reach sweep adds the level rise to the dip for an upward jump. Towers are never spawn points. The cell list on the wire writes two bits of kind and three of level (`sc_events.gd`).
+
+## Riding the chopper
+
+A body marked with the meta `ScPlayer.META_CARRIER` carries whoever stands on it: `ScPlayer._carry_on_body` applies the body's transform change over the tick (`now * was.inverse()`) to the rider's position when the ground is not a deck. The client's mirror of a chopper is marked and on the vehicle layer too, so prediction agrees. `headless_run` drives a held body by hand and checks the rider goes with it and keeps their own step on getting off. Frame: `tools/shot.sh --view=rider`.
+
+## The map list
+
+`ScLayouts.catalogue()` is a `DotMapCatalogue` of the allowed layouts; `ScMapSession` (a `DotMapSession`) applies a change through `world.change_layout_now` with no scene swap, and `ScModule._build_maps` wires dot-map's commands to it. Link the addon with `addons/dot_map`.

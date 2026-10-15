@@ -9,6 +9,7 @@ const ScPlayer := preload("sc_player.gd")
 const ScSpecials := preload("sc_specials.gd")
 const ScAvatars := preload("sc_avatars.gd")
 const ScVote := preload("sc_vote.gd")
+const ScMapSession := preload("sc_map_session.gd")
 
 ## This game, as a module a dedicated server loads.
 ##
@@ -63,6 +64,9 @@ var _bot_ids: Array[StringName] = []
 
 ## The players' vote for the next layout; null when it could not be built.
 var vote: ScVote = null
+
+## dot-map's session over the layouts: the catalogue `map`, `maps`, `mapinfo` and the ballot list.
+var maps: ScMapSession = null
 
 ## The drawn ballot's notice topic. The client shell draws one menu per topic.
 const LAYOUT_BALLOT_TOPIC := &"map_ballot"
@@ -198,6 +202,7 @@ func _game_load() -> DotResult:
 		add_cvar, DotConVar.FLAG_ARCHIVE | DotConVar.FLAG_NOTIFY | DotConVar.FLAG_REPLICATED
 	)
 
+	_build_maps(world)
 	_build_vote(world)
 
 	_bots = add_cvar(
@@ -537,6 +542,28 @@ func _wire_chat() -> void:
 ## `user://cfg/smash_vote.json` or `game.yml`'s `metadata: layout_vote:`, keyed as dot-vote's
 ## [DotVoteRules]. A vote that cannot be built is a WARN and the weighted draw alone, never a
 ## server that will not start.
+func _build_maps(world: ScGame) -> void:
+	maps = ScMapSession.new()
+	maps.name = "Maps"
+	maps.catalogue = ScLayouts.catalogue(world.config)
+	maps.apply_fn = world.change_layout_now
+	add_child(maps)
+
+	# `map`, `maps` and `mapinfo`, dot-map's, over the layouts. The change goes through the
+	# game's own `change_layout_now` rather than a scene swap: see `ScMapSession`.
+	var map_commands := DotMapCommands.new()
+	map_commands.session = maps
+	map_commands.change_fn = world.change_layout_now
+	map_commands.player_count_fn = func() -> int:
+		return world.players.size()
+	DotLog.result(CHANNEL, "the map commands", map_commands.bind(self))
+
+	world.world_rebuilt.connect(func() -> void:
+		if maps != null and world.layout != null:
+			maps.note_current(maps.catalogue.get_map(world.layout.id))
+	)
+
+
 func _build_vote(world: ScGame) -> void:
 	vote = ScVote.new()
 	vote.name = "LayoutVote"
@@ -548,8 +575,9 @@ func _build_vote(world: ScGame) -> void:
 		if not world.config.vary_layout:
 			return out
 
-		for layout in ScLayouts.allowed(world.config):
-			out.append([layout.id, layout.display_name])
+		# From the catalogue dot-map lists, so the ballot and `maps` can never disagree.
+		for def in maps.catalogue.available() if maps != null else []:
+			out.append([def.id, def.display_name])
 
 		return out
 	vote.apply_fn = func(id: StringName) -> DotResult:

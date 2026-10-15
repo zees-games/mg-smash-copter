@@ -236,7 +236,7 @@ static func write_layout(
 	# And how far the field is moved along the rows, which only the chequerboard does.
 	w.write_float_range(row_shift, -2.0, 2.0, 16)
 
-	# The field itself, one cell at a time. Eleven bits each and never more than a couple of
+	# The field itself, one cell at a time. Fifteen bits each and never more than a couple of
 	# dozen of them, which is thirty-odd bytes once a round for the one thing both ends have
 	# to agree about exactly.
 	w.write_uint(clampi(cells.size(), 0, (1 << PLATFORM_BITS) - 1), PLATFORM_BITS)
@@ -244,7 +244,11 @@ static func write_layout(
 	for cell: Vector3i in cells:
 		w.write_uint(clampi(cell.x, 0, 63), 6)
 		w.write_uint(clampi(cell.y, 0, 15), 4)
-		w.write_bool(cell.z == 1)
+		# The kind in two bits and the level in three: see `ScLayouts.make_cell`. The tower and
+		# the stepped islands are the reason this is not a bool any more, and a client that
+		# read one would build a ramp as a flat bridge at the wrong height.
+		w.write_uint(clampi(cell.z & 3, 0, 3), 2)
+		w.write_uint(clampi((cell.z >> 2) & 7, 0, 7), 3)
 
 	return w.to_bytes()
 
@@ -268,8 +272,9 @@ static func read_layout(r: DotNetReader) -> Dictionary:
 	for _i in range(count):
 		var column := r.read_uint(6)
 		var row := r.read_uint(4)
-		var bridge := r.read_bool()
-		cells.append(Vector3i(column, row, 1 if bridge else 0))
+		var kind := r.read_uint(2)
+		var level := r.read_uint(3)
+		cells.append(Vector3i(column, row, kind | (level << 2)))
 
 	return {
 		"layout_id": StringName(layout_id),

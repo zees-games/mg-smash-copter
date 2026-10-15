@@ -3,6 +3,7 @@ extends Node3D
 const ScConfig := preload("sc_config.gd")
 const ScLayouts := preload("sc_layouts.gd")
 const ScTextures := preload("sc_textures.gd")
+const ScPaths := preload("sc_paths.gd")
 
 ## The field of platforms, and the one model that decides how all of them move.
 ##
@@ -97,6 +98,12 @@ class Deck extends RefCounted:
 
 	## Whether this is a walkway between two rows rather than a platform on a pillar.
 	var is_bridge: bool = false
+
+	## A tower is a platform that is narrower and stands higher. See [constant ScLayouts.KIND_TOWER].
+	var is_tower: bool = false
+
+	## Steps above the ordinary deck height, [constant ScLayouts.LEVEL_RISE] metres each.
+	var level: int = 0
 
 	## For a bridge: the platforms it rests on, at its row's end and at the next row's, as
 	## deck indices. `-1` where there is none, and a bridge missing either is a free spring.
@@ -224,6 +231,22 @@ var _row_pitch_scale: float = 1.0
 ## How far the field is moved along the rows, in row pitches. See [member ScLayouts.Layout.row_shift].
 var _row_shift: float = 0.0
 
+## The grid this field was built on. Zero means the config's, which is every layout that
+## does not carry a grid of its own.
+var _columns: int = 0
+var _rows: int = 0
+
+## `(kind, level)` of every non-bridge cell, so a bridge can be sized and set at the height
+## of the two pieces it joins.
+var _cell_info: Dictionary = {}
+
+
+## Kenney's survival kit (CC0, licence beside the file): one fence section is 0.5 m wide.
+static var RAIL_MODEL := ScPaths.rebase("res://assets/kenney/survival/fence.glb")
+static var RAIL_ATLAS := ScPaths.rebase("res://assets/kenney/survival/Textures/colormap.png")
+const RAIL_WIDTH := 0.5
+const RAIL_SCALE := 3.0
+
 
 func _ready() -> void:
 	if config == null:
@@ -234,7 +257,8 @@ func _ready() -> void:
 func build(layout: ScLayouts.Layout, physics: DotPhysicsLayout = null) -> void:
 	build_cells(
 		layout.cells(config), layout.pitch_scale, layout.stiffness_scale, physics,
-		layout.row_pitch_scale, layout.row_shift
+		layout.row_pitch_scale, layout.row_shift,
+		layout.field_columns(config), layout.field_rows(config)
 	)
 
 	DotLog.info(CHANNEL, "the platforms are up", {
@@ -263,9 +287,21 @@ func build_cells(
 	p_stiffness_scale: float,
 	physics: DotPhysicsLayout = null,
 	p_row_pitch_scale: float = 1.0,
-	p_row_shift: float = 0.0
+	p_row_shift: float = 0.0,
+	p_columns: int = 0,
+	p_rows: int = 0
 ) -> void:
 	clear()
+
+	_columns = p_columns
+	_rows = p_rows
+	_cell_info.clear()
+
+	for info: Vector3i in cells:
+		if not ScLayouts.is_bridge_cell(info):
+			_cell_info[Vector2i(info.x, info.y)] = Vector2i(
+				ScLayouts.kind_of(info), ScLayouts.level_of(info)
+			)
 
 	_physics = physics
 	_pitch_scale = maxf(p_pitch_scale, 0.05)
@@ -275,10 +311,13 @@ func build_cells(
 	grip = config.platform_grip
 
 	for cell: Vector3i in cells:
-		# `cell.z` is 1 for a bridge and 0 for an ordinary platform. A bridge is the only
+		# `cell.z` carries the kind and the level (see `ScLayouts.make_cell`). A bridge is the only
 		# thing joining two rows, so it is built from the same description with a different
 		# footprint rather than from a second code path.
-		_build_deck(cell.x, cell.y, cell.z == 1)
+		_build_deck(
+			cell.x, cell.y, ScLayouts.kind_of(cell) == ScLayouts.KIND_BRIDGE,
+			ScLayouts.kind_of(cell) == ScLayouts.KIND_TOWER, ScLayouts.level_of(cell)
+		)
 
 	_rest_bridges()
 
@@ -321,12 +360,33 @@ func _rest_bridges() -> void:
 		)
 
 
+## Columns and rows of the grid the field was built on, which a layout may set for itself.
+func field_columns() -> int:
+	return _columns if _columns > 0 else config.columns
+
+
+func field_rows() -> int:
+	return _rows if _rows > 0 else config.rows
+
+
+## How wide a piece of this kind is, as a fraction of an ordinary platform.
+static func _scale_of(kind: int) -> float:
+	return ScLayouts.TOWER_SCALE if kind == ScLayouts.KIND_TOWER else 1.0
+
+
 ## The cells this field was built from, in index order. What the wire carries.
 func cells() -> Array[Vector3i]:
 	var out: Array[Vector3i] = []
 
 	for deck in decks:
-		out.append(Vector3i(deck.column, deck.row, 1 if deck.is_bridge else 0))
+		var kind := ScLayouts.KIND_PLATFORM
+
+		if deck.is_bridge:
+			kind = ScLayouts.KIND_BRIDGE
+		elif deck.is_tower:
+			kind = ScLayouts.KIND_TOWER
+
+		out.append(ScLayouts.make_cell(deck.column, deck.row, kind, deck.level))
 
 	return out
 
@@ -370,38 +430,51 @@ func standing_count() -> int:
 	return total
 
 
-func _build_deck(column: int, row: int, is_bridge: bool) -> void:
+func _build_deck(
+	column: int, row: int, is_bridge: bool, is_tower: bool = false, level: int = 0
+) -> void:
 	var deck := Deck.new()
 	deck.column = column
 	deck.row = row
 	deck.is_bridge = is_bridge
+	deck.is_tower = is_tower
+	deck.level = level
 
 	var pitch := config.column_pitch * _pitch_scale
-	var span := float(config.columns - 1) * pitch
+	var span := float(field_columns() - 1) * pitch
 	var row_pitch := config.row_pitch * _row_pitch_scale
-	var row_span := float(config.rows - 1) * row_pitch
+	var row_span := float(field_rows() - 1) * row_pitch
 	# Where row zero is: centred on the tube, then moved by the layout's shift.
 	var row_origin := -row_span * 0.5 + _row_shift * row_pitch
 
 	deck.centre = Vector3(
 		float(column) * pitch - span * 0.5,
-		config.deck_height,
+		config.deck_height + float(level) * ScLayouts.LEVEL_RISE,
 		float(row) * row_pitch + row_origin
 	)
 
-	var size := Vector3(
-		config.platform_size, config.platform_thickness, config.platform_size
-	)
+	var side := config.platform_size * (ScLayouts.TOWER_SCALE if is_tower else 1.0)
+	var size := Vector3(side, config.platform_thickness, side)
 
 	if is_bridge:
 		# A bridge sits between two rows and spans the gap. Narrow across and long along,
 		# so it is a walkway rather than a second platform: a place you cross, not a place
 		# you hold. It is centred between the rows, which is why its `row` is a half step.
-		deck.centre.z = float(row) * row_pitch + row_pitch * 0.5 + row_origin
+		var near_info: Vector2i = _cell_info.get(Vector2i(column, row), Vector2i.ZERO)
+		var far_info: Vector2i = _cell_info.get(Vector2i(column, row + 1), Vector2i.ZERO)
+		var near_half := config.platform_size * 0.5 * _scale_of(near_info.x)
+		var far_half := config.platform_size * 0.5 * _scale_of(far_info.x)
+		var near_edge := float(row) * row_pitch + row_origin + near_half
+		var far_edge := float(row + 1) * row_pitch + row_origin - far_half
+		deck.centre.z = (near_edge + far_edge) * 0.5
+		# Midway in height too. The pitch is taken from the two lips' surfaces, so this is
+		# only where its sink starts from, and a ramp that starts at zero reads as flat.
+		deck.centre.y = config.deck_height + float(near_info.y + far_info.y) * 0.5 \
+				* ScLayouts.LEVEL_RISE
 		size.x = config.platform_size * 0.55
 		# Never shorter than a pace. A layout that pulls the rows in to a jump apart has no
 		# use for a bridge and should declare none, but a box with no length is not one.
-		size.z = maxf(row_pitch - config.platform_size - 0.6, 0.5)
+		size.z = maxf(far_edge - near_edge - 0.6, 0.5)
 
 	deck.half = maxf(size.x, size.z) * 0.5
 	deck.health = 1.0
@@ -437,6 +510,9 @@ func _build_deck(column: int, row: int, is_bridge: bool) -> void:
 
 	_build_rim(body, size)
 
+	if is_tower:
+		_build_rail(body, size)
+
 	_classify(body, &"world")
 	add_child(body)
 	deck.body = body
@@ -449,6 +525,55 @@ func _build_deck(column: int, row: int, is_bridge: bool) -> void:
 
 	decks.append(deck)
 	_by_body[body.get_instance_id()] = decks.size() - 1
+
+
+## Kenney's survival-kit fence round a tower's edge, so the high ground reads as a lookout
+## and a runner sees where the deck stops from the ramp below.
+##
+## [b]Mesh only and a child of the deck body[/b], so it leans and falls with the piece and
+## adds no collider to catch a sliding crate. The model is loaded by path through
+## [method ScPaths.rebase] and repainted from the atlas by hand, because an imported GLB
+## names its texture by an absolute path a delivered pack does not have (see
+## `ScPropBody._paint`, the same repair).
+func _build_rail(body: AnimatableBody3D, size: Vector3) -> void:
+	var scene := load(ScPaths.rebase(RAIL_MODEL)) as PackedScene
+
+	if scene == null:
+		DotLog.warn(CHANNEL, "the tower rail model would not load", {"path": RAIL_MODEL})
+		return
+
+	var atlas := load(ScPaths.rebase(RAIL_ATLAS)) as Texture2D
+	var step := RAIL_WIDTH * RAIL_SCALE
+	var half := size.x * 0.5 - 0.3
+	var count := maxi(int(floor(size.x / step)), 1)
+	var rail := Node3D.new()
+	rail.name = "Rail"
+	body.add_child(rail)
+
+	for side in range(4):
+		var turn := float(side) * PI * 0.5
+
+		for k in range(count):
+			var along := (float(k) + 0.5 - float(count) * 0.5) * step
+			var piece := scene.instantiate() as Node3D
+
+			if piece == null:
+				return
+
+			piece.scale = Vector3.ONE * RAIL_SCALE
+			piece.rotation.y = turn
+			piece.position = Vector3(along, 0.0, half).rotated(Vector3.UP, turn)
+			rail.add_child(piece)
+
+			if atlas != null:
+				for node in piece.find_children("*", "MeshInstance3D", true, false):
+					var mesh := node as MeshInstance3D
+					var material := mesh.get_active_material(0) as BaseMaterial3D
+
+					if material != null and material.albedo_texture == null:
+						var fixed: BaseMaterial3D = material.duplicate()
+						fixed.albedo_texture = atlas
+						mesh.set_surface_override_material(0, fixed)
 
 
 ## A coloured band around a platform's edge, so a player can see where it stops.
@@ -503,13 +628,11 @@ func _build_rim(body: AnimatableBody3D, size: Vector3) -> void:
 ## joins — which is why a bridge is the steady place to stand and also the place everybody
 ## else is heading for.
 func _build_pillar(at: Vector3) -> StaticBody3D:
-	var height := config.deck_height - config.platform_thickness
+	var height := at.y - config.platform_thickness
 
 	var body := StaticBody3D.new()
 	body.name = "Pillar"
-	body.position = Vector3(
-		at.x, config.deck_height - config.platform_thickness - height * 0.5, at.z
-	)
+	body.position = Vector3(at.x, at.y - config.platform_thickness - height * 0.5, at.z)
 
 	var shape := CylinderShape3D.new()
 	shape.radius = config.pillar_radius

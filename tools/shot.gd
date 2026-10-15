@@ -222,6 +222,28 @@ func _place_camera(game: ScGame, view: String) -> void:
 				var at := copter.position()
 				camera.global_position = at + Vector3(9.0, 3.4, 9.0)
 				camera.look_at(at, Vector3.UP)
+		"rider":
+			# [b]A person standing on the machine.[/b] They are put on the cab roof and the
+			# camera sits beside it, which is the one picture of whether the carry reads as
+			# riding and not as hovering beside it.
+			var machine := _a_copter(game)
+			var rider: Node3D = null
+
+			for key: StringName in game.players:
+				rider = game.players[key]
+				break
+
+			if machine == null:
+				camera.global_position = Vector3(0.0, game.config.deck_height + 14.0, 26.0)
+				camera.look_at(Vector3(0.0, game.config.deck_height, 0.0), Vector3.UP)
+			else:
+				var up := machine.position()
+
+				if rider != null and rider.has_method("place_at"):
+					rider.place_at(up + Vector3(0.0, 2.4, 0.0), 0.0)
+
+				camera.global_position = up + Vector3(7.0, 2.6, 7.0)
+				camera.look_at(up + Vector3(0.0, 1.2, 0.0), Vector3.UP)
 		"jump":
 			# [b]From where a runner stands before the jump the layout MEANS[/b], a little
 			# above their eye, looking along the line they will run. A field from above says

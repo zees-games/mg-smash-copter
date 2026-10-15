@@ -618,8 +618,8 @@ func _describe_layout() -> PackedByteArray:
 
 	return ScEvents.write_layout(
 		layout.id if layout != null else &"full",
-		game.config.columns,
-		game.config.rows,
+		game.platforms.field_columns(),
+		game.platforms.field_rows(),
 		game.config.column_pitch,
 		game.config.row_pitch,
 		game.config.platform_size,
@@ -2014,6 +2014,18 @@ func _apply_prop(reader: DotNetReader) -> void:
 
 	if rigid != null:
 		rigid.freeze = true
+
+		if bool(info["vehicle"]):
+			# What a player standing on it is carried by: see `ScPlayer._carry_on_body`.
+			rigid.set_meta(ScPlayer.META_CARRIER, true)
+
+			if game.physics != null:
+				var put := game.physics.apply_to(rigid, &"vehicle")
+
+				if not put.ok:
+					DotLog.warn(CHANNEL, "a mirrored chopper could not be put on its layer", {
+						"why": put.error.message,
+					})
 
 	var behaviour: ScPropNet = ScCopterNet.new() if bool(info["vehicle"]) else ScPropNet.new()
 	behaviour.name = "Net"

@@ -2,6 +2,7 @@ extends Node3D
 
 const ScConfig := preload("sc_config.gd")
 const ScTextures := preload("sc_textures.gd")
+const ScLayouts := preload("sc_layouts.gd")
 
 ## Everything in the world that is not a platform: the sky, the floor a player lands on,
 ## the tube in the middle, and the corners the round is finished in.
@@ -231,9 +232,19 @@ func _build_floor() -> void:
 ## included the showdown would be a definition that chases itself: the arena is put a reach
 ## away, which makes the reach bigger, which moves the arena.
 func _field_reach() -> float:
-	var across := float(config.columns - 1) * config.column_pitch * 0.5 + config.platform_size
-	var deep := float(config.rows - 1) * config.row_pitch * 0.5 + config.platform_size
-	return maxf(across, deep)
+	# The widest of every layout, because this arena is built once and the layout changes
+	# under it every round. A reach taken from the configured grid alone puts the showdown
+	# inside the bigger maps' corner towers.
+	var reach := 0.0
+
+	for layout in ScLayouts.all(config):
+		var across := float(layout.field_columns(config) - 1) * config.column_pitch * 0.5 \
+				+ config.platform_size
+		var deep := float(layout.field_rows(config) - 1) * config.row_pitch * 0.5 \
+				+ config.platform_size
+		reach = maxf(reach, maxf(across, deep))
+
+	return reach
 
 
 ## How far the floor has to reach to be under everything, in metres.

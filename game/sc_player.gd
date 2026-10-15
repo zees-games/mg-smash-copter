@@ -23,6 +23,9 @@ const ScSpecials := preload("sc_specials.gd")
 
 const CHANNEL := "sc.player"
 
+## Set on a body a player can stand on and be carried by (the chopper), on both ends.
+const META_CARRIER := &"sc_carrier"
+
 ## Metres above a player's feet that their eyes are.
 ##
 ## [b]Here rather than on the client, because it is not a camera height.[/b] It is where a
@@ -375,7 +378,10 @@ func _on_simulated(_tick: int, state: DotFpsState) -> void:
 	var index := platforms.index_of_body(state.ground_id)
 
 	if index < 0:
+		_carry_on_body(state)
 		return
+
+	_ride_id = 0
 
 	standing_on = index
 
@@ -393,6 +399,50 @@ func _on_simulated(_tick: int, state: DotFpsState) -> void:
 	# them rather than like anything being wrong.
 	state.position = global_position
 	carried_metres += absf(lift)
+
+
+## The body this player was standing on last tick, and where it was, so that a machine that
+## has moved since takes them with it.
+var _ride_id: int = 0
+var _ride_was := Transform3D.IDENTITY
+
+
+## Carries a player standing on a body that moves: a helicopter.
+##
+## [b]By the body's own motion over the tick, applied to the player's position.[/b] The
+## motor sweeps a capsule against a world that stood still, so a floor that moves is a floor
+## the player slides off the back of: a chopper's rotor wash would leave everybody on its
+## skids behind in the sky. The platforms carry vertically ([method ScPlatforms.lift_at])
+## because they only ever move vertically; a machine flies every way and turns, so this is
+## the whole transform, which also swings a rider round with its yaw.
+##
+## The first tick on a body only remembers where it is: there is nothing to have moved yet,
+## and a transform taken against the identity would throw them to the world's origin.
+func _carry_on_body(state: DotFpsState) -> void:
+	var body := instance_from_id(state.ground_id) as Node3D if state.ground_id != 0 else null
+
+	if body == null or not body.has_meta(META_CARRIER):
+		_ride_id = 0
+		return
+
+	var now := body.global_transform
+
+	if _ride_id != state.ground_id:
+		_ride_id = state.ground_id
+		_ride_was = now
+		return
+
+	var moved := now * _ride_was.affine_inverse()
+	_ride_was = now
+	var carried := moved * state.position
+	var shift := carried - state.position
+
+	# A body that is only settling, or a frame where nothing moved, is not worth writing back.
+	if shift.length_squared() < 0.0000001:
+		return
+
+	global_position = carried
+	state.position = carried
 
 
 func delta_for_tick() -> float:

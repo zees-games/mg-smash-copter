@@ -1,6 +1,7 @@
 extends RefCounted
 
 const ScConfig := preload("sc_config.gd")
+const ScPaths := preload("sc_paths.gd")
 
 ## What shape the platform field takes this round, as a catalogue of documents.
 ##
@@ -67,6 +68,46 @@ enum Jumps {
 	DIAGONALS = 8,
 }
 
+## What a cell of a layout is, and how high it stands: the cell's `z`.
+##
+## [b]Two bits of kind and three of level, in the one integer that was a bridge flag.[/b] A
+## cell is (column, row, z), and z was 0 for a platform and 1 for a bridge, so every
+## layout written before the pieces below reads the same: kind 0 and level 0. The level is
+## in steps of [constant LEVEL_RISE] above the deck height, and a bridge's own level is
+## whatever its two ends make it, so it is never written for one.
+const KIND_PLATFORM := 0
+const KIND_BRIDGE := 1
+## A small platform on a taller pillar: a watchtower, or the top of a ramp.
+const KIND_TOWER := 2
+
+const LEVEL_SHIFT := 2
+const MAX_LEVEL := 7
+
+## Metres one level stands above the one below. [b]Just over the controller's step-up
+## (0.45 m) and well under a jump's apex (1.15 m)[/b], so a stepped island is climbed by
+## jumping and never by walking, and never needs more than the one jump to get up a step.
+const LEVEL_RISE := 0.6
+
+## A tower's side, as a fraction of a platform's.
+const TOWER_SCALE := 0.62
+
+
+static func make_cell(column: int, row: int, kind: int = KIND_PLATFORM, level: int = 0) -> Vector3i:
+	return Vector3i(column, row, kind | (clampi(level, 0, MAX_LEVEL) << LEVEL_SHIFT))
+
+
+static func kind_of(c: Vector3i) -> int:
+	return c.z & 3
+
+
+static func level_of(c: Vector3i) -> int:
+	return (c.z >> LEVEL_SHIFT) & MAX_LEVEL
+
+
+static func is_bridge_cell(c: Vector3i) -> bool:
+	return kind_of(c) == KIND_BRIDGE
+
+
 ## One arrangement of the field.
 class Layout extends RefCounted:
 	var id: StringName = &""
@@ -131,12 +172,32 @@ class Layout extends RefCounted:
 	## A line for the HUD when the round begins, so a player knows what they are looking at.
 	var blurb: String = ""
 
+	## How many columns and rows this layout is, or 0 for what [member ScConfig.columns] and
+	## [member ScConfig.rows] say. [b]The bigger maps carry their own[/b], because a
+	## server's `sc_columns` is the size of the ordinary field and a ring is a ring at seven by
+	## five whatever it is.
+	var columns: int = 0
+	var rows: int = 0
+
+	## An explicit list of cells, for a layout made of pieces rather than of a pattern of
+	## gaps. Empty means [member gaps] and [member bridges] decide, as they always did.
+	var custom: Array[Vector3i] = []
+
+	func field_columns(config: ScConfig) -> int:
+		return columns if columns > 0 else config.columns
+
+	func field_rows(config: ScConfig) -> int:
+		return rows if rows > 0 else config.rows
+
 	## Every platform this layout puts out, as (column, row, is_bridge).
 	##
 	## [b]One description, and the field, the spawns, the cannon's target list and the
 	## client's copy are all derived from it.[/b] This family has shipped the same list
 	## twice and watched the copies drift more than once.
 	func cells(config: ScConfig) -> Array[Vector3i]:
+		if not custom.is_empty():
+			return custom.duplicate()
+
 		var out: Array[Vector3i] = []
 
 		for row in range(config.rows):
@@ -382,7 +443,118 @@ static func all(config: ScConfig) -> Array[Layout]:
 	hollow.jumps = Jumps.ALONG_ROWS
 	out.append(hollow)
 
+	out.append(_terraces())
+	out.append(_ring())
+	out.append(_watchtowers())
+
 	return out
+
+
+## The bowl: seven columns by three, rising from the middle out, so every step is one jump.
+##
+## [b]Stepped islands, and the first layout whose platforms are not all at one height.[/b]
+## Each platform stands [constant LEVEL_RISE] above the one nearer the middle, so getting to
+## the high ground is a run of jumps UP a staircase of platforms that all lean toward
+## whoever is on them, and the rim sees the whole bowl. The middle cell is left out for the
+## cannon's mouth. Rows are a jump apart, as on Two Islands, so any neighbour is one jump.
+static func _terraces() -> Layout:
+	var layout := _make(
+		&"terraces", "Terraces", 9.0, Gaps.NONE, Bridges.NONE,
+		"A bowl of stepped islands. Every step is one jump, and the rim sees everything."
+	)
+	layout.columns = 7
+	layout.rows = 3
+	layout.row_pitch_scale = 0.51
+	layout.jumps = Jumps.ALONG_ROWS | Jumps.ACROSS_ROWS | Jumps.DIAGONALS
+
+	for row in range(3):
+		for column in range(7):
+			if column == 3 and row == 1:
+				continue
+
+			var level := mini(maxi(absi(column - 3), 2 * absi(row - 1)), MAX_LEVEL)
+			layout.custom.append(make_cell(column, row, KIND_PLATFORM, level))
+
+	return layout
+
+
+## The ring: a loop of platforms round the cannon, bridged down both sides, with a tower
+## at each corner reached by a ramp.
+##
+## [b]Rings, bridges, ramps and towers in one field.[/b] The top and bottom of the loop are
+## platforms a jump apart and stepped down toward the middle; each side is a column of
+## platforms joined by bridges; and each corner is a small tower on a tall pillar that is
+## reached only by the bridge that climbs to it, which is a ramp. Every piece is a
+## deck of the same model, so every piece comes off its pillar when it is leant on enough,
+## and a bridge falls with either end.
+static func _ring() -> Layout:
+	var layout := _make(
+		&"ring", "The Ring", 9.0, Gaps.NONE, Bridges.OUTER,
+		"A loop round the cannon. Ramps climb to the corner towers, and every bridge goes with its ends."
+	)
+	layout.columns = 7
+	layout.rows = 5
+	layout.pitch_scale = 0.95
+	layout.row_pitch_scale = 0.8
+	layout.jumps = Jumps.ALONG_ROWS
+	var last_row := 4
+	var last_column := 6
+
+	for row in range(5):
+		for column in range(7):
+			var on_side := column == 0 or column == last_column
+			var on_end := row == 0 or row == last_row
+
+			if not on_side and not on_end:
+				continue
+
+			if on_side and on_end:
+				layout.custom.append(make_cell(column, row, KIND_TOWER, 3))
+				continue
+
+			var level := 0
+
+			if on_end:
+				level = 2 if column == 1 or column == last_column - 1 else 1
+
+			layout.custom.append(make_cell(column, row, KIND_PLATFORM, level))
+
+	for row in range(4):
+		for column in [0, last_column]:
+			layout.custom.append(make_cell(column, row, KIND_BRIDGE))
+
+	return layout
+
+
+## Two ramps up to a tower and two down from it, on each side of a field of platforms.
+##
+## [b]The towers are the high ground, and getting to one is a walk up a ramp that is
+## also somebody else's way down.[/b] The towers stand on the outer columns between the two
+## rows, three levels up; the bridge up to one and the bridge down from it are slopes.
+## Nothing else joins the rows, so the ramps are the only crossing and a tower is the one
+## place that holds both of them.
+static func _watchtowers() -> Layout:
+	var layout := _make(
+		&"watchtowers", "Watchtowers", 9.0, Gaps.NONE, Bridges.NONE,
+		"The rows meet only at two towers. Climb the ramp, hold the high ground, and mind the drop."
+	)
+	layout.columns = 5
+	layout.rows = 3
+	layout.row_pitch_scale = 0.8
+	layout.jumps = Jumps.ALONG_ROWS
+
+	for row in [0, 2]:
+		for column in range(5):
+			layout.custom.append(make_cell(column, row))
+
+	for column in [0, 4]:
+		layout.custom.append(make_cell(column, 1, KIND_TOWER, 3))
+
+	for row in range(2):
+		for column in [0, 4]:
+			layout.custom.append(make_cell(column, row, KIND_BRIDGE))
+
+	return layout
 
 
 ## Every pair of platforms a player could try to jump between, as (a, b, kind).
@@ -399,7 +571,7 @@ static func pairs(cells: Array[Vector3i]) -> Array[Vector3i]:
 	for i in range(cells.size()):
 		var cell := cells[i]
 
-		if cell.z == 1:
+		if kind_of(cell) == KIND_BRIDGE:
 			bridged[Vector2i(cell.x, cell.y)] = true
 		else:
 			at[Vector2i(cell.x, cell.y)] = i
@@ -447,7 +619,7 @@ static func islands(cells: Array[Vector3i], jumps: int) -> PackedInt32Array:
 	for i in range(cells.size()):
 		root.append(i)
 
-		if cells[i].z == 0:
+		if kind_of(cells[i]) != KIND_BRIDGE:
 			at[Vector2i(cells[i].x, cells[i].y)] = i
 
 	var joins: Array[Vector2i] = []
@@ -455,7 +627,7 @@ static func islands(cells: Array[Vector3i], jumps: int) -> PackedInt32Array:
 	for i in range(cells.size()):
 		var cell := cells[i]
 
-		if cell.z == 1:
+		if kind_of(cell) == KIND_BRIDGE:
 			for row in [cell.y, cell.y + 1]:
 				var end: int = at.get(Vector2i(cell.x, row), -1)
 
@@ -549,5 +721,30 @@ static func ids(config: ScConfig) -> PackedStringArray:
 
 	for layout in all(config):
 		out.append(String(layout.id))
+
+	return out
+
+
+## The layouts a server plays, as a dot-map catalogue: what `map`, `maps`, `mapinfo` and the
+## ballot list.
+##
+## [b]A def per layout, and the id is the layout's.[/b] A layout is this game's map, picked
+## per round on one scene, so `scene_path` names that scene only to satisfy the def's
+## validation and nothing loads it (see `ScMapSession`). Which of them are offered is
+## [method allowed]'s, so an operator who narrowed `layout_ids` narrows the catalogue too.
+static func catalogue(config: ScConfig) -> DotMapCatalogue:
+	var out := DotMapCatalogue.new()
+
+	for layout in allowed(config):
+		var def := DotMapDef.new()
+		def.id = layout.id
+		def.display_name = layout.display_name
+		def.description = layout.blurb
+		def.kind = &"layout"
+		def.scene_path = ScPaths.rebase("res://game/sc.tscn")
+		var added := out.add(def)
+
+		if not added.ok:
+			push_error("A layout could not be listed as a map: %s" % added.error.message)
 
 	return out
