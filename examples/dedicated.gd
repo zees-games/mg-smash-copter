@@ -24,7 +24,7 @@ const ScProgress := preload("../game/sc_progress.gd")
 ## and those are what this is about.
 
 const SECTIONS := 13
-const CHECKS := 116
+const CHECKS := 117
 
 ## Everything this run writes, and it is deleted on the way in and on the way out.
 ##
@@ -1082,9 +1082,14 @@ func _test_the_layout_vote() -> void:
 	# Past dot-vote's cooldown between two ballots, on the director alone so the layout's own
 	# ballot timer does not open one first. In play a round outlasts it.
 	director.advance(director.rules.vote_cooldown_sec + 0.1)
+	var ballots: Array = []
+	director.vote_opened.connect(func(_options: Array, _seconds: float) -> void: ballots.append(1))
 	var rocked := _run_command("rtv")
 	vote.call("advance", 0.05)
 	_check(director.is_voting(), "and rock-the-vote opens a ballot before its time", str(rocked))
+	# Under MANUAL the director opens a rocked ballot itself (dot-vote API 2); this game no longer
+	# does, so exactly one ballot opens, not one from each.
+	_check(ballots.size() == 1, "and exactly one ballot, the director's alone", str(ballots.size()))
 	_finished()
 
 ## [b]`time_up: finish_round` waits for a round being played, never for warmup.[/b] The game
