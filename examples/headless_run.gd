@@ -39,7 +39,7 @@ const ScSettings := preload("../game/sc_settings.gd")
 ## `set_physics_process(false)` goes on first and every section advances the world itself.
 
 ## Sections entered, against sections that ran to their last line.
-const SECTIONS := 46
+const SECTIONS := 47
 
 ## And the total this counter cannot be.
 ##
@@ -47,7 +47,7 @@ const SECTIONS := 46
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 361
+const CHECKS := 362
 
 const TICK_RATE := 64
 const TICK := 1.0 / float(TICK_RATE)
@@ -80,6 +80,7 @@ func _run() -> void:
 
 	_test_config()
 	_test_delivery()
+	_test_the_weapon_art_is_vendored()
 	await _test_zee_art_root()
 	_test_layouts()
 	await _test_world_builds()
@@ -3712,6 +3713,15 @@ func _test_help_and_menu() -> void:
 	settings.close()
 	settings.queue_free()
 	await get_tree().process_frame
+	_finished()
+
+
+## The pack carries its art (a delivered game has only what is vendored in assets/), so every
+## model the weapons table names must be here. Sync it with zee-dot-weapons' tools/sync-art.sh.
+func _test_the_weapon_art_is_vendored() -> void:
+	_section("every model the weapon art table names is vendored in this game")
+	var models := ZeeWeaponArtTable.validate_models()
+	_check(models.ok, "no weapon model is missing", "" if models.ok else models.error.message)
 	_finished()
 
 
