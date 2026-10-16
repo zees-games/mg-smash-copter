@@ -46,7 +46,7 @@ const ScRequest := preload("../game/net/sc_request.gd")
 ## and LAYOUT correct it.
 
 const SECTIONS := 23
-const CHECKS := 223
+const CHECKS := 224
 
 ## Who the client is, on both ends.
 const CLIENT_PEER := 7
@@ -649,6 +649,11 @@ func _test_a_client_joins() -> void:
 		Engine.physics_ticks_per_second == SERVER_TICK_RATE,
 		"and so does the engine it is drawing with",
 		"%d" % Engine.physics_ticks_per_second
+	)
+	_check(
+		Engine.max_physics_steps_per_frame >= ceili(0.25 * float(SERVER_TICK_RATE)),
+		"the engine's step cap covers a quarter second at the adopted rate",
+		"%d steps for %d Hz" % [Engine.max_physics_steps_per_frame, SERVER_TICK_RATE]
 	)
 	_check(
 		_client_net.clock.tick_rate == SERVER_TICK_RATE,
