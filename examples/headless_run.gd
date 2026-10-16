@@ -47,7 +47,7 @@ const SECTIONS := 46
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 358
+const CHECKS := 361
 
 const TICK_RATE := 64
 const TICK := 1.0 / float(TICK_RATE)
@@ -1590,6 +1590,34 @@ func _test_the_pieces() -> void:
 				_check(outcome == ScPlatforms.Impact.SHATTERED and not platforms.deck_at(i).is_standing(),
 					"%s: a bridge shatters from one big hit" % label)
 				break
+
+		# [b]Every piece can fall, not only the highest.[/b] The core mechanic is that the floor
+		# goes, so a piece that held its pillar whatever stood on it would be a place to hide.
+		# Each non-bridge piece gets its own fresh build and a runner on its edge.
+		var stuck: Array[int] = []
+
+		for i in range(platforms.count()):
+			if platforms.deck_at(i).is_bridge:
+				continue
+
+			platforms.build(layout, game.physics)
+			await _physics_frame()
+			var each := platforms.deck_at(i)
+			var rim := each.centre + Vector3(each.half, 0.0, 0.0)
+
+			for _j in range(900):
+				if not each.is_standing():
+					break
+
+				platforms.begin_loads()
+				platforms.add_load(i, rim, 800.0, config.run_speed)
+				platforms.step(TICK)
+
+			if each.is_standing():
+				stuck.append(i)
+
+		_check(stuck.is_empty(), "%s: every piece comes off its pillar" % label,
+			"stuck: %s" % str(stuck))
 
 	await _dispose(game)
 	_finished()
