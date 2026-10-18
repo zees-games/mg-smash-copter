@@ -34,6 +34,8 @@ static func make() -> DotMenuBindings:
 	keys.add(&"dot_fps_right", &"bind_right", "Strafe right (chopper: turn)", "D", "Movement")
 	keys.add(&"dot_fps_jump", &"bind_jump", "Jump (chopper: up)", "Space", "Movement")
 	keys.add(&"dot_fps_walk", &"bind_walk", "Walk: the brake on a leaning platform", "Shift", "Movement")
+	# The wheel goes through the showdown's weapons (and is not jump); in the chopper it does nothing.
+	var _wheel := keys.add_wheel_weapons()
 	keys.add(BOARD, &"bind_board", "Get into or out of the chopper", "E", "Hands")
 	keys.add(RELOAD, &"bind_reload", "Reload (in the showdown)", "R", "Hands")
 	for i in range(SLOTS.size()):

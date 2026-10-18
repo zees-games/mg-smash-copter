@@ -47,7 +47,7 @@ const SECTIONS := 47
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 362
+const CHECKS := 364
 
 const TICK_RATE := 64
 const TICK := 1.0 / float(TICK_RATE)
@@ -3710,6 +3710,14 @@ func _test_help_and_menu() -> void:
 	var leave_button := settings.menu.screen.find_child("Action_leave", true, false) as Button
 	_check(help_button != null and leave_button != null and leave_button.visible,
 		"the Escape menu has Help & commands and Leave")
+	_check(keys.row_for_setting(&"bind_weapon_previous").get("action", &"") == &"dot_menu_weapon_previous"
+		and keys.row_for_setting(&"bind_weapon_next").get("action", &"") == &"dot_menu_weapon_next"
+		and keys.row_for_setting(&"bind_weapon_previous").get("default", "") == "Wheel up"
+		and keys.row_for_setting(&"bind_weapon_next").get("default", "") == "Wheel down",
+		"the wheel is previous and next weapon")
+	var wheel_on_jump := keys.rows.filter(func(r: Dictionary) -> bool:
+		return r["action"] == &"dot_fps_jump" and str(r["default"]).begins_with("Wheel"))
+	_check(wheel_on_jump.is_empty(), "and the wheel is not on jump")
 	settings.close()
 	settings.queue_free()
 	await get_tree().process_frame

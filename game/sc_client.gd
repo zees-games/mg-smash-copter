@@ -1624,6 +1624,16 @@ func _unhandled_input(event: InputEvent) -> void:
 				var _boarded := game.try_board(player.player_id)
 			return
 
+	# The wheel cycles the weapons in the showdown (dot-menu's stock rows, API 10); in the
+	# chopper and out of the round it does nothing, and it is never jump.
+	if event is InputEventMouseButton and _captured and weapons != null and not is_spectating():
+		if event.is_action_pressed(&"dot_menu_weapon_next"):
+			_slot = _cycled_slot(1)
+			return
+		if event.is_action_pressed(&"dot_menu_weapon_previous"):
+			_slot = _cycled_slot(-1)
+			return
+
 	if event is InputEventMouseButton:
 		var button := event as InputEventMouseButton
 
@@ -1652,6 +1662,21 @@ func _unhandled_input(event: InputEvent) -> void:
 			player.sampler.handle_event(event)
 		elif _sampler != null:
 			_sampler.handle_event(event)
+
+
+## The next carried slot [param step] along from the one wanted, empty slots skipped, or the
+## wanted one when there is nothing to cycle to.
+func _cycled_slot(step: int) -> int:
+	if weapons == null or weapons.arsenal == null:
+		return _slot
+
+	var carried: Array = weapons.arsenal.slots()
+
+	if carried.size() < 2:
+		return _slot
+
+	var at := carried.find(_slot if _slot > 0 else weapons.arsenal.current_slot())
+	return int(carried[posmod(at + step, carried.size())])
 
 
 func describe() -> Dictionary:
