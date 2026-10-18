@@ -6,6 +6,7 @@
 | --- | --- |
 | `examples/headless_run` | the simulation offline: platforms, bridges, falls, every layout's reach, islands and throat, bot drives through what each layout is about, the showdown complex, spectating policy, progress, sounds, what the client draws, the delivery path scan |
 | `examples/headless_net` | the real path minus the socket: two worlds, managers, bridges and links with the RPC replaced by a callable; two builds with different message types; prediction, platforms, weapons, a landed shot told as HIT to the shooter alone (a second ready peer hears none; armed with the send removed or broadcast) and the owner's magazine adopted by `ScClient.correct_drawn`, spectating, identity, and **no engine error over the whole run** (an `EngineErrors` logger; a toy pulled out of the tree after a mid-tick field rebuild printed 40 on a green run; armed) |
+| `examples/headless_workshop` | subscribed map packs against a fixture `DotContentIndex`: solo lists `Name [Pack]` and the world lays the document's cells out, online lists none, an unaccepted kind and a bad document are left out, own ids win. |
 | `examples/dedicated` | as a real server: the console, live moderation tools, the spectate cvar, identity admission, stand-ins filing nothing, orphaned tracks, no engine errors, and the self-preload source check |
 
 ## Rules the suites follow

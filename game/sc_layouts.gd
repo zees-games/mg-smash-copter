@@ -302,8 +302,30 @@ static func _make(
 	return layout
 
 
-## Every layout this game can play, in the order they were written.
+## Subscribed pack maps (solo only; see sc_workshop.gd): id -> Layout. Empty on a server.
+static var workshop: Dictionary = {}
+
+
+## The game's own layout ids, which a pack map can never take.
+static func own_ids() -> PackedStringArray:
+	var out := PackedStringArray()
+	var saved := workshop
+	workshop = {}
+	for layout in all(ScConfig.new()):
+		out.append(String(layout.id))
+	workshop = saved
+	return out
+
+
+## Every layout this game can play, in the order they were written, then any pack map.
 static func all(config: ScConfig) -> Array[Layout]:
+	var out := _own(config)
+	for id: Variant in workshop:
+		out.append(workshop[id] as Layout)
+	return out
+
+
+static func _own(config: ScConfig) -> Array[Layout]:
 	var out: Array[Layout] = []
 
 	var full := _make(
@@ -702,6 +724,9 @@ static func allowed(config: ScConfig) -> Array[Layout]:
 			"have": ", ".join(ids(config)),
 		})
 		return every
+
+	for id: Variant in workshop:
+		out.append(workshop[id] as Layout)
 
 	return out
 

@@ -14,6 +14,7 @@ const ScHud := preload("sc_hud.gd")
 const ScPaths := preload("sc_paths.gd")
 const ScPlayer := preload("sc_player.gd")
 const ScSpecials := preload("sc_specials.gd")
+const ScWorkshop := preload("sc_workshop.gd")
 
 ## One local player, a camera and a HUD over an [ScGame] — offline, or against a server.
 ##
@@ -64,6 +65,8 @@ var gate: DotLoadGate = null
 ## dot-game's client platform: the cover, settings and menu, console, HUD theme, Tab, M, the
 ## pointer and the input block. See [DotGameClient].
 var platform: DotGameClient = null
+## Solo only: the subscribed map packs this client follows (null connected).
+var workshop: ScWorkshop = null
 var hud: ScHud = null
 var chat: DotGameChatClient = null
 
@@ -254,6 +257,11 @@ func _exit_tree() -> void:
 
 
 func _start_offline() -> void:
+	# Subscribed map packs are solo's alone: the layouts they add are listed in M ("Name [Pack]")
+	# and played through the world's ordinary path. A server never calls this.
+	workshop = ScWorkshop.new()
+	workshop.follow()
+
 	# Enough stand-ins for a round to exist at all: two sides with somebody on each, or the
 	# elimination rule ends every round on its first tick.
 	for i in range(offline_bots):

@@ -18,6 +18,7 @@
 #   tools/shot.sh --view=blind        # the local player's own eyes, blinded, through the HUD
 #   tools/shot.sh --view=spectate     # the local player, out, watching what the server allows
 #   tools/shot.sh --view=spectate --sc-spectate-camera=0   # ...when it allows anybody
+#   tools/shot.sh --workshop --view=field   # a fixture pack map, chosen as the M menu would
 #   tools/shot.sh --ballot            # the layout vote's ballot over the frame, mid-vote
 #   tools/shot.sh --view=walk         # a CONNECTED client running its own player, measured
 #   tools/shot.sh --view=field --seconds=20 --out=res://screenshots/late.png
@@ -41,7 +42,7 @@ for arg in "$@"; do
         --seconds=*) seconds="${arg#*=}" ;;
         --out=*)     out="${arg#*=}" ;;
         --sc-*)      config+=("$arg") ;;
-        --ballot)    config+=("$arg") ;;
+        --ballot|--workshop) config+=("$arg") ;;
         *)           echo "unknown argument: $arg" >&2; exit 2 ;;
     esac
 done

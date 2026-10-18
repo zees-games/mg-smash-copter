@@ -37,12 +37,12 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 | `props/` | prop bodies built from exported numbers, and the chopper |
 | `assets/kenney/`, `assets/{blaster-kit,melee,arms}/`, `textures/prototype/` | vendored CC0 art, one folder per kit; the weapon pack's art; Kenney's light prototype grid |
 | `scenes/sc_server.tscn`, `game.yml` | what a deployed server instantiates; the descriptor in the pack |
-| `examples/` | `headless_run`, `headless_net`, `dedicated` |
+| `examples/` | `headless_run`, `headless_net`, `headless_workshop`, `dedicated` |
 | `tools/` | `shot.sh` (`--view=…`, `--ballot`, any `--sc-*` is config), `net_shot` (`--view=walk`), `audio_probe.sh`, `bot_difficulty.sh` (stand-ins at each preset against a pinned reference) |
 
 ## Running and testing
 
-- `./game.sh` plays offline; `./game.sh online` runs a local server and browser client; `./game.sh test` parses and runs the three suites; `./game.sh shot` renders. Addon links come from `.gitignore` through dot-bootstrap.
+- `./game.sh` plays offline; `./game.sh online` runs a local server and browser client; `./game.sh test` parses and runs the four suites; `./game.sh shot` renders. Addon links come from `.gitignore` through dot-bootstrap.
 - After touching a camera, the view key or player collision: `tools/camera_check.sh` (cameras round every deck, armed; `--render` for frames). [client](docs/client.md#cameras-and-bodies)
 - **The sky's bed is wind and everybody steps** (dot-audio's stock, `ScAudio.setup`); the level is measured with `addons/dot_audio/tools/loudness.sh` (−17 LUFS band, `loudness_trim_db`), never set by ear. Stock ids have files, so the suite's stand-in checks skip them.
 - **Render after any change to what is drawn**; `tools/shot.sh` is never `--headless` (a black PNG). [testing](docs/testing.md#renders-and-sound-what-no-assertion-reaches)
@@ -55,6 +55,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 - **The client's platform layer is dot-game's `DotGameClient`** (`ScClient.platform`): the loading cover, settings and Escape menu, console, Tab, M, the pointer and the input block (`input_blocked_changed` suspends both samplers). `headless_run` waits for `platform.is_shown()` and presses Tab through `settings.menu`; `tools/shot.sh --view=cover` renders the cover.
 - **Every key is an `ScBindings` row read through its action**, never a keycode (Escape excepted); H is help (dot-menu's stock key; `ScSettings._fill_help` writes the rules), so no row may default to H. `headless_run` checks it and the Escape menu's Help and Leave.
 - **M is the layout list** (dot-menu's map menu): `ScGame.layout_rows()` and `change_layout_now()` (the next layout plus dot-match's `begin_round_now`) serve both solo and the server, where dot-vote's map menu lets the owner's `sv_map_menu_flag` change it now and gives anybody else a vote. No row may default to M; `headless_run` and `dedicated` check it.
+- **Workshop maps are solo-only layouts.** `provides.json` accepts map kind `arena` (no weapons or props: nothing reads those catalogues). A pack `map` entry's `scene` is a JSON document `{id, name, blurb?, columns, rows, row_pitch_scale?, cells: [[column, row, kind, level]]}` (`id` equals the entry id) that `ScWorkshop` reads through `DotMapCatalogue.follow_content` into `ScLayouts.workshop` as layout `workshop:<id>` (weight 0, never drawn at random). `ScClient._start_offline` follows the shared index; the M menu lists `Name [Pack]`; the game's own ids win; a server never calls it, so online (and the vote) lists none. `headless_workshop` checks it; `tools/shot.sh --workshop --view=field` renders one.
 - A dead body falls as dot-player-char's ragdoll: the server picks the fall (`ScGame.decide_death`, on `player.death`), it rides DEATH last and optional, and the client copies it from the figure it draws (`ScClient._fall`). The `sv_ragdoll*` cvars are bound in the module, REPLICATED, and followed by the client. See dot-player-char's [docs/ragdolls.md](../dot-player-char/docs/ragdolls.md).
 **The floor** ([platforms](docs/platforms.md), [design](docs/design.md))
 - A platform is never a rigid body: four floats integrated semi-implicitly by `ScPlatforms`, decided by the server, adopted by clients. Never explicit Euler.

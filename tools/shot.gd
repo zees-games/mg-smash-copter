@@ -50,6 +50,7 @@ func _run() -> void:
 	var out := "res://screenshots/smash.png"
 	var view := "eyes"
 	var ballot := false
+	var workshop := false
 
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--seconds="):
@@ -60,6 +61,13 @@ func _run() -> void:
 			view = arg.substr(7)
 		elif arg == "--ballot":
 			ballot = true
+		elif arg == "--workshop":
+			workshop = true
+
+	# A subscribed pack map, standing in for the Workshop's: a fixture document registered in
+	# the shared index as solo, before the client follows it.
+	if workshop:
+		_register_fixture_pack()
 
 	var client: Node = load("res://game/sc.tscn").instantiate()
 	add_child(client)
@@ -77,6 +85,12 @@ func _run() -> void:
 		return
 
 	var elapsed := 0.0
+
+	if workshop:
+		while client.get("game") == null:
+			await get_tree().process_frame
+		var chosen: DotResult = (client.get("game") as ScGame).change_layout_now(&"workshop:crown")
+		print("workshop map chosen: ", chosen.ok)
 
 	while elapsed < seconds:
 		elapsed += get_process_delta_time()
@@ -135,6 +149,29 @@ func _run() -> void:
 			print(line)
 
 	get_tree().quit(0)
+
+
+func _register_fixture_pack() -> void:
+	DirAccess.make_dir_recursive_absolute("user://ws_shot/")
+	var cells: Array = []
+	for row in range(3):
+		for column in range(7):
+			if column == 3 and row == 1:
+				continue
+			cells.append([column, row, 0, (column + row) % 4])
+	var f := FileAccess.open("user://ws_shot/crown.json", FileAccess.WRITE)
+	f.store_string(JSON.stringify({"id": "crown", "name": "Crown", "columns": 7, "rows": 3,
+		"row_pitch_scale": 0.51, "cells": cells}))
+	f.close()
+	var index := DotContentIndex.shared()
+	index.set_session(DotContentIndex.SESSION_SOLO)
+	var added := index.add_pack({
+		"content_id": "fixture/shot", "version": "1.0.0", "prefix": "user://ws_shot/",
+		"session": DotContentIndex.SESSION_SOLO, "source": &"subscription",
+		"provides": {"schema": 1, "title": "Fixture Pack", "kinds": ["map"], "entries": [
+			{"kind": "map", "id": "crown", "name": "Crown", "scene": "crown.json", "map_kind": "arena"}]},
+	})
+	print("fixture pack: ", added.ok)
 
 
 ## A real ballot from this game's vote: every layout this server plays there is, four voters, three of whom
