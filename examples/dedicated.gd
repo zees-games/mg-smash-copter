@@ -3,6 +3,8 @@ extends Node
 const ScConfig := preload("../game/sc_config.gd")
 const ScGame := preload("../game/sc_game.gd")
 const ScPlayer := preload("../game/sc_player.gd")
+const ScNetBridge := preload("../game/net/sc_net_bridge.gd")
+const ScNetLink := preload("../game/net/sc_net_link.gd")
 const ScLayouts := preload("../game/sc_layouts.gd")
 const ScAvatars := preload("../game/sc_avatars.gd")
 const ScProgress := preload("../game/sc_progress.gd")
@@ -19,12 +21,12 @@ const ScProgress := preload("../game/sc_progress.gd")
 ## the module lifecycle, the console, the cvars, and `sv_tickrate` travelling from a line in
 ## a config file all the way into the netcode's own configuration.
 ##
-## Nothing here opens a socket to a client. A dedicated server that never accepts one is
+## Nothing here opens a socket to a client, except the one section that checks still-loading. A dedicated server that never accepts one is
 ## still a dedicated server as far as its console, its cvars and its modules are concerned,
 ## and those are what this is about.
 
-const SECTIONS := 13
-const CHECKS := 117
+const SECTIONS := 14
+const CHECKS := 125
 
 ## Everything this run writes, and it is deleted on the way in and on the way out.
 ##
@@ -104,6 +106,7 @@ func _run() -> void:
 		await _test_the_stand_ins()
 		await _test_the_live_tools()
 		await _test_who_they_are()
+		await _test_a_covered_seat_is_not_harmed()
 		_test_the_layout_vote()
 		_test_finish_round_waits_for_a_live_round()
 		await _test_it_unloads_cleanly()
@@ -961,6 +964,125 @@ func _test_who_they_are() -> void:
 	var _released := server.release_session(session.peer_id)
 	net.send_fn = previous_send
 	_finished()
+
+## [b]A seat whose client has not lifted its loading cover cannot be harmed, and can once it does[/b]
+## (dot-game's "still loading"), over a real ENet socket. A client joins and says nothing, as one
+## still loading its level; the world's damage path is then asked to crush it, shoot it and drop it
+## through the floor, and must refuse all three. An admin's slay still passes. The client then
+## sends `game.cover` on the wire and the same hit lands. Stand-ins never reach this: a bot is
+## never loading.
+func _test_a_covered_seat_is_not_harmed() -> void:
+	_section("a client behind its loading cover is not harmed, and is once it lifts")
+
+	var module := _module()
+	var bridge := module.get("bridge") as ScNetBridge if module != null else null
+	var side := Node.new()
+	side.name = "CoverClient"
+	add_child(side)
+	get_tree().set_multiplayer(MultiplayerAPI.create_default_interface(), side.get_path())
+	var link := DotClientLink.new()
+	link.name = "Server"
+	link.player_name = "Covered"
+	link.transport_preference = "udp"
+	link.udp_address = "127.0.0.1:%d" % PORT
+	# RPC paths are relative to the multiplayer root, so the link must sit at the path the
+	# server's does: "Dedicated/Server" under the root.
+	var mirror := Node.new()
+	mirror.name = "Dedicated"
+	side.add_child(mirror)
+	mirror.add_child(link)
+	# The server's snapshots and events are RPCs to a node of this name under the link; with
+	# none here each is an engine error. It drops what arrives (it has no bridge).
+	# The link retires whatever the game left under it when it signs on, so it is put back at
+	# each phase change (a real client's game scene does this from its _ready).
+	var attach := func(_a: Variant = null, _b: Variant = null) -> void:
+		if link.get_node_or_null(NodePath(ScNetLink.NODE_NAME)) == null:
+			var _sink := ScNetLink.attached_to(link, null, false)
+	attach.call()
+	link.phase_changed.connect(attach)
+	var spawned := [false]
+	link.spawned.connect(func() -> void: spawned[0] = true)
+	link.connect_to_server("127.0.0.1:%d" % PORT)
+	var joined := await _until(func() -> bool:
+		return spawned[0] or link.phase == DotClientLink.Phase.FAILED, 30.0)
+	joined = joined and spawned[0]
+	var peer := side.multiplayer.get_unique_id() if joined else 0
+	var session := 0
+	if bridge != null and joined:
+		var _seated := await _until(func() -> bool: return bridge.player_for_peer(peer) != 0, 10.0)
+		session = bridge.player_for_peer(peer)
+	var victim: ScPlayer = null
+	if session != 0:
+		victim = await _until_player(session)
+	_check(victim != null, "a client joins over the socket and is seated", "peer %d session %d" % [peer, session])
+
+	if victim == null:
+		for what in [
+			"the server holds it as loading", "a lethal hit three ways does nothing to it",
+			"and the floor's own kill leaves it up", "an admin's slay still passes",
+			"its cover report crosses the wire", "and the same hit now lands",
+		]:
+			_check(false, what)
+		link.disconnect_from_server("done")
+		side.queue_free()
+		_finished()
+		return
+
+	var key := ScNetBridge.player_key(session)
+	_check(bool(module.call("is_peer_loading", peer)) and not game.can_be_harmed(key),
+		"the server holds it as loading from its spawn")
+
+	var before := victim.health.health
+	var tick: int = game._tick
+	for why: StringName in [&"shot", &"crushed", &"fell"]:
+		var hit := DotDamage.make(0, victim.entity_id, victim.health.max_health * 10.0, null)
+		hit.tick = tick
+		hit.context = {"why": why}
+		var _applied: Variant = game.combat.apply_damage(hit)
+	_check(victim.is_alive() and is_equal_approx(victim.health.health, before),
+		"a lethal hit three ways does nothing to it", "%s -> %s" % [before, victim.health.health])
+
+	var lifted_at := victim.global_position
+	game._kill_by_fall(victim, lifted_at)
+	_check(victim.is_alive(), "and the floor's own kill leaves it up")
+
+	var slain: Variant = (module.get("services") as Object).call("_mod_hurt", StringName(str(session)), -1.0)
+	_check(slain is DotResult and (slain as DotResult).ok and not victim.is_alive(),
+		"an admin's slay still passes", str(slain))
+	victim.health.alive = true
+	victim.health.health = before
+
+	DotGameClient.report_cover(link, false)
+	var lifted := await _until(func() -> bool: return not bool(module.call("is_peer_loading", peer)), 10.0)
+	_check(lifted and game.can_be_harmed(key), "its cover report crosses the wire and ends the loading state")
+	var after_lift := victim.health.health
+	var late := DotDamage.make(0, victim.entity_id, 1.0, null)
+	late.tick = game._tick
+	late.context = {"why": &"late"}
+	var _late_applied: Variant = game.combat.apply_damage(late)
+	_check(victim.health.health < after_lift, "and the same kind of hit now lands",
+		"%s -> %s" % [after_lift, victim.health.health])
+
+	link.disconnect_from_server("done")
+	var gone := await _until(func() -> bool: return not game.players.has(key), 10.0)
+	_check(gone, "and when it leaves the world forgets it")
+	side.queue_free()
+	_finished()
+
+
+func _until(condition: Callable, seconds: float) -> bool:
+	var deadline := Time.get_ticks_msec() + int(seconds * 1000.0)
+	while Time.get_ticks_msec() < deadline:
+		if bool(condition.call()):
+			return true
+		await get_tree().physics_frame
+	return bool(condition.call())
+
+
+func _until_player(session: int) -> ScPlayer:
+	await _until(func() -> bool: return game.players.has(ScNetBridge.player_key(session)), 10.0)
+	return game.players.get(ScNetBridge.player_key(session))
+
 
 
 ## The players' vote decides the next layout, end to end through what a player types: a

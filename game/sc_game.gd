@@ -209,6 +209,10 @@ var platforms: ScPlatforms = null
 var cannon: ScCannon = null
 var props: DotPropSpawner = null
 var prop_damage: DotPropDamage = null
+
+## `func(player_id: StringName) -> bool`: whether a player may be hurt now, assigned by the
+## module from dot-game's `can_peer_be_harmed`. Unset offline, and a bot is never loading.
+var harm_gate: Callable = Callable()
 var vehicles: DotVehicleSpawner = null
 var ride: DotVehicleRide = null
 var combat: DotCombatManager = null
@@ -637,6 +641,16 @@ func _build_combat() -> void:
 	combat.resolver.hit_groups = DotHitGroup.defaults()
 	combat.resolver.team_of = func(entity_id: int) -> int:
 		return team_of(entities.key_for_id(entity_id))
+
+	# dot-game's "still loading": the one place every hurt passes (a shot, a blast, a crush, the
+	# floor), and a round counts the living from health, so refusing here keeps a covered seat
+	# alive in the count too. An admin's slay or slap is the operator's word and passes.
+	combat.resolver.adjust = func(damage: DotDamage) -> void:
+		if damage.context.get("admin", false):
+			return
+
+		if not can_be_harmed(entities.key_for_id(damage.victim)):
+			damage.refuse("still loading")
 
 	# [b]`add_child` IS the setup.[/b] [DotCombatManager._ready] calls `setup()` itself, so the
 	# explicit call this used to make ran the whole of it a second time — and the tell was in
@@ -1157,6 +1171,12 @@ func players_on(team: int) -> Array[ScPlayer]:
 func _is_alive(key: String) -> bool:
 	var player: ScPlayer = players.get(StringName(key))
 	return player != null and player.is_alive()
+
+
+## Whether [param player_id] may be damaged or eliminated now: false while their client is behind
+## its loading cover. True for anybody the gate does not know (bots, offline).
+func can_be_harmed(player_id: StringName) -> bool:
+	return not harm_gate.is_valid() or bool(harm_gate.call(player_id))
 
 
 ## How many people are still up, across every side.
@@ -2171,7 +2191,7 @@ func _watch_falls() -> void:
 	for id: StringName in players:
 		var player: ScPlayer = players[id]
 
-		if not player.is_alive():
+		if not player.is_alive() or not can_be_harmed(id):
 			continue
 
 		if player.riding:

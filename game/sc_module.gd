@@ -164,6 +164,14 @@ func _game_load() -> DotResult:
 	add_command("sc_specials", _cmd_specials, "List the special rounds, and what is in force")
 	add_command("sc_say", _cmd_say, "Say something to everybody, as the server")
 
+	# dot-game's "still loading": a seat behind its client's cover is neither hurt nor eliminated
+	# (see ScGame.harm_gate). Asked by player id, resolved to a peer through the bridge.
+	world.harm_gate = func(player_id: StringName) -> bool:
+		if bridge == null:
+			return true
+		var peer := int((bridge as ScNetBridge).peer_for_player(ScNetBridge.session_of(player_id)))
+		return peer <= 0 or can_peer_be_harmed(peer)
+
 	_wire_chat()
 	_wire_identity()
 	_wire_armed(world)
