@@ -47,7 +47,7 @@ const SECTIONS := 47
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 364
+const CHECKS := 365
 
 const TICK_RATE := 64
 const TICK := 1.0 / float(TICK_RATE)
@@ -3539,9 +3539,19 @@ func _test_zee_art_root() -> void:
 	client.offline_bots = 0
 	client.config_file = "user://cfg/headless-none.json"
 	add_child(client)
-
+	# The field used to be drawn, and steered, while it was still being built.
+	var platform: DotGameClient = client.get("platform")
+	var covered := platform != null and platform.gate != null and not platform.is_shown() \
+		and platform.is_input_blocked()
+	for i in 240:
+		await get_tree().process_frame
+		if platform != null and platform.is_shown():
+			break
 	for i in 3:
 		await get_tree().process_frame
+	_check(covered and platform.is_shown() and not platform.is_input_blocked() and platform.console != null,
+		"the loading cover is up at the start and lifts once the player is in, with the console built",
+		str(platform.describe()) if platform != null else "no platform")
 
 	_check(
 		ZeeModelCache.resolve(ART) == ScPaths.rebase(ART),
@@ -3596,14 +3606,14 @@ func _test_zee_art_root() -> void:
 	var tab := InputEventKey.new()
 	tab.physical_keycode = KEY_TAB
 	tab.pressed = true
-	client.call("_unhandled_input", tab)
+	settings.menu.handle_event(tab)
 	var board: DotMenuScoreboard = client.get("board")
 	_check(board != null and board.is_open() and board.rows().size() >= 1
 		and board.rows().any(func(r: Dictionary) -> bool: return bool(r.get("you", false))),
 		"Tab holds the scoreboard up, with this player on it and picked out",
 		str(board.rows()) if board != null else "no board")
 	tab.pressed = false
-	client.call("_unhandled_input", tab)
+	settings.menu.handle_event(tab)
 	_check(board != null and not board.is_open() and not settings.is_open(), "and letting go puts it away")
 
 	ZeeModelCache.set_asset_root(ELSEWHERE)
@@ -4357,6 +4367,11 @@ func _test_the_drawn_gun() -> void:
 	client.offline_bots = 1
 	client.config_file = "user://cfg/headless-none.json"
 	add_child(client)
+	var platform: DotGameClient = client.get("platform")
+	for i in 240:
+		await get_tree().process_frame
+		if platform != null and platform.is_shown():
+			break
 	for i in 8:
 		await get_tree().process_frame
 	var world: ScGame = client.get("game")

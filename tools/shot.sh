@@ -2,6 +2,7 @@
 # Render the game and look at it. The check no assertion in this repository makes.
 #
 #   tools/shot.sh                     # from a player's eyes, 4 seconds in
+#   tools/shot.sh --view=cover        # the loading cover, before it lifts
 #   tools/shot.sh --view=field        # the whole field, from above and to one side
 #   tools/shot.sh --view=lean         # a platform that has been leant on
 #   tools/shot.sh --view=copter       # the chopper, close

@@ -23,6 +23,7 @@ const ScVote := preload("../game/sc_vote.gd")
 ##
 ## [codeblock]
 ## tools/shot.sh                  # the field from a player's eyes
+## tools/shot.sh --view=cover     # the loading cover, before it lifts
 ## tools/shot.sh --view=field     # the whole map from above and to one side
 ## tools/shot.sh --view=lean      # a platform that has been leant on, from its own level
 ## tools/shot.sh --view=copter    # the chopper, close
@@ -62,6 +63,18 @@ func _run() -> void:
 
 	var client: Node = load("res://game/sc.tscn").instantiate()
 	add_child(client)
+
+	# --view=cover: the loading cover dot-game's DotGameClient puts up first, before it lifts.
+	if view == "cover":
+		for _i in 2:
+			await RenderingServer.frame_post_draw
+		var platform: DotGameClient = client.get("platform")
+		print("cover %s" % ("lifted" if platform.is_shown() else "up"))
+		var cover_path := ProjectSettings.globalize_path(out)
+		DirAccess.make_dir_recursive_absolute(cover_path.get_base_dir())
+		print("saved %s: %s" % [out, error_string(get_viewport().get_texture().get_image().save_png(cover_path))])
+		get_tree().quit(0)
+		return
 
 	var elapsed := 0.0
 
