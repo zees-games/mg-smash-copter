@@ -132,6 +132,11 @@ signal round_began(number: int, layout_id: StringName)
 ## dedicated run printed it twenty-three times before anybody noticed what it was.
 signal world_clearing()
 
+## Asked every tick of a world that ticks itself: true while a cover is up (the client's load
+## gate). Only the bodies are stepped then, so they settle onto the decks, and the phase, the
+## platforms, the cannon, the falls and the round clock wait. Unset, never held.
+var hold_clock: Callable = Callable()
+
 ## The field has just been rebuilt, by a round starting or by the world opening.
 ##
 ## [b]Separate from [signal round_began] because it fires once more than that does.[/b] The
@@ -1718,7 +1723,21 @@ func _physics_process(delta: float) -> void:
 ## One simulated tick, counted by this world. What an offline client and the suite use.
 func simulate(delta: float) -> void:
 	_tick += 1
+
+	if hold_clock.is_valid() and hold_clock.call():
+		_step_bodies_only(delta)
+		return
+
 	_step(delta)
+
+
+## A tick under a cover: the bodies move, nothing else happens. A dead body is left alone.
+func _step_bodies_only(delta: float) -> void:
+	for id: StringName in players:
+		var body := players[id] as ScPlayer
+
+		if body.is_alive():
+			body.simulate(_tick, delta)
 
 
 ## One simulated tick, numbered by the netcode. What the bridge uses.

@@ -343,8 +343,14 @@ var command_stamp: Callable = Callable()
 
 
 func simulate(tick: int, delta: float) -> void:
+	# The world calls this by name, so a body the load gate froze is skipped here.
+	if is_inside_tree() and not can_process():
+		return
+
 	if sampler != null:
-		var sampled := sampler.sample(delta)
+		# Settling under the cover runs the body with its input off (falls, lands, no keys).
+		var gate := DotLoadGate.of(self) if is_inside_tree() else null
+		var sampled := sampler.sample(delta) if gate == null or gate.is_open() else DotFpsCommand.new()
 
 		if command_stamp.is_valid():
 			command_stamp.call(sampled)
