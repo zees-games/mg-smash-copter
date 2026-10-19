@@ -39,7 +39,7 @@ const ScSettings := preload("../game/sc_settings.gd")
 ## `set_physics_process(false)` goes on first and every section advances the world itself.
 
 ## Sections entered, against sections that ran to their last line.
-const SECTIONS := 47
+const SECTIONS := 48
 
 ## And the total this counter cannot be.
 ##
@@ -47,7 +47,7 @@ const SECTIONS := 47
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 365
+const CHECKS := 366
 
 const TICK_RATE := 64
 const TICK := 1.0 / float(TICK_RATE)
@@ -101,6 +101,7 @@ func _run() -> void:
 	await _test_the_chopper()
 	await _test_riding_the_chopper()
 	await _test_the_pieces()
+	await _test_collision_audit()
 	await _test_the_map_catalogue()
 	await _test_reach()
 	await _test_the_throat()
@@ -1447,6 +1448,41 @@ func _test_riding_the_chopper() -> void:
 		"and getting off leaves them where they stepped",
 		"%.2f m" % (rider.controller.state.position.x - left_at))
 
+	await _dispose(game)
+	_finished()
+
+
+## dot-core's audit over every layout's field: drawn geometry nothing collides with is walked
+## through. Strict, so a new mesh must have a shape or say (`dot_no_collision`) why not.
+func _test_collision_audit() -> void:
+	_section("nothing drawn in a layout is walked through")
+
+	var game := await _world(func(c: ScConfig) -> void:
+		c.cannon_enabled = false
+		c.specials_enabled = false
+	)
+	var unshaped := PackedStringArray()
+
+	for layout in ScLayouts.all(game.config):
+		game.platforms.build(layout, game.physics)
+		await _physics_frame()
+		var res := DotCollisionAudit.audit(game, true)
+
+		if res.ok:
+			var report: DotCollisionAudit = res.value
+			print("  ..    %s collision audit: %d of %d" % [String(layout.id), report.count(), report.examined])
+
+			if report.count() > 0:
+				unshaped.append("%s (%d)" % [layout.id, report.count()])
+
+				for line in report.describe_lines().slice(1, 12):
+					print("    %s" % line)
+		else:
+			unshaped.append("%s (audit failed: %s)" % [layout.id, res.error.message])
+
+	_check(unshaped.is_empty(), "every layout's drawn geometry is solid or opted out", ", ".join(unshaped))
+	# Gone before the next section: its decks sit in the shared physics space, and a later
+	# section's runners would stand on them.
 	await _dispose(game)
 	_finished()
 
