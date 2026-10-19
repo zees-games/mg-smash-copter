@@ -353,6 +353,11 @@ func open_link(parent: Node) -> void:
 		return
 
 	link = ScNetLink.attached_to(parent, self, net != null and net.is_server)
+	# Not parent.add_child: the link sits under the server (RPCs route by path) but must die
+	# with this bridge. A bare add_child left a second link after a module reload and Godot
+	# renamed the live one `@Node@n`, so RPCs to clients were lost. DotGameLink frees it with
+	# the bridge without remove_child, which errors on a busy parent.
+	DotGameLink.attach(link, parent, self, ScNetLink.NODE_NAME)
 
 
 ## How every dot-net message reaches a peer.

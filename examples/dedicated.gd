@@ -25,8 +25,8 @@ const ScProgress := preload("../game/sc_progress.gd")
 ## still a dedicated server as far as its console, its cvars and its modules are concerned,
 ## and those are what this is about.
 
-const SECTIONS := 14
-const CHECKS := 125
+const SECTIONS := 15
+const CHECKS := 131
 
 ## Everything this run writes, and it is deleted on the way in and on the way out.
 ##
@@ -100,6 +100,7 @@ func _run() -> void:
 
 	if server != null and server.state == DotServer.State.RUNNING:
 		await _test_the_module_loads()
+		await _test_a_module_reload()
 		_test_the_commands()
 		_test_the_tunables()
 		await _test_a_round_runs()
@@ -366,6 +367,59 @@ func _test_the_module_loads() -> void:
 		"and it starts empty, so nothing a previous run did is in it",
 		"%d records" % int(moderation.call("count")) if moderation != null else "no moderation")
 
+	_finished()
+
+
+## A module reload must leave ONE link under the server, still named for the client's route.
+## Two used to be left, the live one renamed `@Node@n`, and every RPC to a real client was lost
+## without an error. The proof is a real client over the socket: signing on is server events.
+func _test_a_module_reload() -> void:
+	_section("a module reload leaves one live link")
+
+	for _i in range(2):
+		_check(server.modules.unload_module("smash").ok, "the module unloads")
+		var back: DotResult = await server.modules.load_module("res://game/sc_module.gd")
+		_check(back.ok, "and loads again", back.error.message if not back.ok else "")
+	for _i in range(5):
+		await get_tree().process_frame
+
+	var links := 0
+	for child in server.get_children():
+		if child.get_script() == ScNetLink:
+			links += 1
+	_check(links == 1 and server.has_node(NodePath(String(ScNetLink.NODE_NAME))),
+		"exactly one link, under the name the client routes to", "%d" % links)
+
+	var side := Node.new()
+	side.name = "ReloadClient"
+	add_child(side)
+	get_tree().set_multiplayer(MultiplayerAPI.create_default_interface(), side.get_path())
+	var link := DotClientLink.new()
+	link.name = "Server"
+	link.player_name = "Reloaded"
+	link.transport_preference = "udp"
+	link.udp_address = "127.0.0.1:%d" % PORT
+	var mirror := Node.new()
+	mirror.name = "Dedicated"
+	side.add_child(mirror)
+	mirror.add_child(link)
+	var attach := func(_a: Variant = null, _b: Variant = null) -> void:
+		if link.get_node_or_null(NodePath(ScNetLink.NODE_NAME)) == null:
+			var sink := ScNetLink.attached_to(link, null, false)
+			sink.name = ScNetLink.NODE_NAME
+			link.add_child(sink)
+	attach.call()
+	link.phase_changed.connect(attach)
+	var spawned := [false]
+	link.spawned.connect(func() -> void: spawned[0] = true)
+	link.connect_to_server("127.0.0.1:%d" % PORT)
+	var joined := await _until(func() -> bool:
+		return spawned[0] or link.phase == DotClientLink.Phase.FAILED, 30.0)
+	_check(joined and spawned[0], "a real client still hears the server's events after two reloads")
+	link.disconnect_from_server("done")
+	for _i in range(10):
+		await get_tree().process_frame
+	side.queue_free()
 	_finished()
 
 
@@ -997,7 +1051,9 @@ func _test_a_covered_seat_is_not_harmed() -> void:
 	# each phase change (a real client's game scene does this from its _ready).
 	var attach := func(_a: Variant = null, _b: Variant = null) -> void:
 		if link.get_node_or_null(NodePath(ScNetLink.NODE_NAME)) == null:
-			var _sink := ScNetLink.attached_to(link, null, false)
+			var sink := ScNetLink.attached_to(link, null, false)
+			sink.name = ScNetLink.NODE_NAME
+			link.add_child(sink)
 	attach.call()
 	link.phase_changed.connect(attach)
 	var spawned := [false]
