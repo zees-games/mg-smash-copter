@@ -10,3 +10,4 @@ contact_monitor = true
 max_contacts_reported = 6
 angular_damp = 2.4
 linear_damp = 0.12
+model_path = "res://assets/models/copter_body.glb"

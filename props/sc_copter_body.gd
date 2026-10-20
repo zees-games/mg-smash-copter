@@ -1,15 +1,13 @@
 extends RigidBody3D
 
 const ScTextures := preload("../game/sc_textures.gd")
+const ScPaths := preload("../game/sc_paths.gd")
 
-## The chopper, built out of boxes and cylinders in code.
+## The chopper: a modelled fuselage (Kenney's pod, modified) with code-spun rotors.
 ##
-## [b]There is no helicopter in the art this game vendors, and that is the honest reason
-## this is geometry rather than a model.[/b] Kenney's kits have a garbage truck, a
-## tractor and eighteen blasters and no aircraft of any kind; the alternatives were to
-## ship a machine that looks like a van or to draw one. Every other map surface in this
-## game is already a prototype-textured primitive, so a chopper made of the same three
-## shapes is the one that does not look borrowed.
+## [b]Kenney's kits have no aircraft, so the base is a space-kit pod[/b] that
+## `art-src/build_copter.py` stretches to the hull, then fits with a canopy, boom, fin and
+## skids. The collider is still one box and the tail is deliberately outside it.
 ##
 ## [b]The rotor is the only thing that moves and it is the only thing that matters.[/b] A
 ## helicopter with a still rotor reads as a wreck; one with a turning rotor reads as a
@@ -21,6 +19,9 @@ const ScTextures := preload("../game/sc_textures.gd")
 
 ## Metres. The hull a player and the world collide with.
 const HULL := Vector3(2.2, 1.8, 5.0)
+
+## The modelled fuselage, named in the scene because a pack rewrites paths there and not here.
+@export var model_path: String = ""
 
 ## The rotor disc's radius, which is most of what anybody sees.
 const ROTOR_RADIUS := 4.1
@@ -39,8 +40,6 @@ var _rotor_speed: float = ROTOR_IDLE
 func _ready() -> void:
 	_build_collision()
 	_build_hull()
-	_build_tail()
-	_build_skids()
 	_build_rotors()
 	_build_seats()
 
@@ -58,31 +57,15 @@ func _build_collision() -> void:
 	add_child(collider)
 
 
+## The fuselage, canopy, tail boom, fin, mast and skids are one modelled mesh, a modified
+## Kenney Space Kit pod built by `art-src/build_copter.py` (CC0, credited in the README). It
+## sits at the body's origin and fills the same box as the collider, so nothing the physics
+## or the seats expect has moved. The rotors stay code nodes below because they are what spins.
 func _build_hull() -> void:
-	_box("Hull", Vector3(0.0, 0.0, 0.0), HULL, ScTextures.Role.SAFE)
-	# A cockpit block, narrower and set forward, so the machine has a nose. -Z is forward.
-	_box("Nose", Vector3(0.0, 0.1, -2.9), Vector3(1.5, 1.2, 1.4), ScTextures.Role.CANNON)
-
-
-func _build_tail() -> void:
-	_box("Boom", Vector3(0.0, 0.35, 3.6), Vector3(0.5, 0.5, 3.0), ScTextures.Role.SAFE)
-	_box("Fin", Vector3(0.0, 1.05, 4.9), Vector3(0.18, 1.2, 0.9), ScTextures.Role.CANNON)
-
-
-func _build_skids() -> void:
-	for side in [-1.0, 1.0]:
-		_box(
-			"Skid%s" % ("L" if side < 0.0 else "R"),
-			Vector3(side * 0.95, -1.15, 0.0),
-			Vector3(0.18, 0.18, 4.0),
-			ScTextures.Role.PILLAR
-		)
-		_box(
-			"Strut%s" % ("L" if side < 0.0 else "R"),
-			Vector3(side * 0.7, -0.6, 0.0),
-			Vector3(0.16, 0.9, 0.16),
-			ScTextures.Role.PILLAR
-		)
+	var model: PackedScene = load(ScPaths.rebase(model_path))
+	var mesh := model.instantiate()
+	mesh.name = "Model"
+	add_child(mesh)
 
 
 func _build_rotors() -> void:
@@ -90,18 +73,6 @@ func _build_rotors() -> void:
 	_rotor.name = "Rotor"
 	_rotor.position = Vector3(0.0, 1.25, 0.0)
 	add_child(_rotor)
-
-	var mast := MeshInstance3D.new()
-	mast.name = "Mast"
-	var column := CylinderMesh.new()
-	column.top_radius = 0.16
-	column.bottom_radius = 0.16
-	column.height = 0.5
-	column.radial_segments = 8
-	mast.mesh = column
-	mast.position = Vector3(0.0, -0.25, 0.0)
-	mast.material_override = ScTextures.surface(ScTextures.Role.PILLAR)
-	_rotor.add_child(mast)
 
 	# Four blades rather than two, because at speed a two-blade disc strobes badly against
 	# a frame rate and reads as a rotor that has stopped — which is the one impression this
@@ -154,17 +125,6 @@ func _build_seats() -> void:
 	bay.name = "DropBay"
 	bay.position = Vector3(0.0, -2.2, 0.0)
 	add_child(bay)
-
-
-func _box(node_name: String, at: Vector3, size: Vector3, role: ScTextures.Role) -> void:
-	var mesh := MeshInstance3D.new()
-	mesh.name = node_name
-	var box := BoxMesh.new()
-	box.size = size
-	mesh.mesh = box
-	mesh.position = at
-	mesh.material_override = ScTextures.surface(role)
-	add_child(mesh)
 
 
 ## Turns the rotors. Presentation only, on render frames, and it writes nothing.
