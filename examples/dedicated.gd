@@ -6,6 +6,7 @@ const ScPlayer := preload("../game/sc_player.gd")
 const ScNetBridge := preload("../game/net/sc_net_bridge.gd")
 const ScNetLink := preload("../game/net/sc_net_link.gd")
 const ScLayouts := preload("../game/sc_layouts.gd")
+const ScMapSession := preload("../game/sc_map_session.gd")
 const ScAvatars := preload("../game/sc_avatars.gd")
 const ScProgress := preload("../game/sc_progress.gd")
 
@@ -25,8 +26,8 @@ const ScProgress := preload("../game/sc_progress.gd")
 ## still a dedicated server as far as its console, its cvars and its modules are concerned,
 ## and those are what this is about.
 
-const SECTIONS := 15
-const CHECKS := 131
+const SECTIONS := 16
+const CHECKS := 149
 
 ## Everything this run writes, and it is deleted on the way in and on the way out.
 ##
@@ -109,6 +110,7 @@ func _run() -> void:
 		await _test_who_they_are()
 		await _test_a_covered_seat_is_not_harmed()
 		_test_the_layout_vote()
+		_test_map_rotation_file()
 		_test_finish_round_waits_for_a_live_round()
 		await _test_it_unloads_cleanly()
 		_test_no_message_preloads_itself()
@@ -1269,6 +1271,99 @@ func _test_the_layout_vote() -> void:
 	# does, so exactly one ballot opens, not one from each.
 	_check(ballots.size() == 1, "and exactly one ballot, the director's alone", str(ballots.size()))
 	_finished()
+
+## maps.yml on the live module: a layout outside the active rotation stays installed and is never
+## drawn, balloted or nominated; a rotation switch takes effect; a renamed command answers; no
+## file means every layout.
+func _test_map_rotation_file() -> void:
+	_section("maps.yml")
+	var module := _module()
+	var maps: ScMapSession = module.get("maps") if module != null else null
+	var vote: Node = module.get("vote") if module != null else null
+
+	var wired := maps != null and vote != null and vote.get("director") != null
+	_check(wired, "the module has maps and a vote")
+	if not wired:
+		_finished()
+		return
+
+	var catalogue := maps.catalogue
+	var director: DotVoteDirector = vote.get("director")
+	var built := DotMapRotationFile.from_trees([{"defaults": {
+		"rotation": "one",
+		"rotations": {
+			"one": {"mode": "random", "cooldown": 0, "maps": ["checker"]},
+			"two": {"maps": ["full"]},
+		},
+		"commands": {"names": {"rtv": "rockthevote"}},
+	}}], "mg-smash-copter")
+	_check(built.ok, "a maps.yml with two rotations and a renamed rtv parses",
+		"" if built.ok else built.error.message)
+	if not built.ok:
+		_finished()
+		return
+
+	maps.rotation_file = built.value
+	maps.apply_rotation()
+	var checker := catalogue.get_map(&"checker")
+	var full := catalogue.get_map(&"full")
+	_check(checker.in_rotation and not full.in_rotation, "the active rotation puts full out and checker in")
+	_check(ScLayouts.by_id(game.config, &"full") != null and catalogue.get_map(&"full") != null,
+		"and full stays installed")
+	_check(not catalogue.available().has(full) and catalogue.available().has(checker), "available() leaves it out")
+	var listed := false
+	for row: Dictionary in game.layout_rows():
+		listed = listed or (String(row["id"]) == "full" and String(row["detail"]).contains("not in rotation"))
+	_check(listed, "and the map list marks it")
+
+	var drew_full := false
+	for i in 100:
+		if ScLayouts.pick(game.config, game.random.stream(&"layout"), game.layout_in_rotation_fn).id == &"full":
+			drew_full = true
+	_check(not drew_full, "100 draws never choose a layout outside the rotation")
+
+	vote.call("refresh_layouts")
+	var ids: Array = []
+	for choice: DotVoteChoice in (vote.get("source") as DotVoteListSource).entries:
+		ids.append(String(choice.id))
+	_check(not ids.has("full") and ids.has("checker"), "a layout outside it is not on the ballot", str(ids))
+	var nominated := director.nominate(&"console", &"full")
+	_check(not nominated.ok, "nominate refuses it")
+	_check(not director.nominated_ids().has(&"full"), "and nothing was recorded")
+
+	var switched := maps.rotation_file.switch(maps.rotation, "two")
+	_check(switched.ok and full.in_rotation and not checker.in_rotation, "switching to the other rotation takes effect")
+	var drew_checker := false
+	for i in 50:
+		if ScLayouts.pick(game.config, game.random.stream(&"layout"), game.layout_in_rotation_fn).id == &"checker":
+			drew_checker = true
+	_check(not drew_checker, "and the draw follows it")
+	vote.call("advance", 1.1)
+	ids.clear()
+	for choice: DotVoteChoice in (vote.get("source") as DotVoteListSource).entries:
+		ids.append(String(choice.id))
+	_check(not ids.has("checker") and ids.has("full"), "and the ballot follows it, unprompted", str(ids))
+	_check(not maps.rotation_file.switch(maps.rotation, "nope").ok, "an unknown rotation is refused")
+
+	var rtv := DotVoteCommands.new()
+	rtv.director = director
+	rtv.spec_fn = module._rotation_commands
+	var bound := rtv.bind(server.console)
+	_check(bound.ok and rtv.command_name("rtv") == "rockthevote" and server.console.find_command("rockthevote") != null,
+		"a renamed rtv is registered from maps.yml's commands")
+	var replies := _run_command("rockthevote")
+	_check(not replies.is_empty(), "and answers", " ".join(replies))
+
+	maps.rotation_file = null
+	maps.apply_rotation()
+	var all_in := true
+	for def in catalogue.maps:
+		all_in = all_in and def.in_rotation
+	_check(all_in, "with no file every layout is in rotation again")
+	_check(module._rotation_commands().is_empty(), "and no command is renamed")
+	vote.call("refresh_layouts")
+	_finished()
+
 
 ## [b]`time_up: finish_round` waits for a round being played, never for warmup.[/b] The game
 ## hands dot-vote its match's answer (`round_in_progress_fn`); without it a limit that ran out

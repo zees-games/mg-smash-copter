@@ -684,8 +684,21 @@ static func _island_of(root: PackedInt32Array, i: int) -> int:
 ##
 ## [b]Weighted rather than uniform, because the full field is the one a player should see
 ## most.[/b] A round that is a variant every time has no baseline to be a variant of.
-static func pick(config: ScConfig, stream: DotRandomStream) -> Layout:
+##
+## [param keep] is `(id: StringName) -> bool`, the server's maps.yml: a layout it leaves out is
+## never drawn. Unset, or a filter that would leave nothing, draws from every allowed layout.
+static func pick(config: ScConfig, stream: DotRandomStream, keep: Callable = Callable()) -> Layout:
 	var layouts := allowed(config)
+
+	if keep.is_valid():
+		var kept: Array[Layout] = []
+
+		for layout in layouts:
+			if bool(keep.call(layout.id)):
+				kept.append(layout)
+
+		if not kept.is_empty():
+			layouts = kept
 
 	if not config.vary_layout or layouts.is_empty():
 		return layouts[0] if not layouts.is_empty() else _make(

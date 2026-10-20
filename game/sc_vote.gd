@@ -44,6 +44,10 @@ const COMMAND_NAMES := {"vote": "vote"}
 ## offer. The host's, because which layouts a server plays is the world's to say.
 var layouts_fn: Callable = Callable()
 
+## `() -> Dictionary`: maps.yml's `commands:` block, so an operator renames vote, rtv and
+## nominate without this game naming any of them. The host points it at the rotation file.
+var commands_spec_fn: Callable = Callable()
+
 ## [code]func(id: StringName) -> DotResult[/code]: play this layout next.
 var apply_fn: Callable = Callable()
 
@@ -78,6 +82,9 @@ var _on_layout_sec: float = 0.0
 
 ## Whether this layout has had its ballot (or been refused one), so it opens once.
 var _opened_this_layout: bool = false
+
+var _watch_sec: float = 0.0
+var _layouts_hash: int = 0
 
 
 ## Builds the director. Fails when the rules do not validate, never because there are too few
@@ -211,6 +218,8 @@ func refresh_layouts() -> void:
 	if not layouts_fn.is_valid():
 		return
 
+	_layouts_hash = (layouts_fn.call() as Array).hash()
+
 	for pair: Variant in layouts_fn.call():
 		var row: Array = pair
 		var _added := source.add(DotVoteChoice.of(StringName(str(row[0])), str(row[1])))
@@ -250,6 +259,7 @@ func advance(delta: float) -> void:
 		return
 
 	director.advance(delta)
+	_watch_layouts(delta)
 
 	if feed != null:
 		feed.poll()
@@ -278,6 +288,27 @@ func advance(delta: float) -> void:
 		DotLog.debug(CHANNEL, "no layout vote this round", {"why": opened.error.message})
 
 
+## A `sv_map_rotation` switch changes which layouts rotate without telling the ballot (dot-map
+## applies it straight to the catalogue), so the list is read again once a second and only
+## replaced when it differs; a nomination in between would otherwise name a stale list.
+func _watch_layouts(delta: float) -> void:
+	_watch_sec += delta
+
+	if _watch_sec < 1.0:
+		return
+
+	_watch_sec = 0.0
+
+	if not layouts_fn.is_valid() or source == null:
+		return
+
+	var wanted: Array = layouts_fn.call()
+
+	if wanted.size() != source.entries.size() or wanted.hash() != _layouts_hash:
+		_layouts_hash = wanted.hash()
+		refresh_layouts()
+
+
 func forget_voter(voter: StringName) -> void:
 	if director != null:
 		director.forget_voter(voter)
@@ -296,7 +327,8 @@ func install_commands(host: Object) -> DotResult:
 
 	commands = DotVoteCommands.new()
 	commands.director = director
-	commands.names = COMMAND_NAMES
+	commands.names = COMMAND_NAMES.duplicate()
+	commands.spec_fn = commands_spec_fn
 	commands.voter_fn = func(ctx: Object) -> StringName:
 		var session: Variant = ctx.get("session")
 

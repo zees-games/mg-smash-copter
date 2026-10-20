@@ -564,12 +564,37 @@ func _build_maps(world: ScGame) -> void:
 	map_commands.change_fn = world.change_layout_now
 	map_commands.player_count_fn = func() -> int:
 		return world.players.size()
+	map_commands.rotation_file_fn = func() -> DotMapRotationFile:
+		return maps.rotation_file if maps != null else null
+	map_commands.spec_fn = _rotation_commands
 	DotLog.result(CHANNEL, "the map commands", map_commands.bind(self))
 
 	world.world_rebuilt.connect(func() -> void:
 		if maps != null and world.layout != null:
 			maps.note_current(maps.catalogue.get_map(world.layout.id))
 	)
+
+	# maps.yml: which layouts the draw, the ballot and nominations may choose. Read now, and
+	# again when the cvar is set; a `sv_map_rotation <name>` switch re-applies on its own and
+	# the ballot is refreshed with every layout built (ScVote.note_layout).
+	world.layout_in_rotation_fn = func(id: StringName) -> bool:
+		return maps == null or maps.in_rotation(id)
+	add_cvar(
+		"sv_map_rotation_file", maps.rotation_file_name,
+		"maps.yml: the layouts that rotate, in named rotations. Unlisted layouts stay installed.",
+	).changed.connect(
+		func(_old: String, new_value: String) -> void:
+			maps.rotation_file_name = new_value.strip_edges()
+			var _read := maps.load_rotation()
+			if vote != null:
+				vote.refresh_layouts()
+	)
+	var _loaded := maps.load_rotation()
+
+
+## maps.yml's `commands:` block (prefix and names), or empty with no file.
+func _rotation_commands() -> Dictionary:
+	return maps.commands_spec() if maps != null else {}
 
 
 func _build_vote(world: ScGame) -> void:
@@ -651,6 +676,7 @@ func _build_vote(world: ScGame) -> void:
 		vote = null
 		return
 
+	vote.commands_spec_fn = _rotation_commands
 	var commanded := vote.install_commands(self)
 	DotLog.result(CHANNEL, "the layout vote's commands", commanded)
 

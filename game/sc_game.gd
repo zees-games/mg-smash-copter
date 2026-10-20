@@ -278,6 +278,11 @@ var phase: int = Phase.IDLE
 ## used once. Empty lets the weighted draw choose.
 var next_layout_id: StringName = &""
 
+## `(id: StringName) -> bool`: whether maps.yml's active rotation plays this layout. Set by the
+## module; unset, every layout rotates. The weighted draw and the map menu's marks read it, and
+## an admin's change (`change_layout_now`) does not: a layout outside the rotation stays installed.
+var layout_in_rotation_fn: Callable = Callable()
+
 ## Which arrangement of platforms this round is being played on.
 var layout: ScLayouts.Layout = null
 
@@ -1286,7 +1291,9 @@ func _on_round_ended(number: int, winner: int, _outcome: int) -> void:
 func layout_rows() -> Array:
 	var out: Array = []
 	for l in ScLayouts.allowed(config):
-		out.append({"id": String(l.id), "name": l.display_name, "detail": l.blurb,
+		var listed := not layout_in_rotation_fn.is_valid() or bool(layout_in_rotation_fn.call(l.id))
+		out.append({"id": String(l.id), "name": l.display_name,
+			"detail": l.blurb if listed else ("%s (not in rotation)" % l.blurb).strip_edges(),
 			"current": layout != null and l.id == layout.id})
 	return out
 
@@ -1328,7 +1335,7 @@ func _lay_out_round() -> void:
 				voted = allowed
 
 	next_layout_id = &""
-	layout = voted if voted != null else ScLayouts.pick(config, stream)
+	layout = voted if voted != null else ScLayouts.pick(config, stream, layout_in_rotation_fn)
 
 	platforms.gravity = config.gravity * maxf(active.gravity_scale, 0.05)
 	platforms.build(layout, physics)
