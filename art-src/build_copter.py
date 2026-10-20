@@ -76,9 +76,13 @@ part("Fin", "cube", (0, -4.9, 1.05), (0.18, 0.9, 1.2), PAINT)
 part("TailHub", "cyl", (0.14, -4.9, 1.05), (0.2, 0.2, 0.26), DARK, rot=(0, 1.5708, 0))
 part("Stripe", "cube", (0, -3.6, 0.35), (0.52, 2.2, 0.12), STRIPE)
 for s, n in ((-1, "L"), (1, "R")):
-    part("Skid" + n, "cube", (s * 0.95, 0, -1.15), (0.18, 4.0, 0.18), DARK)
-    part("Strut" + n, "cube", (s * 0.7, 0, -0.6), (0.16, 0.16, 0.9), DARK)
-    part("SkidToe" + n, "cube", (s * 0.95, 2.0, -1.05), (0.18, 0.4, 0.18), DARK, rot=(0.6, 0, 0))
+    # Closes the open Kenney pod box on each side of the nose (it showed a dark hole from the front).
+    part("PodCap" + n, "cube", (s * 0.78, 2.5, -0.28), (0.7, 0.14, 1.12), PAINT)
+    part("Skid" + n, "cube", (s * 0.95, 0, -1.15), (0.28, 4.0, 0.26), DARK)
+    # Two stout struts a side (fore and aft), not one thin one.
+    for k, sy in (("F", 1.0), ("A", -1.0)):
+        part("Strut" + n + k, "cube", (s * 0.82, sy, -0.62), (0.3, 0.3, 0.9), DARK)
+    part("SkidToe" + n, "cube", (s * 0.95, 2.0, -1.05), (0.28, 0.4, 0.26), DARK, rot=(0.6, 0, 0))
 
 bpy.ops.object.select_all(action="DESELECT")
 for o in bpy.data.objects:
