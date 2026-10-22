@@ -1,0 +1,16 @@
+# frame-hazards
+# Baselines only shrink: scripts/<gate> --update lowers or drops entries and refuses to add.
+game/sc_game.gd::_arm::alloc_array	1
+game/sc_game.gd::_begin_handover::alloc_array	1
+game/sc_game.gd::_bot_aim_of::string_build	1
+game/sc_game.gd::_bot_stops_to_shoot::string_build	1
+game/sc_game.gd::_watch_props::alloc_dict	1
+game/sc_game.gd::_weapon_pool::alloc_array	1
+game/sc_game.gd::players_on::alloc_array	1
+game/sc_game.gd::sides_are_playable::alloc_dict	1
+game/sc_game.gd::teams_alive::alloc_dict	1
+game/sc_hud.gd::_process::string_build	1
+tools/audio_probe.gd::_build::string_build	4
+tools/audio_probe.gd::_sound::string_build	3
+tools/load_probe.gd::_process::string_build	2
+tools/net_shot.gd::_flush::duplicate	2
