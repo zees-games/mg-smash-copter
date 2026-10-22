@@ -8,4 +8,5 @@ Object growth is allowed 40 percent here (the default is 25): the count saws up 
 
 First run, 2026-10-22, 2 simulated minutes on each of the nine layouts (full, checker, islands, spine, airfield, gauntlet, broadside, hollow, terraces): no fell-out, tick p95 3.1 to 3.5 ms, worst tick 14 ms (a round change), 3 to 4 rounds each. Object growth failed the default 25 percent on checker, islands and gauntlet (the sawtooth above), which is why the limit moved.
 
-- Every layout shows one stand-in stuck for 5.0 s once or twice in two minutes, always the same spot (about 8, 0, -160 in the watch's rounded coordinates, 160 m from the middle). That is a stand-in standing still inside the showdown for exactly the stuck rule's span, not a loop; it passes (the limit is 10 s) but is worth a look by whoever owns `_showdown_goal`. Filed on the nightly board.
+- The 5.0 s "stuck" stand-in seen on every layout (2026-10-22) was a firefight, not a game bug: `--trace` shows both teams meeting at the ring's middle, stopping about 9 m apart to shoot (`bot_stop_to_shoot`) and losing health until the round ends. The tool now gives no goal to a stand-in with a live enemy within 30 m. All nine layouts pass a one-minute soak.
+- `--trace` prints each live stand-in once a second in the showdown (team, health, position, speed, zone).

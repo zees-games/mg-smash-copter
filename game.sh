@@ -241,7 +241,7 @@ case "$cmd" in
         [ -n "${1:-}" ] && { soak_args+=(--minutes "$1"); shift; }
         mkdir -p .godot/test-logs
         timeout "$TIMEOUT" "$GODOT" --headless --path . res://tools/soak.tscn -- "${soak_args[@]}" "$@" \
-            2>&1 | tee .godot/test-logs/soak.log | grep -E '^SOAK|^soak|SCRIPT ERROR|Parse Error|ERROR|FAIL'
+            2>&1 | tee .godot/test-logs/soak.log | grep -E '^SOAK|^TRACE|^soak|SCRIPT ERROR|Parse Error|ERROR|FAIL'
         exit "${PIPESTATUS[0]}"
         ;;
     suites)

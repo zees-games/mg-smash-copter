@@ -22,10 +22,12 @@ const DEFAULT_MAP := &"terraces"
 const DEFAULT_MINUTES := 1.0
 const DEFAULT_BOTS := 4
 const TICK_RATE := 64
+const FIGHT_RANGE := 30.0
 
 var _game: ScGame
 var _rounds_over := 0
 var _showdown_ticks := 0
+var _traced_sec := {}
 
 
 func _ready() -> void:
@@ -139,8 +141,35 @@ func _movers() -> Array:
 	for id: StringName in _game.players:
 		var body: ScPlayer = _game.players[id]
 		out.append({"id": id, "position": body.controller.state.position, "kind": &"bot",
-			"has_goal": fighting and body.is_alive() and not body.riding})
+			"has_goal": fighting and body.is_alive() and not body.riding and not _in_firefight(body)})
+		if fighting and body.is_alive():
+			_trace(id, body)
 	return out
+
+
+## A stand-in that stopped to shoot an enemy inside gun range is fighting, not stuck.
+func _in_firefight(body: ScPlayer) -> bool:
+	for id: StringName in _game.players:
+		var other: ScPlayer = _game.players[id]
+		if other.team != body.team and other.is_alive() \
+				and other.controller.state.position.distance_to(body.controller.state.position) < FIGHT_RANGE:
+			return true
+	return false
+
+
+## `--trace` prints each live stand-in once a second in the showdown: position, speed, zone.
+func _trace(id: StringName, body: ScPlayer) -> void:
+	if not OS.get_cmdline_user_args().has("--trace"):
+		return
+	var sec := _showdown_ticks / TICK_RATE
+	if _traced_sec.get(id, -1) == sec:
+		return
+	_traced_sec[id] = sec
+	var p := body.controller.state.position
+	var v := body.controller.state.velocity
+	var zone: Dictionary = _game._showdown_zone(p)
+	print("TRACE t=%d %s team=%d hp=%s pos=(%.1f,%.1f,y%.1f) v=%.1f %s arm=%d s=%.1f" % [sec, id, body.team, str(body.health.health), p.x, p.z, p.y,
+		Vector2(v.x, v.z).length(), zone.where, zone.arm, zone.s])
 
 
 func _fail(why: String) -> void:
