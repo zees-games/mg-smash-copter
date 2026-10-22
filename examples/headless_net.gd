@@ -45,8 +45,8 @@ const ScRequest := preload("../game/net/sc_request.gd")
 ## real client is a separate program with its own export. Make them disagree, and let HELLO
 ## and LAYOUT correct it.
 
-const SECTIONS := 23
-const CHECKS := 224
+const SECTIONS := 24
+const CHECKS := 238
 
 ## Who the client is, on both ends.
 const CLIENT_PEER := 7
@@ -151,6 +151,7 @@ func _run() -> void:
 		await _test_blind_and_beacon()
 		await _test_what_is_heard_arrives()
 		await _test_somebody_out_watches()
+		await _test_free_roam_crosses()
 		await _test_the_toys_reach_the_client()
 		await _test_leaving()
 
@@ -394,6 +395,14 @@ func _test_the_wire() -> void:
 			and (view["death_at"] as Vector3).distance_to(drop) < 0.01,
 		"a spectator's view decodes, with where they went down"
 	)
+
+	var roaming := ScEvents.read_spectate(_reader(ScEvents.write_spectate(
+		SESSION, DotSpectatorView.Mode.ROAMING, 0, 0, drop
+	)))
+	_check(bool(roaming["ok"]) and int(roaming["mode"]) == DotSpectatorView.Mode.ROAMING
+		and int(roaming["target"]) == 0, "a roaming view decodes with no target")
+	var ask := _reader(ScEvents.write_ask_roam())
+	_check(ask.read_uint(8) == 0 and ask.ok(), "and the roam request is a one-byte ask")
 
 	var steps: Array[int] = []
 	for direction in [-1, 0, 1]:
@@ -2090,6 +2099,10 @@ func _test_somebody_out_watches() -> void:
 	var notices: Array[String] = []
 	_client_bridge.notice_received.connect(func(text: String) -> void: notices.append(text))
 
+	# This section is about the own-side policy, which is an operator's choice (the default
+	# lets anybody watch anybody and roam); the next section puts it back.
+	_server_game.spectate_rules.force_camera = 1
+
 	# A team-mate for the client under test, so that being out leaves somebody on their own
 	# side to watch — and so that the round does not simply end, which a side with nobody
 	# alive does.
@@ -2162,6 +2175,70 @@ func _test_somebody_out_watches() -> void:
 	)
 
 	_server_bridge.remove_player(ScNetBridge.session_of(mate_key))
+	_exchange()
+	_server_game.spectate_rules.force_camera = 0
+	_finished()
+
+
+func _test_free_roam_crosses() -> void:
+	_section("free roam is asked for, the server decides, and the mode crosses the wire")
+	var spectate := _server_game.spectate
+	var rules := _server_game.spectate_rules
+	var me := ScNetBridge.player_key(SESSION)
+	# Out by a real fall (a round may have put them back in since the section before), then
+	# the death camera hands over to whoever the open policy allows.
+	var body: ScPlayer = _server_game.players[me]
+	# A team-mate to keep the round going, or the fall ends it and everybody is back in.
+	var mate := _server_bridge.add_bot("Mate", body.team)
+	await _steps(6)
+	if body.is_alive():
+		var went := body.controller.state.position
+		body.place_at(Vector3(went.x, _server_game.config.kill_height - 5.0, went.z), 0.0)
+	await _steps(int(ceilf(2.5 * float(_server_game.tick_rate))))
+	_check(spectate.is_spectating(me) and not spectate.is_roaming(me),
+		"a watcher starts on a player, not in a free camera",
+		"mode %s alive %s phase %s y %.1f" % [spectate.mode_of(me), body.is_alive(), _server_game.phase, body.global_position.y])
+	_check(_client_game.spectate.is_spectating(me), "and the client's mirror is watching too")
+
+	# The ask reaches the bridge's handler and the game's toggle_roam, not the manager direct.
+	_client_bridge.ask_roam()
+	await _steps(6)
+	_check(spectate.is_roaming(me), "the server puts a watcher who asks into the free camera")
+	_check(_client_game.spectate.is_roaming(me), "and the client's mirror is told ROAMING")
+	_check(_client_game.spectate.line_for(me).contains("free camera"), "and its line names the free camera")
+
+	_client_bridge.ask_roam()
+	await _steps(6)
+	_check(not spectate.is_roaming(me) and not _client_game.spectate.is_roaming(me),
+		"the same key hands the camera back to a player on both ends")
+	_check(_client_game.spectate.is_spectating(me), "and an empty target on the wire did not stop the watching")
+
+	var notices: Array[String] = []
+	_client_bridge.notice_received.connect(func(text: String) -> void: notices.append(text))
+	rules.allow_roaming = false
+	_client_bridge.ask_roam()
+	await _steps(6)
+	_check(not spectate.is_roaming(me) and not _client_game.spectate.is_roaming(me),
+		"mp_freeroam 0 refuses the request")
+	_check(notices.any(func(t: String) -> bool: return t.contains("Free roam is off")),
+		"and the refusal comes back as a notice", " | ".join(notices))
+	rules.allow_roaming = true
+
+	rules.force_camera = 1
+	_client_bridge.ask_roam()
+	await _steps(6)
+	_check(not spectate.is_roaming(me), "mp_forcecamera 1 refuses it too")
+	rules.force_camera = 0
+
+	_client_bridge.ask_roam()
+	await _steps(6)
+	_check(spectate.is_roaming(me), "asked again with the policy open, it roams")
+	rules.allow_roaming = false
+	await _steps(6)
+	_check(not spectate.is_roaming(me) and not _client_game.spectate.is_roaming(me),
+		"switching mp_freeroam off mid-roam puts the roamer back on a player on both ends")
+	rules.allow_roaming = true
+	_server_bridge.remove_player(ScNetBridge.session_of(mate.player_id))
 	_exchange()
 	_finished()
 

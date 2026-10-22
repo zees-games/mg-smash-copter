@@ -27,7 +27,7 @@ const ScProgress := preload("../game/sc_progress.gd")
 ## and those are what this is about.
 
 const SECTIONS := 16
-const CHECKS := 149
+const CHECKS := 152
 
 ## Everything this run writes, and it is deleted on the way in and on the way out.
 ##
@@ -511,6 +511,24 @@ func _test_the_tunables() -> void:
 	_run_command("sc_spectate_camera 9")
 	_check(game.spectate.manager.rules.force_camera == 2, "and is clamped to the three it has")
 	_run_command("sc_spectate_camera 1")
+
+	# The module binds dot-spectate's rules on the world's own object, so a console change
+	# reaches the rules in use; free roam is on until an operator turns it off.
+	_run_command("sc_spectate_camera 0")
+	var rules: DotSpectatorRules = game.spectate_rules
+	_check(
+		server.console.find_cvar("mp_freeroam") != null and server.console.find_cvar("mp_forcecamera") != null
+			and server.console.find_cvar("mp_freeroam_speed") != null and rules.roaming_permitted(),
+		"the module binds mp_forcecamera, mp_freeroam and mp_freeroam_speed, and free roam is on"
+	)
+	_run_command("mp_freeroam 0")
+	_check(not rules.allow_roaming and not rules.roaming_permitted(), "mp_freeroam 0 reaches the running rules")
+	_run_command("mp_freeroam 1")
+	_run_command("sc_spectate_camera 1")
+	_check(server.console.find_cvar("mp_forcecamera").get_int() == 1 and rules.force_camera == 1
+		and not rules.roaming_permitted(),
+		"the deprecated sc_spectate_camera writes through mp_forcecamera, and a restriction wins over roaming")
+	_run_command("sc_spectate_camera 0")
 
 	_finished()
 

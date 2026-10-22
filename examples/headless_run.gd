@@ -3,6 +3,7 @@ extends Node
 const ScArena := preload("../game/sc_arena.gd")
 const ScAudio := preload("../game/sc_audio.gd")
 const ScCannon := preload("../game/sc_cannon.gd")
+const ScBindings := preload("../game/sc_bindings.gd")
 const ScConfig := preload("../game/sc_config.gd")
 const ScContent := preload("../game/sc_content.gd")
 const ScCopter := preload("../game/sc_copter.gd")
@@ -39,7 +40,7 @@ const ScSettings := preload("../game/sc_settings.gd")
 ## `set_physics_process(false)` goes on first and every section advances the world itself.
 
 ## Sections entered, against sections that ran to their last line.
-const SECTIONS := 48
+const SECTIONS := 49
 
 ## And the total this counter cannot be.
 ##
@@ -47,7 +48,7 @@ const SECTIONS := 48
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 366
+const CHECKS := 379
 
 const TICK_RATE := 64
 const TICK := 1.0 / float(TICK_RATE)
@@ -119,6 +120,7 @@ func _run() -> void:
 	await _test_a_slope_holds()
 	await _test_blind_and_beacon_drawn()
 	await _test_somebody_out_watches()
+	await _test_free_roam()
 	await _test_the_game_makes_a_noise()
 	await _test_what_a_player_keeps()
 	await _test_a_swing_is_drawn()
@@ -3942,6 +3944,60 @@ func _test_blind_and_beacon_drawn() -> void:
 	_finished()
 
 
+func _test_free_roam() -> void:
+	_section("whoever is out may free-roam by default, unless an operator says otherwise")
+	_check(ScConfig.new().spectate_camera == 0, "the config lets anybody be watched, so a free camera is not ruled out")
+	var game := await _world(func(c: ScConfig) -> void:
+		c.team_count = 3
+		c.cannon_enabled = false
+		c.specials_enabled = false
+		c.clear_platforms_for_showdown = false
+	)
+	var a := game.add_player(&"u1", "Ada", 1)
+	var _mate := game.add_player(&"u1m", "Ada's mate", 1)
+	var b := game.add_player(&"u2", "Bo", 2)
+	var _c := game.add_player(&"u3", "Cy", 3)
+	game.start()
+	await _step(game, 4)
+	var id := a.player_id
+	_check(game.spectate_rules.roaming_permitted() and game.spectate.manager.rules == game.spectate_rules,
+		"the game's rules allow roaming and are the manager's own")
+	var went := a.controller.state.position
+	a.place_at(Vector3(went.x, game.config.kill_height - 5.0, went.z), 0.0)
+	await _step(game, int(ScSpectate.DEATH_CAM_SECONDS * TICK_RATE) + 2)
+	_check(b != null and game.spectate.is_spectating(id), "out by a real fall, and watching")
+	_check(game.spectate.can_roam(id), "somebody who is out may roam")
+	_check(game.spectate.toggle_roam(id).ok and game.spectate.is_roaming(id), "the key enters the free camera")
+	_check(game.spectate.line_for(id).contains("free camera"), "and the line says so")
+	var cam := DotSpectatorFreeCam.new()
+	cam.rules = game.spectate_rules
+	cam.seed_from(Transform3D(Basis.IDENTITY, Vector3(0, 2, 0)))
+	var pose := cam.step(Vector3(0, 0, 1), false, false, 0.5)
+	_check(pose.origin.distance_to(Vector3(0, 2, 0)) > 0.5, "and flying moves it", str(pose.origin))
+	_check(game.spectate.manager.move_free(String(id), pose.origin, pose.basis).ok
+		and game.spectate.camera_for(id).origin.is_equal_approx(pose.origin), "the manager keeps where it is")
+	_check(game.spectate.toggle_roam(id).ok and not game.spectate.is_roaming(id), "the key again goes back to a player")
+
+	var _off := game.spectate_rules.set_cvar("mp_freeroam", "0")
+	var refused := game.spectate.toggle_roam(id)
+	_check(not refused.ok and refused.error.code == DotError.CODE_FORBIDDEN and not game.spectate.is_roaming(id),
+		"mp_freeroam 0 refuses it")
+	var _on := game.spectate_rules.set_cvar("mp_freeroam", "1")
+	var _own := game.spectate_rules.set_cvar("mp_forcecamera", "1")
+	_check(not game.spectate.toggle_roam(id).ok and not game.spectate.is_roaming(id), "mp_forcecamera 1 refuses it")
+
+	var restricted := await _world(func(c: ScConfig) -> void:
+		c.spectate_camera = 1)
+	_check(restricted.spectate_rules.force_camera == 1 and not restricted.spectate_rules.roaming_permitted(),
+		"a config that restricts the camera turns roaming off")
+	var keys := ScBindings.make()
+	_check(keys.defaults_on("G").size() == 1 and str(keys.row_for_action(ScBindings.ROAM).get("default", "")) == "G",
+		"the free camera is on G, and nothing else defaults to G")
+	await _dispose(restricted)
+	await _dispose(game)
+	_finished()
+
+
 ## Where somebody who is out looks, on the world that decides it.
 ##
 ## Five players on three sides, so a round survives two sides losing people: `a` and `mate`
@@ -3952,6 +4008,8 @@ func _test_somebody_out_watches() -> void:
 	_section("somebody who is out watches, and the server decides whom")
 
 	var game := await _world(func(c: ScConfig) -> void:
+		# Own side only is an operator's choice now (the default lets anybody roam).
+		c.spectate_camera = 1
 		c.team_count = 3
 		c.cannon_enabled = false
 		c.specials_enabled = false
@@ -3968,7 +4026,7 @@ func _test_somebody_out_watches() -> void:
 
 	var spectate := game.spectate
 	_check(spectate != null and spectate.manager.rules.force_camera == 1,
-		"the world watches with the default policy, own side only")
+		"a world configured for own side watches own side only")
 	_check(not spectate.is_spectating(&"a"), "nobody who is playing is watching")
 
 	var went := a.controller.state.position

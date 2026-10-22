@@ -477,7 +477,7 @@ extends DotConfig
 ## on the other side's corner is a free scout for their team-mates on voice. dot-spectate's
 ## own rule then forces first person, because a chase camera behind a team-mate sees round
 ## corners they cannot. `sc_spectate_camera` is the cvar.
-@export_enum("anybody", "own side", "nobody") var spectate_camera: int = 1
+@export_enum("anybody", "own side", "nobody") var spectate_camera: int = 0
 
 # --- Progress --------------------------------------------------------------
 

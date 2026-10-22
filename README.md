@@ -101,7 +101,9 @@ bot_difficulty medium       // easy, medium, hard or nightmare: how bots turn, a
 sc_bot_advance 200          // how far a bot walks toward a fight in the showdown, metres
 sc_bot_lean_notice 1.15     // degrees of lean a bot feels before it walks uphill (higher is clumsier)
 sc_bot_spray 0.6            // metres of miss a bot accepts when it fires (higher sprays from further)
-sc_spectate_camera 1        // 0 = anybody may watch anybody, 1 = own side only, 2 = nobody
+mp_forcecamera 0            // who somebody out may watch: 0 = anybody, 1 = own side only, 2 = nobody (sc_spectate_camera is the old name)
+mp_freeroam 1               // 1 = somebody out may fly a free camera (G); any mp_forcecamera above 0 turns it off
+mp_freeroam_speed 12        // metres per second of the free camera
 ```
 
 The bot count cvars are the family's shared ones (dot-server's `DotBotQuota`), and so are `bot_difficulty` and every `bot_*` setting (dot-bot; `bot_settings` lists them). `sc_min_players` still works and sets `bot_quota`, and `sc_bot_spread` sets `bot_aim_error`; both are deprecated. Solo, the same names are at the console, and `./game.sh -- --bot_difficulty hard` sets the preset at launch.

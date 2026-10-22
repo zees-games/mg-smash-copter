@@ -77,6 +77,8 @@ enum Ask {
 	TEAM,
 	## I am out: show me the next person, the previous one, or the other camera.
 	SPECTATE,
+	## I am out: take me into the free camera, or back onto a player from it.
+	ROAM,
 }
 
 ## Every decoder returns an `ok` beside its fields, and every caller checks it.
@@ -647,6 +649,10 @@ static func read_spectate(r: DotNetReader) -> Dictionary:
 
 
 ## Next (+1), previous (-1), or the other camera (0).
+static func write_ask_roam() -> PackedByteArray:
+	return PackedByteArray([0])
+
+
 static func write_ask_spectate(direction: int) -> PackedByteArray:
 	var w := _w()
 	w.write_uint(clampi(direction, -1, 1) + 1, 2)
