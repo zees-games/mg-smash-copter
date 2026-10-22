@@ -38,7 +38,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 | `assets/kenney/`, `assets/{blaster-kit,melee,arms}/`, `textures/prototype/` | vendored CC0 art, one folder per kit; the weapon pack's art; Kenney's light prototype grid |
 | `scenes/sc_server.tscn`, `game.yml` | what a deployed server instantiates; the descriptor in the pack |
 | `examples/` | `headless_run`, `headless_net`, `headless_workshop`, `dedicated` |
-| `tools/` | `shot.sh` (`--view=…`, `--ballot`, any `--sc-*` is config), `net_shot` (`--view=walk`), `audio_probe.sh`, `bot_difficulty.sh` (stand-ins at each preset against a pinned reference) |
+| `tools/` | `shot.sh` (`--view=…`, `--ballot`, any `--sc-*` is config), `net_shot` (`--view=walk`), `audio_probe.sh`, `bot_difficulty.sh` (stand-ins at each preset against a pinned reference), `soak.tscn` (`./game.sh soak [layout] [min]`, [soak](docs/soak.md)) |
 
 ## Running and testing
 
