@@ -246,6 +246,9 @@ static var RAIL_MODEL := ScPaths.rebase("res://assets/kenney/survival/fence.glb"
 static var RAIL_ATLAS := ScPaths.rebase("res://assets/kenney/survival/Textures/colormap.png")
 const RAIL_WIDTH := 0.5
 const RAIL_SCALE := 3.0
+## Which edge of a tower a side of its rail stands on: a quarter turn each, from +Z.
+const RAIL_SIDE_PLUS_Z := 0
+const RAIL_SIDE_MINUS_Z := 2
 
 
 func _ready() -> void:
@@ -358,6 +361,12 @@ func _rest_bridges() -> void:
 			decks[near].centre.z + _footprint(decks[near]).y,
 			decks[far].centre.z - _footprint(decks[far]).y
 		)
+
+		# A ramp arriving at a tower opens the rail where it lands: the near end is left from
+		# its +Z edge, the far end from its -Z edge. See [method _open_rail].
+		var span := _footprint(deck).x
+		_open_rail(decks[near], RAIL_SIDE_PLUS_Z, deck.centre.x, span)
+		_open_rail(decks[far], RAIL_SIDE_MINUS_Z, deck.centre.x, span)
 
 
 ## Columns and rows of the grid the field was built on, which a layout may set for itself.
@@ -563,6 +572,8 @@ func _build_rail(body: AnimatableBody3D, size: Vector3) -> void:
 			piece.scale = Vector3.ONE * RAIL_SCALE
 			piece.rotation.y = turn
 			piece.position = Vector3(along, 0.0, half).rotated(Vector3.UP, turn)
+			piece.set_meta(&"rail_side", side)
+			piece.set_meta(&"rail_along", along)
 			rail.add_child(piece)
 
 			if atlas != null:
@@ -574,6 +585,59 @@ func _build_rail(body: AnimatableBody3D, size: Vector3) -> void:
 						var fixed: BaseMaterial3D = material.duplicate()
 						fixed.albedo_texture = atlas
 						mesh.set_surface_override_material(0, fixed)
+
+
+## Takes the rail off the stretch of [param deck]'s [param side] where a ramp arrives.
+##
+## [b]The fence ran straight across both ramp mouths until 2026-10-23[/b], so on Watchtowers
+## and The Ring the one way onto the high ground was drawn as the one edge nobody steps over.
+## The rail is mesh only and never stopped anybody, but it is what a runner coming up the
+## ramp reads. Every piece whose span overlaps the bridge's width ([param half_width] each
+## side of [param x]) is left out. Both ends build the field from the same cells, so both
+## open the same gap.
+func _open_rail(deck: Deck, side: int, x: float, half_width: float) -> void:
+	if not deck.is_tower or deck.body == null:
+		return
+
+	var rail := deck.body.get_node_or_null(^"Rail")
+
+	if rail == null:
+		return
+
+	var reach := RAIL_WIDTH * RAIL_SCALE * 0.5
+	# A piece's offset is rotated with its side, so along the -Z edge +along points to -X.
+	var sign := 1.0 if side == RAIL_SIDE_PLUS_Z else -1.0
+
+	for piece in rail.get_children():
+		if int(piece.get_meta(&"rail_side", -1)) != side:
+			continue
+
+		var at := deck.centre.x + sign * float(piece.get_meta(&"rail_along", 0.0))
+
+		if absf(at - x) - reach < half_width:
+			rail.remove_child(piece)
+			piece.queue_free()
+
+
+## How many rail pieces tower [param index] still has on [param side]; -1 for no rail.
+func rail_pieces(index: int, side: int) -> int:
+	var deck := deck_at(index)
+
+	if deck == null or deck.body == null:
+		return -1
+
+	var rail := deck.body.get_node_or_null(^"Rail")
+
+	if rail == null:
+		return -1
+
+	var count := 0
+
+	for piece in rail.get_children():
+		if int(piece.get_meta(&"rail_side", -1)) == side:
+			count += 1
+
+	return count
 
 
 ## A coloured band around a platform's edge, so a player can see where it stops.

@@ -37,7 +37,7 @@ A square ring in the middle, a pad per side at the corners, catwalks from pads t
 
 ## Pieces and levels
 
-A cell is `Vector3i(column, row, z)` with `z = kind | (level << 2)`: kind is PLATFORM, BRIDGE or TOWER (a tower is 0.62 of a platform, with a railing), level is 3 bits of `LEVEL_RISE` (0.6 m) each. A layout carries its own `columns` and `rows`; `ScArena._field_reach` is the widest over all of them, so the throat holds for the biggest. A bridge's pitch comes from the surface heights of its two lips and it falls with either. A bigger layout's reach sweep adds the level rise to the dip for an upward jump. Towers are never spawn points. The cell list on the wire writes two bits of kind and three of level (`sc_events.gd`).
+A cell is `Vector3i(column, row, z)` with `z = kind | (level << 2)`: kind is PLATFORM, BRIDGE or TOWER (a tower is 0.62 of a platform, with a railing), level is 3 bits of `LEVEL_RISE` (0.6 m) each. A layout carries its own `columns` and `rows`; `ScArena._field_reach` is the widest over all of them, so the throat holds for the biggest. A bridge's pitch comes from the surface heights of its two lips and it falls with either. A bigger layout's reach sweep adds the level rise to the dip for an upward jump. Towers are never spawn points. A tower's rail (mesh only) is left off the edge a ramp arrives at (`ScPlatforms._open_rail`, from `_rest_bridges`); `headless_run`'s Watchtowers section checks every tower on Watchtowers and The Ring and drives a runner up one ramp and down the other. The cell list on the wire writes two bits of kind and three of level (`sc_events.gd`).
 
 ## Riding the chopper
 

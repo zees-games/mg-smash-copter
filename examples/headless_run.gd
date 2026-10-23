@@ -40,7 +40,7 @@ const ScSettings := preload("../game/sc_settings.gd")
 ## `set_physics_process(false)` goes on first and every section advances the world itself.
 
 ## Sections entered, against sections that ran to their last line.
-const SECTIONS := 49
+const SECTIONS := 50
 
 ## And the total this counter cannot be.
 ##
@@ -48,7 +48,7 @@ const SECTIONS := 49
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 381
+const CHECKS := 389
 
 const TICK_RATE := 64
 const TICK := 1.0 / float(TICK_RATE)
@@ -117,6 +117,7 @@ func _run() -> void:
 	await _test_hollow_centre()
 	await _test_broadside()
 	await _test_the_airfield()
+	await _test_watchtowers()
 	await _test_a_slope_holds()
 	await _test_blind_and_beacon_drawn()
 	await _test_somebody_out_watches()
@@ -3263,6 +3264,184 @@ func _test_the_airfield() -> void:
 		"and when a platform under the pad goes, the pad and the chopper go with it",
 		"bridge standing %s, chopper %.1f m lower" % [platforms.deck_at(pad).is_standing(),
 			parked.y - after])
+
+	await _dispose(game)
+	_finished()
+
+
+## Watchtowers' blurb: "The rows meet only at two towers. Climb the ramp, hold the high
+## ground, and mind the drop." Until 2026-10-23 nothing drove it, and each tower's rail ran
+## straight across both of its ramp mouths, so the one way up was drawn as fenced off. The
+## rail is opened where a ramp arrives now (`ScPlatforms._open_rail`), here and on The Ring,
+## and this runs a side up one ramp, over the tower and down the other onto the far row.
+func _test_watchtowers() -> void:
+	_section("Watchtowers: the rows meet only at a tower, up one ramp and down the other")
+
+	var game := await _world(func(c: ScConfig) -> void:
+		c.cannon_enabled = false
+		c.specials_enabled = false
+		c.survival_seconds = 600.0
+		c.layout_ids = PackedStringArray(["watchtowers"])
+	)
+	var platforms := game.platforms
+	var config := game.config
+
+	_check(game.layout != null and game.layout.id == &"watchtowers",
+		"the round is laid out as Watchtowers",
+		String(game.layout.id) if game.layout != null else "none")
+
+	# The rows meet only at the towers: one island with them, and the two rows apart without
+	# them and their ramps.
+	var cells := platforms.cells()
+	var rows_only: Array[Vector3i] = []
+
+	for cell in cells:
+		if ScLayouts.kind_of(cell) == ScLayouts.KIND_PLATFORM:
+			rows_only.append(cell)
+
+	var whole := ScLayouts.islands(cells, game.layout.jumps)
+	var apart := ScLayouts.islands(rows_only, game.layout.jumps)
+	var whole_count := {}
+	var apart_count := {}
+
+	for i in whole:
+		whole_count[i] = true
+
+	for i in apart:
+		apart_count[i] = true
+
+	_check(whole_count.size() == 1 and apart_count.size() == 2,
+		"the rows are one field through the towers, and two without them",
+		"%d island(s) with the towers, %d without" % [whole_count.size(), apart_count.size()])
+
+	# The rail is open where each ramp arrives and closed on the two sides that drop away,
+	# on this layout's two towers and on every tower of The Ring.
+	var shut := PackedStringArray()
+
+	for id: StringName in [&"watchtowers", &"ring"]:
+		if id != &"watchtowers":
+			platforms.build(ScLayouts.by_id(config, id), game.physics)
+			await _physics_frame()
+
+		for i in range(platforms.count()):
+			var deck := platforms.deck_at(i)
+
+			if not deck.is_tower:
+				continue
+
+			var ramps := {}
+
+			for j in range(platforms.count()):
+				var span := platforms.deck_at(j)
+
+				if span.is_bridge and span.supports.x == i:
+					ramps[ScPlatforms.RAIL_SIDE_PLUS_Z] = true
+
+				if span.is_bridge and span.supports.y == i:
+					ramps[ScPlatforms.RAIL_SIDE_MINUS_Z] = true
+
+			for side in range(4):
+				var left := platforms.rail_pieces(i, side)
+
+				if (left == 0) != ramps.has(side):
+					shut.append("%s %s side %d: %d pieces%s" % [id, _cell_name(platforms, i), side,
+						left, " over a ramp" if ramps.has(side) else ""])
+
+	_check(shut.is_empty(),
+		"every tower's rail is open where a ramp arrives, and only there",
+		", ".join(shut) if not shut.is_empty() else "watchtowers and ring")
+
+	platforms.build(game.layout, game.physics)
+	await _physics_frame()
+
+	var runner := game.add_player(&"runner", "Runner", 1)
+	game.start()
+	await _step(game, 20)
+
+	var start := _deck_at_cell(platforms, 1, 0)
+	var foot := _deck_at_cell(platforms, 0, 0)
+	var far := _deck_at_cell(platforms, 0, 2)
+	var tower := -1
+
+	for i in range(platforms.count()):
+		var deck := platforms.deck_at(i)
+
+		if deck.is_tower and deck.column == 0:
+			tower = i
+
+	var made := PackedStringArray()
+	var length := 0.0
+	var peak := -INF
+
+	if start < 0 or foot < 0 or far < 0 or tower < 0:
+		made.append("no route: (1,0) %d, (0,0) %d, tower %d, (0,2) %d MISSED" % [
+			start, foot, tower, far])
+	else:
+		var stops := [start, foot, tower, far]
+
+		for leg in range(stops.size() - 1):
+			var a := platforms.deck_at(stops[leg]).centre
+			var b := platforms.deck_at(stops[leg + 1]).centre
+			length += Vector2(b.x - a.x, b.z - a.z).length()
+
+		runner.place_at(platforms.deck_at(start).centre + Vector3.UP * 0.2, 0.0)
+		await _step(game, 20)
+		_track(runner)
+
+		await _walk_to(game, runner, platforms.deck_at(start).centre)
+		var landed := await _jump_across(game, runner, start, foot)
+		made.append("%s%s" % [_cell_name(platforms, foot), "" if landed else " MISSED"])
+
+		if landed:
+			# Up the ramp at a run: walked, never jumped.
+			await _run_to(game, runner, platforms.deck_at(tower).centre, 0.3)
+			await _walk_to(game, runner, platforms.deck_at(tower).centre)
+			peak = runner.controller.state.position.y
+			var up := runner.is_alive() and runner.standing_on == tower
+			made.append("the tower%s" % ("" if up else " MISSED"))
+
+			if up:
+				await _run_to(game, runner, platforms.deck_at(far).centre, 0.3)
+				await _walk_to(game, runner, platforms.deck_at(far).centre)
+				var down := runner.is_alive() and runner.standing_on == far
+				made.append("%s%s" % [_cell_name(platforms, far), "" if down else " MISSED"])
+
+	var covered := _covered
+	var top := _top_speed
+	_track(null)
+	var max_speed := ScPlayer.tunables_for(config, null).max_speed
+	var rise := 3.0 * ScLayouts.LEVEL_RISE
+
+	_check(made.size() == 3 and not ", ".join(made).contains("MISSED"),
+		"a runner jumps to the foot of a ramp, climbs to the tower and runs down to the far row",
+		", ".join(made))
+	_check(peak >= config.deck_height + rise - 0.1,
+		"and stands on the high ground, %.1f m over both rows" % rise,
+		"%.2f m against decks at %.1f" % [peak, config.deck_height])
+	_check(length > 0.0 and covered >= length * 0.95 and top >= max_speed * 0.95,
+		"and covers the route at a run",
+		"%.1f m covered of a %.1f m route, top speed %.2f of %.2f m/s" % [
+			covered, length, top, max_speed])
+	_check(far >= 0 and runner.is_alive() and runner.standing_on == far
+			and platforms.standing_count() == platforms.count(),
+		"and ends on the far row, with all of it still up",
+		"on %d, alive %s, %d of %d up" % [runner.standing_on, runner.is_alive(),
+			platforms.standing_count(), platforms.count()])
+
+	# Mind the drop: back up the ramp and off the tower's open side, away from the field.
+	var fell := false
+
+	if tower >= 0 and far >= 0 and runner.standing_on == far:
+		await _run_to(game, runner, platforms.deck_at(tower).centre, 0.3)
+		await _walk_to(game, runner, platforms.deck_at(tower).centre)
+		var outside := platforms.deck_at(tower).centre + Vector3(-12.0, 0.0, 0.0)
+		await _run_to(game, runner, outside, 0.3)
+		await _step(game, 60)
+		fell = runner.controller.state.position.y < config.deck_height - 3.0 \
+			or not runner.is_alive()
+
+	_check(fell, "and running off the tower's outer side is a fall",
+		"%.1f m" % runner.controller.state.position.y)
 
 	await _dispose(game)
 	_finished()
