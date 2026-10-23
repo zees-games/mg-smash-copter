@@ -222,6 +222,15 @@ func _game_load() -> DotResult:
 		add_cvar, DotConVar.FLAG_ARCHIVE | DotConVar.FLAG_NOTIFY | DotConVar.FLAG_REPLICATED
 	)
 
+	# REPLICATED: the clients play the killcam, the server only lengthens the intermission for it.
+	var killcam := add_cvar("mp_killcam_time", _number(world.config.killcam_seconds),
+		"Seconds the killcam of a round's last moment plays, added to the intermission (0 for none)",
+		DotConVar.FLAG_ARCHIVE | DotConVar.FLAG_NOTIFY | DotConVar.FLAG_REPLICATED)
+	if killcam != null:
+		killcam.changed.connect(func(_old: String, new_value: String) -> void:
+			world.config.killcam_seconds = clampf(new_value.to_float(), 0.0, 30.0)
+			world.apply_intermission())
+
 	_build_maps(world)
 	_build_vote(world)
 

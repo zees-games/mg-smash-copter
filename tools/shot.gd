@@ -32,6 +32,7 @@ const ScVote := preload("../game/sc_vote.gd")
 ## tools/shot.sh --view=jump      # the first jump the layout means, from behind the runner
 ## tools/shot.sh --view=bridge    # a bridge leant on at one end, from beside it
 ## tools/shot.sh --view=beacon    # an admin's beacon on a stand-in, from across the field
+## tools/shot.sh --view=killcam --seconds=2   # the round's last moment replayed; --seconds=8 for the podium
 ## tools/shot.sh --view=blind     # the local player's own eyes, blinded, through the real HUD
 ## tools/shot.sh --view=spectate  # the local player, out, through the camera the server gave them
 ## tools/shot.sh --ballot          # the layout vote's ballot over any view, mid-vote
@@ -92,7 +93,9 @@ func _run() -> void:
 		var chosen: DotResult = (client.get("game") as ScGame).change_layout_now(&"workshop:crown")
 		print("workshop map chosen: ", chosen.ok)
 
-	while elapsed < seconds:
+	# --view=killcam spends --seconds after the round ends, not before.
+	var lead := 4.0 if view == "killcam" else seconds
+	while elapsed < lead:
 		elapsed += get_process_delta_time()
 		await get_tree().process_frame
 
@@ -118,6 +121,18 @@ func _run() -> void:
 		var waited := 0.0
 		while waited < 2.4:
 			waited += get_process_delta_time()
+			await get_tree().process_frame
+	elif game != null and view == "killcam":
+		# Everybody else goes over the edge through the fall check, so the round ends on the
+		# last of them; ~2 s later is the replay, ~8 the podium.
+		var me_k: Node = client.get("player")
+		for who: Node in game.players.values():
+			if who != me_k:
+				var at_k: Vector3 = (who.get("controller") as DotFpsController).state.position
+				who.call("place_at", Vector3(at_k.x, game.config.kill_height - 5.0, at_k.z), 0.0)
+		var waited_k := 0.0
+		while waited_k < seconds:
+			waited_k += get_process_delta_time()
 			await get_tree().process_frame
 	elif game != null and view == "hands":
 		# The local player's own eyes once the showdown is on: the gun the handover dealt, in

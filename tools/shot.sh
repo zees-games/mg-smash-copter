@@ -15,6 +15,7 @@
 #   tools/shot.sh --view=jump         # the first jump the layout means, from behind it
 #   tools/shot.sh --view=bridge       # a bridge leant on at one end, from beside it
 #   tools/shot.sh --view=beacon       # an admin's beacon on a stand-in, from across the field
+#   tools/shot.sh --view=killcam --seconds=2   # the round's last moment replayed (--seconds=8: the podium)
 #   tools/shot.sh --view=blind        # the local player's own eyes, blinded, through the HUD
 #   tools/shot.sh --view=spectate     # the local player, out, watching what the server allows
 #   tools/shot.sh --view=spectate --sc-spectate-camera=0   # ...when it allows anybody

@@ -13,6 +13,7 @@ const ScGame := preload("sc_game.gd")
 const ScHud := preload("sc_hud.gd")
 const ScPaths := preload("sc_paths.gd")
 const ScPlayer := preload("sc_player.gd")
+const ScKillcam := preload("sc_killcam.gd")
 const ScSpecials := preload("sc_specials.gd")
 const ScWorkshop := preload("sc_workshop.gd")
 
@@ -94,6 +95,16 @@ var link: Node = null
 
 ## The Tab board, the menu's. See [member DotGameClient.board].
 var board: DotMenuScoreboard = null
+## Records every frame and replays the round's last moment ([ScKillcam]); then the reveal.
+var killcam: ScKillcam = null
+var winner_reveal: DotWinnerReveal = null
+## The server's `mp_killcam_time`; -1 until it has said, so the config's number stands.
+var _killcam_sec: float = -1.0
+var _round_ending: bool = false
+var _round_end_winner: int = 0
+var _round_end_number: int = 0
+var _round_board_open: bool = false
+var _hud_was_visible: bool = true
 
 ## When this client started, for an offline board's "time".
 var _started_msec: int = Time.get_ticks_msec()
@@ -186,6 +197,7 @@ func _ready() -> void:
 	_build_chat()
 	_build_audio()
 	_build_settings()
+	_build_killcam()
 
 	if _offline:
 		_start_offline()
@@ -276,6 +288,9 @@ func _start_offline() -> void:
 
 	_adopt(game.add_player(&"local", "You", 1, true))
 	_hear_the_world()
+	game.round_began.connect(func(n: int, _layout: StringName) -> void: _round_presentation(n, true, 0))
+	game.round_over.connect(func(n: int, winner: int) -> void: _round_presentation(n, false, winner))
+	game.player_died.connect(func(id: StringName, by: StringName, why: StringName) -> void: _note_death(id, by, why))
 
 	# Offline the world counts for the player at this keyboard, so it is the world that says
 	# what they earned. Connected, the same line arrives as a notice from the server.
@@ -355,6 +370,10 @@ func _build_netcode() -> DotResult:
 		# predicts its own player.
 		var _view := game.view_rules.follow_cvars(link)
 		var _solid := game.body_rules.follow_cvars(link)
+		if link.has_method(&"replicated_cvar"):
+			_on_killcam_cvar("mp_killcam_time", String(link.call(&"replicated_cvar", "mp_killcam_time", "")))
+			if link.has_signal(&"replicated_cvar_changed"):
+				link.connect(&"replicated_cvar_changed", _on_killcam_cvar)
 		# And mp_forcecamera / mp_freeroam*: this end flies the spectator's free camera.
 		var _spectate := game.spectate_rules.follow_cvars(link)
 
@@ -528,7 +547,125 @@ func _on_special(_id: StringName, starting: bool, blurb: String) -> void:
 		var _flashed := game.effects.flash(&"special")
 
 
+# --- The end of a round: killcam, winner reveal, board -------------------------
+
+## The round's last moment, a death. A shot puts the victim in the shooter's eyes, anything
+## else (a fall, a crush, a blast) in the victim's own.
+func _note_death(victim: StringName, by: StringName, why: StringName) -> void:
+	if killcam == null:
+		return
+	var who: ScPlayer = game.players.get(victim)
+	var name_of := who.display_name if who != null else String(victim)
+	if by != &"" and game.players.has(by) and by != victim:
+		killcam.note_moment(by, "put down", name_of)
+		return
+	var what := "was shot"
+	match why:
+		ScGame.DIED_FELL:
+			what = "ran out of map"
+		ScGame.DIED_CRUSHED:
+			what = "was under it"
+		ScGame.DIED_BLAST:
+			what = "stood next to a barrel"
+	killcam.note_moment(victim, what)
+
+
+func _build_killcam() -> void:
+	killcam = ScKillcam.new()
+	killcam.name = "RoundKillcam"
+	killcam.players_fn = func() -> Array: return game.players.values() if game != null else []
+	killcam.player_for_fn = func(key: StringName) -> Variant: return game.players.get(key) if game != null else null
+	killcam.feet_fn = func(p: ScPlayer) -> Vector3: return drawn_position(p, net != null and net.is_running() and p != player)
+	killcam.colour_fn = func(p: ScPlayer) -> Color: return _team_colour(game.team_of(p.player_id))
+	killcam.seconds_fn = func() -> float: return _killcam_sec if _killcam_sec >= 0.0 else game.config.killcam_seconds
+	killcam.hide_while_playing = [hud, chat]
+	killcam.over.connect(func(_skipped: bool) -> void: _reveal_round())
+	add_child(killcam)
+	winner_reveal = DotWinnerReveal.new()
+	winner_reveal.name = "WinnerReveal"
+	winner_reveal.skip_actions = ScKillcam.SKIP_ACTIONS
+	winner_reveal.hold_seconds = 4.0
+	winner_reveal.finished.connect(_on_reveal_finished)
+	add_child(winner_reveal)
+
+
+func _team_colour(team: int) -> Color:
+	return ScGame.TEAM_COLOURS[team - 1] if team >= 1 and team <= ScGame.TEAM_COLOURS.size() else Color(0.7, 0.7, 0.72)
+
+
+## `mp_killcam_time`, from the server's replicated cvar.
+func _on_killcam_cvar(cvar_name: String, value: String) -> void:
+	if cvar_name == "mp_killcam_time" and value.strip_edges().is_valid_float():
+		_killcam_sec = clampf(value.to_float(), 0.0, 30.0)
+
+
+func _begin_round_end(number: int, winner: int) -> void:
+	_round_end_number = number
+	_round_end_winner = winner
+	_round_ending = true
+	if killcam != null:
+		var _playing := killcam.round_ended()
+
+
+## The winning side's players on a podium, after the killcam and before the board.
+func _reveal_round() -> void:
+	if not _round_ending:
+		return
+	var winner := _round_end_winner
+	var rows: Array = []
+	for key: StringName in game.players:
+		var who: ScPlayer = game.players[key]
+		if winner >= 1 and game.team_of(key) == winner:
+			rows.append(who)
+	rows.sort_custom(func(a: ScPlayer, b: ScPlayer) -> bool:
+		if a.is_alive() != b.is_alive():
+			return a.is_alive()
+		return a.warps > b.warps)
+	var entries: Array = []
+	for who: ScPlayer in rows.slice(0, 3):
+		entries.append({"name": who.display_name, "score": "up" if who.is_alive() else "out",
+			"colour": _team_colour(winner)})
+	if entries.is_empty():
+		_open_round_board()
+		return
+	winner_reveal.reduced_motion = settings != null and settings.settings != null and settings.settings.get_bool(&"reduce_motion", false)
+	var shown := winner_reveal.present(entries, {"title": "ROUND %d" % _round_end_number,
+		"subtitle": "%s wins" % ScGame.TEAM_NAMES[winner - 1], "hint": "Jump to skip"})
+	if not shown.ok:
+		_open_round_board()
+		return
+	if hud != null:
+		_hud_was_visible = hud.visible
+		hud.visible = false
+
+
+func _on_reveal_finished(_skipped: bool) -> void:
+	if hud != null and not killcam.is_playing():
+		hud.visible = _hud_was_visible
+	if _round_ending:
+		_open_round_board()
+
+
+func _open_round_board() -> void:
+	if board != null and not board.is_open():
+		board.open()
+		_round_board_open = true
+
+
+## A new round: whatever is still up goes, so it never covers the start.
+func _end_round_presentation() -> void:
+	_round_ending = false
+	if killcam != null:
+		killcam.skip()
+	if winner_reveal != null:
+		winner_reveal.skip()
+	if _round_board_open and board != null:
+		board.close()
+	_round_board_open = false
+
+
 func _on_round(number: int, began: bool, winner: int) -> void:
+	_round_presentation(number, began, winner)
 	if ragdolls != null:
 		# A body from before would lie on a floor that has been rebuilt or reset.
 		ragdolls.clear()
@@ -547,9 +684,18 @@ func _on_round(number: int, began: bool, winner: int) -> void:
 	hud.shout("%s wins" % team, 4.0)
 
 
-func _on_death(session_id: int, _by: int, why: StringName) -> void:
+func _round_presentation(number: int, began: bool, winner: int) -> void:
+	if began:
+		_end_round_presentation()
+	else:
+		_begin_round_end(number, winner)
+
+
+func _on_death(session_id: int, by: int, why: StringName) -> void:
 	var id := ScNetBridge.player_key(session_id)
 	var who: ScPlayer = game.players.get(id)
+
+	_note_death(id, ScNetBridge.player_key(by) if by > 0 else &"", why)
 
 	_hear_death(who, why)
 
@@ -1312,6 +1458,8 @@ func _process(delta: float) -> void:
 	var _shown := present_frame(
 		net, game, player, not third_person, delta, -1.0, _watched_through_eyes()
 	)
+	if killcam != null and game != null:
+		killcam.frame()
 
 	if camera == null or player == null:
 		return

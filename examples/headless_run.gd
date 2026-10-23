@@ -48,7 +48,7 @@ const SECTIONS := 49
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 379
+const CHECKS := 381
 
 const TICK_RATE := 64
 const TICK := 1.0 / float(TICK_RATE)
@@ -376,6 +376,14 @@ func _test_the_toys() -> void:
 	game.set_physics_process(false)
 	await _physics_frame()
 	await _physics_frame()
+	_check(is_equal_approx(game.match_node.rules.intermission_sec, 0.0) and config.killcam_seconds > 0.0,
+		"the killcam adds nothing to an intermission of 0")
+	config.intermission_seconds = 8.0
+	game.apply_intermission()
+	_check(is_equal_approx(game.match_node.rules.intermission_sec, 8.0 + config.killcam_seconds),
+		"and is added to the pause otherwise", str(game.match_node.rules.intermission_sec))
+	config.intermission_seconds = 0.0
+	game.apply_intermission()
 	var platforms := 0
 	for i in range(game.platforms.count()):
 		platforms += 0 if game.platforms.deck_at(i).is_bridge else 1
