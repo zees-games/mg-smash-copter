@@ -233,7 +233,8 @@ func _ready() -> void:
 ##
 ## [param active] is what the round's specials are doing. Null is an ordinary round.
 static func tunables_for(config: ScConfig, active: ScSpecials.Active) -> DotFpsTunables:
-	var t := DotFpsTunables.new()
+	# The platforms and gaps are tuned against the legacy movement profile, not the classic default.
+	var t := DotFpsTunables.with_profile("legacy")
 	var run := config.run_speed if config != null else 6.4
 	var gravity := config.gravity if config != null else 20.0
 	var grip := 1.0

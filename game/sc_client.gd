@@ -578,7 +578,7 @@ func _build_killcam() -> void:
 	killcam.feet_fn = func(p: ScPlayer) -> Vector3: return drawn_position(p, net != null and net.is_running() and p != player)
 	killcam.colour_fn = func(p: ScPlayer) -> Color: return _team_colour(game.team_of(p.player_id))
 	killcam.seconds_fn = func() -> float: return _killcam_sec if _killcam_sec >= 0.0 else game.config.killcam_seconds
-	killcam.hide_while_playing = [hud, chat]
+	killcam.hide_while_playing = [hud, chat.window if chat != null else null]
 	killcam.over.connect(func(_skipped: bool) -> void: _reveal_round())
 	add_child(killcam)
 	winner_reveal = DotWinnerReveal.new()
