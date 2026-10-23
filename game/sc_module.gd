@@ -2,6 +2,7 @@ extends DotGameModule
 
 const ScNetBridge := preload("net/sc_net_bridge.gd")
 const ScServices := preload("sc_services.gd")
+const ScMapConfig := preload("sc_map_config.gd")
 
 const ScGame := preload("sc_game.gd")
 const ScLayouts := preload("sc_layouts.gd")
@@ -77,6 +78,14 @@ const LAYOUT_BALLOT_TOPIC := &"map_ballot"
 
 func _module_name() -> String:
 	return "smash"
+
+
+func _map_config_game() -> String:
+	return ScMapConfig.GAME_ID
+
+
+func _map_config_keys() -> Dictionary:
+	return ScMapConfig.KEYS
 
 
 func _game_service() -> StringName:

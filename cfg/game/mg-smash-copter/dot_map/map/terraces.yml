@@ -1,0 +1,5 @@
+# Per-layout settings for "terraces": uncomment a line to change a tunable while this layout plays.
+# The next layout gets the previous values back. Keys: see game/sc_map_config.gd.
+# sc_gravity: 9.8
+# sc_cannon_interval: 4.0
+# sc_survival_seconds: 120

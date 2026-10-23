@@ -111,3 +111,5 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 **Tests** ([testing](docs/testing.md))
 - Every suite counts sections and a total, and both are compared. The two halves of `headless_net` differ in tick rate and field on purpose.
 - Arm every guard (break it, watch it fail, put it back); assert the mechanism, not agreement.
+
+Per-layout settings: `game/sc_map_config.gd` whitelists the tunables (`sc_*`, `mp_killcam_time`) a layout's `cfg/game/mg-smash-copter/dot_map/map/<id>.yml` may set, through dot-game's `DotGameMapConfig` (`_map_config_keys` on `ScModule`; `report_map` applies, unload restores). Layouts are procedural, so there are no BSP maps and the starters are commented examples. The client predicts none of these, so it has no hook. Checked by `examples/headless_mapcfg`.
