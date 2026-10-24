@@ -22,6 +22,7 @@
 #   tools/shot.sh --workshop --view=field   # a fixture pack map, chosen as the M menu would
 #   tools/shot.sh --ballot            # the layout vote's ballot over the frame, mid-vote
 #   tools/shot.sh --view=walk         # a CONNECTED client running its own player, measured
+#   tools/shot.sh --action emote dance   # the local player in third person playing an avatar action (action_a/_b.png)
 #   tools/shot.sh --view=field --seconds=20 --out=res://screenshots/late.png
 #   tools/shot.sh --view=field --sc-layout-ids=checker   # any --sc-* is the game's own config
 #
@@ -37,8 +38,11 @@ seconds="4"
 out=""
 config=()
 
+take=0
 for arg in "$@"; do
+    if [ "$take" -gt 0 ]; then config+=("$arg"); take=$((take - 1)); continue; fi
     case "$arg" in
+        --action)    config+=("$arg"); take=2 ;;
         --view=*)    view="${arg#*=}" ;;
         --seconds=*) seconds="${arg#*=}" ;;
         --out=*)     out="${arg#*=}" ;;

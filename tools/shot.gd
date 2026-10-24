@@ -52,8 +52,14 @@ func _run() -> void:
 	var view := "eyes"
 	var ballot := false
 	var workshop := false
+	var action: Array = []
 
-	for arg in OS.get_cmdline_user_args():
+	var user_args := OS.get_cmdline_user_args()
+	var action_at := user_args.find("--action")
+	if action_at >= 0 and action_at + 2 < user_args.size():
+		action = [StringName(user_args[action_at + 1]), String(user_args[action_at + 2])]
+
+	for arg in user_args:
 		if arg.begins_with("--seconds="):
 			seconds = float(arg.substr(10))
 		elif arg.begins_with("--out="):
@@ -100,6 +106,11 @@ func _run() -> void:
 		await get_tree().process_frame
 
 	var game: ScGame = client.get("game")
+
+	if game != null and not action.is_empty():
+		await _stage_action(client, game, action[0], action[1], out)
+		get_tree().quit(0)
+		return
 
 	# The two admin marks go on through the flags the server would have set — offline, the
 	# client IS the server — and are then drawn by the client's own `_process`, which is the
@@ -164,6 +175,42 @@ func _run() -> void:
 			print(line)
 
 	get_tree().quit(0)
+
+
+## `--action <kind> <id>` (`--action emote dance`): the local player, in third person, playing an
+## avatar action through the client's own input path, from the front, early and later in the clip.
+## Writes <out>_a.png and <out>_b.png.
+func _stage_action(client: Node, game: ScGame, kind: StringName, id: String, out: String) -> void:
+	var me: Node3D = client.get("player")
+	if me == null:
+		print("action: no local player")
+		return
+	client.set("third_person", true)
+	for _i in range(20):
+		await get_tree().process_frame
+	var figure: Object = client.call("_avatar_figure", 0)
+	print("action %s/%s: figure=%s third_person=%s" % [kind, id, figure != null, client.get("third_person")])
+	var entry := DotAvatarActions.defaults().find(kind, id)
+	var input: Object = (client.get("platform") as DotGameClient).avatar_actions.input
+	input.emit_signal(&"action_requested", entry)
+	var yaw := deg_to_rad((me.get("controller") as DotFpsController).state.yaw)
+	var ahead := Vector3(-sin(yaw), 0.0, -cos(yaw))
+	var feet: Vector3 = me.global_position
+	var camera := Camera3D.new()
+	camera.fov = 60.0
+	add_child(camera)
+	camera.current = true
+	for part in ["a", "b"]:
+		for _i in range(12 if part == "a" else 30):
+			await get_tree().process_frame
+		camera.global_position = feet + ahead * 3.2 + Vector3.UP * 1.6
+		camera.look_at(feet + Vector3.UP * 1.0, Vector3.UP)
+		for _i in range(3):
+			await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		var path := out.trim_suffix(".png") + "_%s.png" % part
+		var _saved := get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path(path))
+		print("wrote ", path, " action=", figure.get("action") if figure != null else "n/a")
 
 
 func _register_fixture_pack() -> void:
