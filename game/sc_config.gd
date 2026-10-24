@@ -63,6 +63,9 @@ extends DotConfig
 ## Whether players may pick their own side.
 @export var allow_team_choice: bool = true
 
+## Whether shots, blasts and falls hurt the shooter's own side.
+@export var friendly_fire: bool = false
+
 ## Whether the server evens the sides up between rounds.
 @export var autobalance: bool = true
 
@@ -464,6 +467,28 @@ extends DotConfig
 ## further and run dry sooner.
 @export_range(0.1, 5.0, 0.05) var bot_spray_metres: float = 0.6
 
+# --- Impacts ---------------------------------------------------------------
+
+@export_group("Impacts")
+
+## How far a falling prop has to be going down (m/s) before a landing counts as an impact. Keep above one tick of gravity or resting crates read as impacts.
+@export_range(0.5, 40.0, 0.1) var impact_min_speed: float = 3.5
+
+## Fraction of its downward speed a prop must lose in one step to count as landed.
+@export_range(0.05, 1.0, 0.01) var impact_loss: float = 0.45
+
+## Metres from an impact within which a player is hurt by it.
+@export_range(0.1, 20.0, 0.1) var impact_hurt_radius: float = 2.4
+
+## Damage a landing does to a player, per kilogram metre per second of impulse.
+@export_range(0.0, 2.0, 0.005) var impact_hurt_per_impulse: float = 0.055
+
+## Fraction of the world's gravity a falling platform accelerates at.
+@export_range(0.05, 2.0, 0.01) var fall_gravity_scale: float = 0.62
+
+## Radians per second a falling platform tips over as it goes.
+@export_range(0.0, 5.0, 0.05) var fall_tip_rate: float = 0.85
+
 # How far a stand-in's aim is off is dot-bot's `bot_aim_error` (and its settling, reaction and
 # turn rate): the old per-round fixed offset, `bot_aim_spread_degrees`, is gone, and its cvar
 # `sc_bot_spread` is a deprecated name for `bot_aim_error`.
@@ -481,6 +506,12 @@ extends DotConfig
 ## own rule then forces first person, because a chase camera behind a team-mate sees round
 ## corners they cannot. `sc_spectate_camera` is the cvar.
 @export_enum("anybody", "own side", "nobody") var spectate_camera: int = 0
+
+## Seconds the death camera holds on the spot a person fell from, then the freeze camera. Both ends read it; client-side only (no replicated state).
+@export_range(0.0, 10.0, 0.1) var death_cam_seconds: float = 1.5
+
+## Seconds the freeze camera holds before the free one.
+@export_range(0.0, 10.0, 0.1) var freeze_cam_seconds: float = 1.5
 
 # --- Progress --------------------------------------------------------------
 

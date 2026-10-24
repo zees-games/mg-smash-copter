@@ -72,17 +72,6 @@ const WHY_SHATTERED := &"shattered"  ## One impact was simply too big.
 const WHY_ROUND := &"round"      ## The round asked for the field to be cleared.
 const WHY_UNSUPPORTED := &"unsupported"  ## A bridge lost a platform it was resting on.
 
-## Radians per second a falling platform tips over at, on top of the lean it fell with.
-##
-## [b]It keeps turning on the way down, and that is what sells it.[/b] A slab that fell
-## flat would read as a lift descending; one that rotates as it goes reads as something
-## that has come off the thing holding it up, which is what happened.
-const FALL_TIP_RATE := 0.85
-
-## Metres per second squared a falling platform accelerates downward at, as a fraction of
-## the world's gravity. Below one, because a forty-metre slab is not a stone.
-const FALL_GRAVITY_SCALE := 0.62
-
 ## One platform: where it is, what it is doing, and the four numbers it is doing it with.
 ##
 ## An inner class rather than parallel arrays. The arrays would be faster and this is a
@@ -1015,8 +1004,8 @@ func _step_falling(index: int, deck: Deck, delta: float) -> void:
 	# It keeps turning as it goes, about the axis it was already leaning on. A slab that
 	# fell flat would read as a lift going down.
 	var axis := deck.lean.normalized() if deck.lean.length() > 0.001 else Vector2(1.0, 0.0)
-	deck.lean += axis * FALL_TIP_RATE * delta
-	deck.sink_velocity -= gravity * FALL_GRAVITY_SCALE * delta
+	deck.lean += axis * config.fall_tip_rate * delta
+	deck.sink_velocity -= gravity * config.fall_gravity_scale * delta
 	deck.sink += deck.sink_velocity * delta
 
 	_draw(deck)

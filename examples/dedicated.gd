@@ -27,7 +27,7 @@ const ScProgress := preload("../game/sc_progress.gd")
 ## and those are what this is about.
 
 const SECTIONS := 16
-const CHECKS := 152
+const CHECKS := 160
 
 ## Everything this run writes, and it is deleted on the way in and on the way out.
 ##
@@ -289,6 +289,7 @@ func _test_the_module_loads() -> void:
 	game = ScGame.new()
 	game.name = "World"
 	game.config = config
+	game.config_binder = DotGameConfigBinder.create(config, "mg-smash-copter", "sc")
 	game.tick_rate = Engine.physics_ticks_per_second
 	add_child(game)
 
@@ -369,6 +370,7 @@ func _test_the_module_loads() -> void:
 		"and it starts empty, so nothing a previous run did is in it",
 		"%d records" % int(moderation.call("count")) if moderation != null else "no moderation")
 
+	_noblock_and_config(module)
 	_finished()
 
 
@@ -423,6 +425,33 @@ func _test_a_module_reload() -> void:
 		await get_tree().process_frame
 	side.queue_free()
 	_finished()
+
+
+## Config cvars, the workbench's sync into a hand-written cvar, and dot-team's block rules through dot-game's DotGameNoblock.
+func _noblock_and_config(module: DotModule) -> void:
+	var teamblock := server.console.find_cvar("mp_teamblock")
+	var enemyblock := server.console.find_cvar("mp_enemyblock")
+	_check(teamblock != null and teamblock.get_string() == "0" and enemyblock != null and enemyblock.get_string() == "1",
+		"mp_teamblock is 0 and mp_enemyblock is 1 by default")
+	_check(server.console.has_name("sc_impact_min_speed") and server.console.has_name("sc_fall_gravity_scale") and server.console.has_name("sc_friendly_fire"),
+		"config fields with no hand-written cvar are sc_ cvars")
+	_check(not server.console.has_name("sc_platform_stiffness"), "a field with a hand-written cvar gets no second one")
+	_check(module.get("workbench") != null, "the module hosts the workbench")
+	game.config.platform_stiffness = 4.5
+	module.call("_on_config_field", "platform_stiffness", 4.5, "workbench")
+	_check(server.console.find_cvar("sc_stiffness").get_string().to_float() == 4.5, "a workbench edit reaches the hand-written cvar",
+		server.console.find_cvar("sc_stiffness").get_string())
+	game.sides[&"u91"] = 1
+	game.sides[&"u92"] = 1
+	game.sides[&"u93"] = 2
+	game.body_rules.solid = true
+	_check(not game.body_rules.blocks(&"u91", &"u92"), "team-mates pass with mp_teamblock 0")
+	_check(game.body_rules.blocks(&"u91", &"u93"), "enemies block with mp_enemyblock 1")
+	teamblock.set_value("1")
+	_check(game.body_rules.blocks(&"u91", &"u92"), "mp_teamblock 1 makes team-mates block")
+	teamblock.set_value("0")
+	game.body_rules.solid = false
+	game.sides.clear()
 
 
 func _test_the_commands() -> void:

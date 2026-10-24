@@ -80,23 +80,6 @@ enum Phase {
 	SHOWDOWN,
 }
 
-## How far a falling prop has to be going down before a landing counts as an impact.
-##
-## [b]Above one tick of gravity, and this is the trap dot-props wrote down twice.[/b] A
-## physics assertion that does not say what it is excluding is measuring gravity: at 20
-## m/s² and 64 Hz a body that is merely resting reads 0.31 m/s downward every step, so a
-## threshold near zero turns every crate sitting on a platform into a continuous impact.
-const IMPACT_MIN_SPEED := 3.5
-
-## How much of its downward speed a body has to lose in one step to count as having landed.
-const IMPACT_LOSS := 0.45
-
-## Metres from an impact within which a player is hurt by it.
-const IMPACT_HURT_RADIUS := 2.4
-
-## Damage a landing does to a player, per kilogram metre per second of impulse.
-const IMPACT_HURT_PER_IMPULSE := 0.055
-
 ## Metres above the kill height at which a chopper counts as having reached the floor.
 ##
 ## A parked machine's origin rests 0.9 m above the surface it is on, measured, so a check at
@@ -186,6 +169,12 @@ const DIED_SHOT := &"shot"
 const DIED_BLAST := &"blast"
 
 @export var config: ScConfig = null
+
+## The binder that layered [member config] (cfg/ yml, env, argv); null in a suite that built the config by hand.
+var config_binder: DotGameConfigBinder = null
+
+## dot-team's block rules (`mp_teamblock`, `!block`, `!noblock`), set by the module or the client's `add_noblock`; null without dot-team.
+var block_rules: Object = null
 
 ## Whether this instance decides anything. A client sets this false.
 @export var authoritative: bool = true
@@ -601,7 +590,7 @@ func _build_combat() -> void:
 	combat.register_service = false
 
 	var rules := DotDamageRules.new()
-	rules.friendly_fire = false
+	rules.friendly_fire = config.friendly_fire
 	rules.self_damage = true
 	rules.hit_groups = true
 	combat.rules = rules
@@ -808,6 +797,8 @@ func _build_match() -> void:
 func _build_spectate() -> void:
 	spectate = ScSpectate.new()
 	spectate.name = "Spectate"
+	spectate.death_cam_seconds = config.death_cam_seconds
+	spectate.freeze_cam_seconds = config.freeze_cam_seconds
 	spectate.players = players
 	spectate.sides = sides
 	spectate.phase_fn = func() -> int: return phase
@@ -839,7 +830,7 @@ func _build_progress() -> void:
 	progress.name = "Progress"
 	progress.players = players
 	progress.sides = sides
-	progress.hurt_radius = IMPACT_HURT_RADIUS
+	progress.hurt_radius = config.impact_hurt_radius
 	add_child(progress)
 
 	var ready_now := progress.setup(config.progress_directory, config.report_progress)
@@ -1173,6 +1164,12 @@ func _set_riding(player_id: StringName, value: bool, at: Vector3 = Vector3.ZERO)
 	if not value and at != Vector3.ZERO:
 		player.global_position = at
 		player.controller.state.position = at
+
+
+## The side a player stands on for the block rules: the team, "" for none.
+func team_of_side(id: Variant) -> Variant:
+	var side := int(sides.get(StringName(id), 0))
+	return str(side) if side > 0 else ""
 
 
 func team_of(player_id: StringName) -> int:
@@ -2113,11 +2110,11 @@ func _watch_props(delta: float) -> void:
 		var now := body.linear_velocity
 		_prop_velocity[instance_id] = now
 
-		if was.y > -IMPACT_MIN_SPEED:
+		if was.y > -config.impact_min_speed:
 			continue
 
 		# It lost most of its downward speed in one step, so something stopped it.
-		if now.y < was.y * (1.0 - IMPACT_LOSS):
+		if now.y < was.y * (1.0 - config.impact_loss):
 			continue
 
 		_land(prop, body.global_position, -was.y, delta)
@@ -2167,11 +2164,11 @@ func _crush_nearby(at: Vector3, impulse: float) -> void:
 
 		var offset := player.controller.state.position + Vector3.UP * 0.9 - at
 
-		if offset.length() > IMPACT_HURT_RADIUS:
+		if offset.length() > config.impact_hurt_radius:
 			continue
 
-		var falloff := 1.0 - clampf(offset.length() / IMPACT_HURT_RADIUS, 0.0, 1.0)
-		var amount := impulse * IMPACT_HURT_PER_IMPULSE * falloff
+		var falloff := 1.0 - clampf(offset.length() / config.impact_hurt_radius, 0.0, 1.0)
+		var amount := impulse * config.impact_hurt_per_impulse * falloff
 
 		if amount < 1.0:
 			continue

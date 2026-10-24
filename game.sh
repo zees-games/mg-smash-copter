@@ -33,7 +33,7 @@
 GAME_NAME="Smash Copter"
 PACK="smash"
 EXTRA_PACKS=""
-SUITES="headless_run headless_net headless_workshop headless_mapcfg dedicated"
+SUITES="headless_config headless_run headless_net headless_workshop headless_mapcfg dedicated"
 # --------------------------------------------------------------------------------
 
 set -uo pipefail
