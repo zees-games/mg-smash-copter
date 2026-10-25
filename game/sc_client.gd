@@ -373,6 +373,7 @@ func _build_netcode() -> DotResult:
 		# predicts its own player.
 		var _view := game.view_rules.follow_cvars(link)
 		var _solid := game.body_rules.follow_cvars(link)
+		var _ambient := game.ambient_rules.follow_cvars(link)
 		if link.has_method(&"replicated_cvar"):
 			_on_killcam_cvar("mp_killcam_time", String(link.call(&"replicated_cvar", "mp_killcam_time", "")))
 			if link.has_signal(&"replicated_cvar_changed"):
@@ -795,6 +796,9 @@ func _build_settings() -> void:
 
 	if audio != null:
 		settings.bind_audio(audio.manager)
+		# The server's sc_ambient* drive the quiet layer; the player's sliders multiply on top.
+		if audio.ambient != null:
+			audio.ambient.follow_settings(settings.settings, game.ambient_rules)
 
 	if settings.menu != null:
 		_bind_bot_console()

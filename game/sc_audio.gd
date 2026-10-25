@@ -1,5 +1,6 @@
 extends Node
 
+const ScAmbience := preload("sc_ambience.gd")
 const ScPaths := preload("sc_paths.gd")
 const ScPlatforms := preload("sc_platforms.gd")
 
@@ -98,6 +99,9 @@ var manager: DotAudioManager = null
 ## Forty metres up on a slab in the open: wind is the whole world's sound.
 var steps: DotAudioFootsteps = null
 var ambience: DotAudioAmbience = null
+
+## Quiet moods under the sky (dot-audio's stock set); the old wind bed plays only when none loaded.
+var ambient: DotAmbienceDirector = null
 
 ## Where the cannon's mouth is. [ScClient] sets it from `ScArena.muzzle()`, which is the one
 ## place that number is written.
@@ -359,6 +363,15 @@ func setup() -> DotResult:
 	ambience.fallback_bed = &"amb_wind"
 	add_child(ambience)
 	ambience.set_map_bed(&"amb_wind")
+	ambient = DotAmbienceDirector.new()
+	ambient.name = "Ambient"
+	ambient.manager = manager
+	ambient.default_mood = ScAmbience.DEFAULT_MOOD
+	ambient.rules = ScAmbience.make_rules()
+	add_child(ambient)
+	var _moods := ambient.setup()
+	ambient.follow_settings(null)
+	ambient.on_map(&"smash_copter")
 
 	# Only on a real sink: the manager has already decided whether there is a device, and a
 	# headless process has nothing to bake for.
@@ -382,7 +395,8 @@ func keep_walkers(bodies: Array) -> void:
 
 ## A map arrived: its bed and its ground. Empty keeps what is playing.
 func on_map(bed: StringName, surface: StringName = &"") -> void:
-	if ambience != null and bed != &"":
+	var moods := ambient != null and ambient.has_moods()
+	if ambience != null and bed != &"" and not moods:
 		ambience.set_map_bed(bed)
 	if steps != null and surface != &"":
 		steps.default_surface = surface

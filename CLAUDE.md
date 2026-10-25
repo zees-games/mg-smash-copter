@@ -45,6 +45,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 - `./game.sh` plays offline; `./game.sh online` runs a local server and browser client; `./game.sh test` parses and runs the four suites; `./game.sh shot` renders. Addon links come from `.gitignore` through dot-bootstrap.
 - After touching a camera, the view key or player collision: `tools/camera_check.sh` (cameras round every deck, armed; `--render` for frames). [client](docs/client.md#cameras-and-bodies)
 - **The sky's bed is wind and everybody steps** (dot-audio's stock, `ScAudio.setup`); the level is measured with `addons/dot_audio/tools/loudness.sh` (−17 LUFS band, `loudness_trim_db`), never set by ear. Stock ids have files, so the suite's stand-in checks skip them.
+- **Quiet moods under the wind**: `ScAudio.ambient` is dot-audio's `DotAmbienceDirector` (default `snow_wind`, the defaults in `game/sc_ambience.gd`); the old bed plays only when no mood loaded. `sc_ambient*` are bound by the module (REPLICATED, `sc_ambient_dir` local), followed by the client; the Ambience bus follows the Effects slider. `dedicated` checks a server change reaches a client's director.
 - **Render after any change to what is drawn**; `tools/shot.sh` is never `--headless` (a black PNG). [testing](docs/testing.md#renders-and-sound-what-no-assertion-reaches)
 - **The suites cannot see delivery.** After touching paths, art or addon APIs, import, pack and join with a real client (dot-server-deploy `examples/smash_client.tscn`). [testing](docs/testing.md#the-deployment)
 

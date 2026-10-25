@@ -1,5 +1,6 @@
 extends Node3D
 
+const ScAmbience := preload("sc_ambience.gd")
 const ScArena := preload("sc_arena.gd")
 const ScCannon := preload("sc_cannon.gd")
 const ScConfig := preload("sc_config.gd")
@@ -232,6 +233,8 @@ signal toys_clearing()
 ## under the first and predicts its own player under the second.
 var view_rules: DotPlayerViewRules = DotPlayerViewRules.new()
 var body_rules: DotPlayerBodyRules = DotPlayerBodyRules.new()
+## The ambience cvars (`sc_ambient*`): bound by the module (REPLICATED), followed by a client through its link.
+var ambient_rules: DotAmbienceRules = ScAmbience.make_rules()
 
 
 func _init() -> void:
