@@ -1,0 +1,62 @@
+# mg-smash-copter: every key of this file at its code default, commented out. Uncomment a line to change it;
+# an operator overrides in cfg/server/game/mg-smash-copter/config_cannon/game.yml. Layers: defaults < this < env < argv.
+
+# --- The cannon
+# Whether the thing in the middle of the map fires at all.
+# cannon_enabled: true
+# Seconds between shots at the start of a round. [0.05..60.0]
+# cannon_interval: 1.9
+# What that interval is multiplied by by the end of the survival phase. [0.05..4.0]
+# cannon_interval_ramp: 0.42
+# How many props one shot puts in the air. [1..24]
+# cannon_volley: 1
+# What that count is multiplied by by the end of the survival phase, rounded down. [1.0..12.0]
+# cannon_volley_ramp: 2.6
+# Metres above the deck a launched prop is aimed to reach at the top of its arc. [2.0..200.0]
+# cannon_apex: 26.0
+# Metres the aim is scattered by, so a shot at a platform is not a shot at its centre. [0.0..40.0]
+# cannon_spread: 4.2
+# The largest prop tier the cannon may fire. 1 is crates only, 4 is everything. [1..4]
+# cannon_max_tier: 4
+# How many props may be in the air and on the platforms at once. [4..400]
+# prop_budget: 110
+# Seconds a launched prop lives before it is taken away, however it landed. [2.0..300.0]
+# prop_life_seconds: 45.0
+
+# --- Special rounds
+# Whether special rounds happen at all.
+# specials_enabled: true
+# The chance in a hundred that a round is given a special at the moment it begins. [0.0..100.0]
+# special_round_chance: 34.0
+# Whether a special may also arrive part way through an ordinary round.
+# specials_mid_round: true
+# The mean number of seconds between mid-round specials. [5.0..900.0]
+# special_mean_gap: 46.0
+# The least number of seconds between two mid-round specials. [1.0..900.0]
+# special_min_gap: 22.0
+# How long a mid-round special lasts, in seconds. A start-of-round one lasts the round. [2.0..600.0]
+# special_seconds: 24.0
+# Which specials this server may draw, by id. Empty means all of them.
+# special_ids: []
+
+# --- The chopper
+# Whether any layout may carry a chopper.
+# chopper_enabled: true
+# How many choppers a layout that has one gets. [1..6]
+# chopper_count: 1
+# Metres above the deck a chopper is parked at when the round begins. [0.0..200.0]
+# chopper_pad_height: 6.0
+# How hard the rotor pulls, as a multiple of the weight it is holding up. [1.0..6.0]
+# chopper_lift: 1.9
+# How fast a chopper moves over the ground at full tilt, in m/s. [1.0..120.0]
+# chopper_speed: 19.0
+# How fast it turns, in degrees per second. [5.0..360.0]
+# chopper_yaw_rate: 72.0
+# Metres above the deck a chopper may not climb past. [2.0..400.0]
+# chopper_ceiling: 52.0
+# Whether the pilot may drop props out of it.
+# chopper_may_drop: true
+# Seconds between drops. [0.1..60.0]
+# chopper_drop_interval: 2.4
+# The largest tier a chopper may drop. [1..4]
+# chopper_drop_tier: 2

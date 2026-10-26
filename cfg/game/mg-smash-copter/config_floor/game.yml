@@ -1,0 +1,68 @@
+# mg-smash-copter: every key of this file at its code default, commented out. Uncomment a line to change it;
+# an operator overrides in cfg/server/game/mg-smash-copter/config_floor/game.yml. Layers: defaults < this < env < argv.
+
+# --- The platforms
+# How far above the floor the platforms sit, in metres. [5.0..200.0]
+# deck_height: 40.0
+# One platform's side, in metres. They are square. [2.0..40.0]
+# platform_size: 10.5
+#  [0.1..3.0]
+# platform_thickness: 0.6
+# Metres between the centres of two platforms along the rows. [2.0..60.0]
+# column_pitch: 11.4
+# Metres between the two rows of platforms. [4.0..120.0]
+# row_pitch: 24.0
+# The radius of the single pillar under each platform, in metres. [0.2..8.0]
+# pillar_radius: 1.35
+# How hard a platform pushes itself back level, in radians per second squared per radian. [0.1..200.0]
+# platform_stiffness: 7.0
+# How much of a platform's lean speed is bled off per second. [0.0..50.0]
+# platform_damping: 1.55
+# The rotational inertia of a platform, in arbitrary but consistent units. [1.0..100000.0]
+# platform_inertia: 2600.0
+# How much a load standing off centre leans the platform, per kilogram per metre. [0.0..100.0]
+# platform_load_gain: 1.8
+# How much harder a running load pushes than a still one. [0.0..10.0]
+# platform_motion_gain: 2.0
+# Radians of lean past which a platform comes off its pillar and falls. [0.05..1.2]
+# platform_collapse_lean: 0.28
+# How much punishment a platform takes before it collapses, in kilogram metres per second. [1.0..1000000.0]
+# platform_toughness: 5200.0
+# A single impact this big collapses a platform outright, whatever its health. [1.0..1000000.0]
+# platform_shatter_impulse: 4200.0
+# How much of an impact becomes lean rather than damage. [0.0..100.0]
+# platform_impact_gain: 0.55
+# Seconds a collapsing platform takes to fall out of the world. [0.5..30.0]
+# platform_fall_seconds: 6.0
+# Whether the pillar goes down with the platform it was holding up.
+# pillar_falls_with_platform: false
+# How slippery a platform is, as a multiplier on the ground friction. [0.02..4.0]
+# platform_grip: 1.0
+
+# --- The layout
+# How many platforms there are along each row. [2..12]
+# columns: 5
+# How many rows of platforms there are. [1..6]
+# rows: 2
+# Whether the layout is re-rolled at the start of every round.
+# vary_layout: true
+# Which layouts this server may draw, by id. Empty means all of them.
+# layout_ids: []
+# Seed the layouts, the cannon and the special rounds are all drawn from.
+# seed_value: 20260916
+
+# --- The showdown
+# Metres from the middle of the map to a corner arena. [10.0..400.0]
+# corner_distance: 62.0
+# One corner arena's side, in metres. [4.0..80.0]
+# corner_size: 17.0
+# Metres above the deck the corner arenas sit at. [-50.0..200.0]
+# corner_rise: 9.0
+# How many weapons each survivor is given. [1..8]
+# weapons_granted: 2
+# Which weapons may be drawn, by id from the pack. Empty means a sensible default set.
+# weapon_pool: []
+# Whether both survivors of a team get the same draw.
+# weapons_match_within_team: false
+# Whether the platforms are cleared away when the showdown starts.
+# clear_platforms_for_showdown: true

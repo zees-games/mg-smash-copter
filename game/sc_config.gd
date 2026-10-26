@@ -536,6 +536,22 @@ extends DotConfig
 @export var report_progress: bool = false
 
 
+## `@export_group` -> the cfg file it lives in: `cfg/game/mg-smash-copter/config_<file>/game.yml`.
+const CFG_FILES := {
+	"The round": "round", "Sides": "round", "The players": "round", "Impacts": "round", "Watching": "round", "Bots": "round", "Progress": "round",
+	"The platforms": "floor", "The layout": "floor", "The showdown": "floor",
+	"The cannon": "cannon", "Special rounds": "cannon", "The chopper": "cannon",
+}
+
+
+## The binder every entry point uses: [param config] layered, one cfg file per [constant CFG_FILES] entry.
+static func make_binder(config: DotConfig, json_path := "") -> DotGameConfigBinder:
+	var b := DotGameConfigBinder.create(config, "mg-smash-copter", "sc", json_path)
+	b.grouped = true
+	b.group_files = CFG_FILES
+	return b
+
+
 func env_prefix() -> String:
 	return "SC_"
 

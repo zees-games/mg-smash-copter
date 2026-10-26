@@ -3,6 +3,9 @@ extends DotGameModule
 const ScNetBridge := preload("net/sc_net_bridge.gd")
 const ScServices := preload("sc_services.gd")
 const ScMapConfig := preload("sc_map_config.gd")
+const ScAmbience := preload("sc_ambience.gd")
+## The workbench kind of the ambience cvar set (saved to cfg/.../ambience/server.yml).
+const AMBIENT_KIND := "ambience"
 
 const ScGame := preload("sc_game.gd")
 const ScLayouts := preload("sc_layouts.gd")
@@ -464,7 +467,11 @@ func _bind_config(world: ScGame) -> DotResult:
 	workbench.permit_fn = func(actor: Variant, flag: String) -> bool:
 		return server != null and server.admins != null and actor is String \
 			and bool(server.admins.uid_has_permission(actor, flag))
-	workbench.add_set(binder.profile_set(), "Game settings")
+	for set: DotProfileSet in binder.profile_sets():
+		workbench.add_set(set, "Game settings: %s" % set.rel_path.trim_prefix("config_"))
+	var ambient_set := DotGameWorkbench.cvar_set(console, ScAmbience.cvar_types(), AMBIENT_KIND)
+	if ambient_set != null:
+		workbench.add_set(ambient_set, "Ambience (sc_ambient*)")
 	add_child(workbench)
 	var started := workbench.start()
 	var runtime: DotProfileRuntime = workbench.api.runtime if started.ok and workbench.api != null else null
@@ -481,6 +488,8 @@ func _bind_config(world: ScGame) -> DotResult:
 	binder.field_changed.connect(_on_config_field)
 	if runtime != null:
 		binder.attach(runtime)
+		if ambient_set != null:
+			var _applied := DotGameWorkbench.bind_cvar_set(ambient_set, runtime, console)
 	return DotResult.success(null)
 
 

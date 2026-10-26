@@ -29,7 +29,7 @@ const ScProgress := preload("../game/sc_progress.gd")
 ## and those are what this is about.
 
 const SECTIONS := 17
-const CHECKS := 165
+const CHECKS := 166
 
 ## Everything this run writes, and it is deleted on the way in and on the way out.
 ##
@@ -292,7 +292,7 @@ func _test_the_module_loads() -> void:
 	game = ScGame.new()
 	game.name = "World"
 	game.config = config
-	game.config_binder = DotGameConfigBinder.create(config, "mg-smash-copter", "sc")
+	game.config_binder = ScConfig.make_binder(config)
 	game.tick_rate = Engine.physics_ticks_per_second
 	add_child(game)
 
@@ -440,6 +440,10 @@ func _noblock_and_config(module: DotModule) -> void:
 		"config fields with no hand-written cvar are sc_ cvars")
 	_check(not server.console.has_name("sc_platform_stiffness"), "a field with a hand-written cvar gets no second one")
 	_check(module.get("workbench") != null, "the module hosts the workbench")
+	var wb: DotGameWorkbench = module.get("workbench")
+	var amb: DotResult = wb.api.handle(DotGameWorkbench.LOCAL_ACTOR, {"op": "set", "kind": "ambience", "id": DotGameWorkbench.CVAR_SET_ID, "key": "sc_ambient_volume", "value": 0.2})
+	_check(amb.ok and is_equal_approx(server.console.get_float("sc_ambient_volume"), 0.2), "the sc_ambient* cvars are a workbench set and an edit moves the cvar", "" if amb.ok else amb.error.message)
+	var _restore := server.console.set_cvar("sc_ambient_volume", "0.3")
 	game.config.platform_stiffness = 4.5
 	module.call("_on_config_field", "platform_stiffness", 4.5, "workbench")
 	_check(server.console.find_cvar("sc_stiffness").get_string().to_float() == 4.5, "a workbench edit reaches the hand-written cvar",

@@ -1,0 +1,82 @@
+# mg-smash-copter: every key of this file at its code default, commented out. Uncomment a line to change it;
+# an operator overrides in cfg/server/game/mg-smash-copter/config_round/game.yml. Layers: defaults < this < env < argv.
+
+# --- The round
+# Seconds the survival phase runs before the survivors are sent to the corners. [10.0..900.0]
+# survival_seconds: 120.0
+# Seconds the showdown runs before the round is called on the clock. [10.0..900.0]
+# showdown_seconds: 90.0
+# Seconds between the survival phase ending and the showdown starting. [0.0..30.0]
+# showdown_warmup_seconds: 4.0
+# Seconds between rounds, for the platforms to be rebuilt. [0.0..60.0]
+# intermission_seconds: 8.0
+# Seconds of the round's final killcam, added to the intermission (`mp_killcam_time`); 0 is off. Not added wh... [0.0..30.0]
+# killcam_seconds: 7.0
+# Seconds of warmup before the first round. 0 starts immediately. [0.0..300.0]
+# warmup_seconds: 12.0
+
+# --- Sides
+# How many teams the server plays with. Two is red against blue. [2..6]
+# team_count: 2
+# Whether players may pick their own side.
+# allow_team_choice: true
+# Whether shots, blasts and falls hurt the shooter's own side.
+# friendly_fire: false
+# Whether the server evens the sides up between rounds.
+# autobalance: true
+
+# --- The players
+#  [1.0..400.0]
+# player_health: 100.0
+# How fast a player RUNS, in m/s. Running is the default; shift is the slow walk. [1.0..20.0]
+# run_speed: 6.4
+# What fraction of run_speed holding the walk key gives. [0.1..1.0]
+# walk_speed_scale: 0.42
+#  [0.1..5.0]
+# jump_height: 1.15
+# A player's mass in kilograms, which is what a platform feels them as. [20.0..200.0]
+# player_mass: 80.0
+# Metres per second squared, for everything: players, props and the chopper. [1.0..60.0]
+# gravity: 20.0
+# Metres below the deck at which a player is dead. The floor of the map. [-500.0..100.0]
+# kill_height: 1.5
+
+# --- Bots
+# How many players the server keeps in the round by adding stand-ins. [0..24]
+# minimum_players: 4
+# How far a stand-in will walk toward the nearest enemy in the showdown, in metres. [5.0..400.0]
+# bot_advance_metres: 200.0
+# Degrees of lean a stand-in has to feel before it walks uphill (`sc_bot_lean_notice`). [0.0..15.0]
+# bot_lean_notice_degrees: 1.15
+# How wide a miss, in metres, a stand-in accepts when it decides to fire (`sc_bot_spray`). [0.1..5.0]
+# bot_spray_metres: 0.6
+
+# --- Impacts
+# How far a falling prop has to be going down (m/s) before a landing counts as an impact. Keep above one tick... [0.5..40.0]
+# impact_min_speed: 3.5
+# Fraction of its downward speed a prop must lose in one step to count as landed. [0.05..1.0]
+# impact_loss: 0.45
+# Metres from an impact within which a player is hurt by it. [0.1..20.0]
+# impact_hurt_radius: 2.4
+# Damage a landing does to a player, per kilogram metre per second of impulse. [0.0..2.0]
+# impact_hurt_per_impulse: 0.055
+# Fraction of the world's gravity a falling platform accelerates at. [0.05..2.0]
+# fall_gravity_scale: 0.62
+# Radians per second a falling platform tips over as it goes. [0.0..5.0]
+# fall_tip_rate: 0.85
+
+# --- Watching
+# Who somebody who is out may watch: 0 anybody, 1 their own side, 2 nobody.
+# spectate_camera: 0
+# Seconds the death camera holds on the spot a person fell from, then the freeze camera. Both ends read it; c... [0.0..10.0]
+# death_cam_seconds: 1.5
+# Seconds the freeze camera holds before the free one. [0.0..10.0]
+# freeze_cam_seconds: 1.5
+
+# --- Progress
+# Whether the server counts per-player numbers and awards achievements at all.
+# keep_progress: true
+# Where lifetime achievement progress is written. Empty keeps it in memory.
+# progress_directory: ""
+# Whether the numbers and the unlocks are reported to the backbone.
+# report_progress: false
