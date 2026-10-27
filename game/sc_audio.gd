@@ -368,6 +368,7 @@ func setup() -> DotResult:
 	ambient.manager = manager
 	ambient.default_mood = ScAmbience.DEFAULT_MOOD
 	ambient.rules = ScAmbience.make_rules()
+	ambient.beds = ambience
 	add_child(ambient)
 	var _moods := ambient.setup()
 	ambient.follow_settings(null)
