@@ -1,4 +1,4 @@
-extends Node
+extends DotGameCheckSuite
 
 const ScMapConfig := preload("../game/sc_map_config.gd")
 
@@ -14,9 +14,6 @@ const SECTIONS := 2
 const CHECKS := 9
 const FIXTURE_CFG := "res://examples/fixtures/mapcfg"
 
-var _passed := 0
-var _failed := 0
-var _failures := PackedStringArray()
 var _sections := 0
 
 
@@ -70,22 +67,4 @@ func _run() -> void:
 	_check(console.find_cvar("sc_gravity").get_float() == 9.8, "unloading restores")
 	_check(ScMapConfig.KEYS.has("mp_killcam_time") and not ScMapConfig.KEYS.has("sc_teams"), "whitelist keeps rules, not layout size")
 
-	print("")
-	print("%d passed, %d failed (%d sections)" % [_passed, _failed, _sections])
-	for line in _failures:
-		print("  FAIL  %s" % line)
-	if _passed + _failed != CHECKS or _sections != SECTIONS:
-		print("ERROR: %d checks, %d sections ran, %d/%d expected." % [_passed + _failed, _sections, CHECKS, SECTIONS])
-		get_tree().quit(1)
-		return
-	get_tree().quit(1 if _failed > 0 else 0)
-
-
-func _check(ok: bool, what: String) -> void:
-	if ok:
-		_passed += 1
-		print("  ok    %s" % what)
-	else:
-		_failed += 1
-		_failures.append(what)
-		print("  FAIL  %s" % what)
+	_report(CHECKS)
