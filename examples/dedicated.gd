@@ -1,4 +1,4 @@
-extends Node
+extends DotGameCheckSuite
 
 const ScAmbience := preload("../game/sc_ambience.gd")
 const ScAudio := preload("../game/sc_audio.gd")
@@ -51,11 +51,8 @@ const QUERY_PORT := 28892
 ## would pass with the chain disconnected.
 const TICK_RATE := 48
 
-var _passed := 0
-var _failed := 0
 var _sections_entered := 0
 var _sections_finished := 0
-var _failures := PackedStringArray()
 
 var server: DotServer = null
 var game: ScGame = null
@@ -121,15 +118,6 @@ func _run() -> void:
 	if not probe.is_empty():
 		_test_exits_clean(probe)
 
-	print("")
-	print("%d sections entered, %d finished" % [_sections_entered, _sections_finished])
-	print("%d passed, %d failed" % [_passed, _failed])
-
-	for line in _failures:
-		print("  FAIL  %s" % line)
-
-	var code := 1 if _failed > 0 else 0
-
 	# Against the declared number too. SECTIONS was declared and read by nothing — it said
 	# 6 while eight sections ran — which is the detector for "a name that occurs once"
 	# finding its own suite.
@@ -138,21 +126,9 @@ func _run() -> void:
 	var sections := SECTIONS - (1 if _is_exit_probe() else 0)
 	var checks := CHECKS - (EXIT_PROBE_CHECKS if _is_exit_probe() else 0)
 
-	if _sections_entered != _sections_finished or _sections_entered != sections:
-		print("ERROR: %d of %d sections finished, %d declared." % [
-			_sections_finished, _sections_entered, sections
-		])
-		code = 1
-
-	if _passed + _failed != checks:
-		print("ERROR: %d checks ran, %d expected. A section aborted part-way." % [
-			_passed + _failed, checks
-		])
-		code = 1
-
 	await _shut_down()
 	DotPaths.remove_tree(SERVER_DIR)
-	get_tree().quit(code)
+	_report_sections(_sections_entered, _sections_finished, sections, checks)
 
 
 ## Takes the server down before quitting, and this run does not end without it.
@@ -1639,18 +1615,6 @@ func _section(name: String) -> void:
 
 func _finished() -> void:
 	_sections_finished += 1
-
-
-func _check(ok: bool, what: String, detail: String = "") -> void:
-	if ok:
-		_passed += 1
-		print("  ok    %s%s" % [what, "" if detail == "" else "  (%s)" % detail])
-		return
-
-	_failed += 1
-	var line := "%s%s" % [what, "" if detail == "" else "  (%s)" % detail]
-	_failures.append(line)
-	print("  FAIL  %s" % line)
 
 
 ## The loaded module, looked up rather than kept.

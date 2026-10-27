@@ -1,4 +1,4 @@
-extends Node
+extends DotGameCheckSuite
 
 const ScEvents := preload("../game/net/sc_events.gd")
 const ScNetBridge := preload("../game/net/sc_net_bridge.gd")
@@ -87,11 +87,8 @@ const SERVER_COLUMNS := 5
 ## asserting that the compression does not work.
 const LEAN_EPSILON := 0.004
 
-var _passed := 0
-var _failed := 0
 var _sections_entered := 0
 var _sections_finished := 0
-var _failures := PackedStringArray()
 
 var _server_game: ScGame = null
 var _client_game: ScGame = null
@@ -162,31 +159,10 @@ func _run() -> void:
 	_check(seen.is_empty(), "the engine reported no error over the whole run",
 		"%d: %s" % [seen.size(), ", ".join(seen.slice(0, 3))])
 
-	print("")
-	print("%d sections entered, %d finished" % [_sections_entered, _sections_finished])
-	print("%d passed, %d failed" % [_passed, _failed])
-
-	for line in _failures:
-		print("  FAIL  %s" % line)
-
-	var code := 1 if _failed > 0 else 0
-
 	# Against the declared number too. SECTIONS was declared here and read by nothing — the
 	# "name that occurs once" detector, on the suite itself — so a section that was never
 	# called at all passed as long as the ones that were called finished.
-	if _sections_entered != _sections_finished or _sections_entered != SECTIONS:
-		print("ERROR: %d of %d sections finished, %d expected." % [
-			_sections_finished, _sections_entered, SECTIONS
-		])
-		code = 1
-
-	if _passed + _failed != CHECKS:
-		print("ERROR: %d checks ran, %d expected. A section aborted part-way." % [
-			_passed + _failed, CHECKS
-		])
-		code = 1
-
-	get_tree().quit(code)
+	_report_sections(_sections_entered, _sections_finished, SECTIONS, CHECKS)
 
 
 # --- The wire ---------------------------------------------------------------
@@ -2637,18 +2613,6 @@ func _section(name: String) -> void:
 
 func _finished() -> void:
 	_sections_finished += 1
-
-
-func _check(ok: bool, what: String, detail: String = "") -> void:
-	if ok:
-		_passed += 1
-		print("  ok    %s%s" % [what, "" if detail == "" else "  (%s)" % detail])
-		return
-
-	_failed += 1
-	var line := "%s%s" % [what, "" if detail == "" else "  (%s)" % detail]
-	_failures.append(line)
-	print("  FAIL  %s" % line)
 
 
 ## Counts the engine's own errors while installed (mg-smash-copter's dedicated suite has the
