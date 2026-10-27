@@ -2,6 +2,7 @@ extends Node
 
 const ScBindings := preload("sc_bindings.gd")
 const ScAudio := preload("sc_audio.gd")
+const ScWeaponIcons := preload("sc_weapon_icons.gd")
 const ScSettings := preload("sc_settings.gd")
 const ScServices := preload("sc_services.gd")
 const ScPlayerNet := preload("net/sc_player_net.gd")
@@ -338,6 +339,10 @@ static func _bot_name(index: int) -> String:
 ## `-- --bot_difficulty hard` at launch. Connected, the server's console holds them and a local
 ## copy would shadow it.
 func _bind_bot_console() -> void:
+	if console != null:
+		var local: Array = console.sources()
+		if not local.is_empty() and local[0] is DotConsoleLocal:
+			var _icons := ScWeaponIcons.shared.bind_console(local[0])
 	if not _offline or console == null or game == null:
 		return
 
