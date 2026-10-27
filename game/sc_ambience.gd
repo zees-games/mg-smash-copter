@@ -4,8 +4,8 @@ extends RefCounted
 
 const PREFIX := "sc"
 ## The cannon, the creak and the collapse are the warning: the layer sits under them, with rare one-shots.
-const LEVEL := 0.3
-const RATE := 0.5
+const LEVEL := 0.15
+const RATE := 0.4
 const DEFAULT_MOOD := &"snow_wind"
 
 
