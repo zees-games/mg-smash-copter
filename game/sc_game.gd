@@ -174,6 +174,17 @@ const DIED_BLAST := &"blast"
 ## The binder that layered [member config] (cfg/ yml, env, argv); null in a suite that built the config by hand.
 var config_binder: DotGameConfigBinder = null
 
+## The workbench's profile rows, made on first ask: the bridge's profile link must exist before the netcode seals, the workbench after.
+var profile_runtime: DotProfileRuntime = null
+
+
+func ensure_runtime() -> DotProfileRuntime:
+	if profile_runtime == null:
+		profile_runtime = DotProfileRuntime.new()
+		profile_runtime.permit = func(actor: Variant, _flag: String) -> bool:
+			return typeof(actor) == TYPE_STRING_NAME and actor == &"local"
+	return profile_runtime
+
 ## dot-team's block rules (`mp_teamblock`, `!block`, `!noblock`), set by the module or the client's `add_noblock`; null without dot-team.
 var block_rules: Object = null
 

@@ -192,6 +192,8 @@ var _ready_peers: Dictionary = {}
 ## when its link says PLAYING, which the link decides itself after sending `loaded` on another
 ## channel; over ENet with loss the READY can overtake `loaded`, and a READY dropped here left
 ## that client waiting for a world for ever. Admitted when seated.
+## Carries the game's profile runtime over this manager (rows down, for a remote admin's panel).
+var profile_link: DotNetProfileLink = null
 var _ready_unseated: Dictionary = {}
 
 var _tick: int = 0
@@ -217,6 +219,13 @@ var _layout_body: PackedByteArray = PackedByteArray()
 
 # --- Wiring ----------------------------------------------------------------
 
+func _exit_tree() -> void:
+	# The link and the runtime hold each other through broadcast.
+	if profile_link != null:
+		profile_link.release()
+		profile_link = null
+
+
 ## [param p_game] and [param p_net], in the shape [DotGameNetcode] calls it.
 func attach(p_game: Object, p_net: DotNetManager) -> DotResult:
 	var world := p_game as ScGame
@@ -239,6 +248,7 @@ func attach(p_game: Object, p_net: DotNetManager) -> DotResult:
 	add_child(_entities)
 
 	net.send_fn = _send
+	profile_link = DotNetProfileLink.attach(net, world.ensure_runtime())
 
 	var event := net.messages.register(
 		ScEvent.NAME, ScEvent,
@@ -1264,6 +1274,9 @@ func _admit(peer_id: int) -> void:
 
 	if not net.peers().has(peer_id):
 		net.add_peer(peer_id)
+
+	if profile_link != null:
+		profile_link.peer_joined(peer_id)
 
 	var session_id := int(_player_of_peer[peer_id])
 
