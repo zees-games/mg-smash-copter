@@ -21,20 +21,14 @@ const CHANNEL := "sc.net"
 ## Bytes of acknowledgement in front of every input packet. [method DotNetManager.encode_ack].
 const ACK_BYTES := 4
 
-## Commands in every input packet: this tick's and the four before it, so a lost packet
-## costs the server no tick unless the next four are lost too. Over WebSocket nothing is
-## ever lost; over ENet (the desktop client, since servers went dual-stack) one command a
-## packet was a tick the server ran on the previous command for every packet dropped.
-## game-arena measured it first: 80% of ticks with the right command at 20% loss with one
-## copy, 99-100% with three, and five closed the rest (2026-10-09).
+## Commands in every input packet: this tick's and the four before it, so a lost packet costs no
+## tick unless the next four are lost too. Over WebSocket nothing is lost; over ENet one command
+## a packet ran the server on the previous command for every drop.
 const INPUT_COPIES := 5
 
-## How often the round clock and the numbers behind it go out, in ticks.
-##
-## [b]Twice a second, not per tick and not per snapshot.[/b] What it carries changes when a
-## platform goes or a second passes, and a client told sixty-four times a second would be
-## paying for sixty-two copies of the same six numbers. The clock itself is advanced on the
-## client between messages — see [method _apply_clock].
+## How often the round clock and the numbers behind it go out, in ticks. Twice a second, not per
+## tick: it changes when a platform goes or a second passes, and the client advances the clock
+## between messages (see [method _apply_clock]).
 const CLOCK_EVERY := 32
 
 ## The client has been told who it is. [param player_id] is the session id.
@@ -87,11 +81,9 @@ signal weapon_used_by(session_id: int, times: int, kind: int)
 ## from — see `ScAudio.on_prop_appeared` for why "arrived at the muzzle" means "fired".
 signal prop_arrived(at: Vector3, vehicle: bool)
 
-## Somebody pressed Enter. Server side, and the only thing this bridge does with chat.
-##
-## [b]The bridge carries chat and decides nothing about it.[/b] Who may say what, on which
-## channel, how often and who hears it are [DotChatRouter]'s, and the router is the services
-## layer's.
+## Somebody pressed Enter. Server side, and the only thing this bridge does with chat. The bridge
+## carries chat and decides nothing about it: who may say what, how often and who hears it are
+## [DotChatRouter]'s.
 signal say_requested(peer_id: int, channel_id: StringName, text: String)
 
 ## A voice frame arrived. Server side; the payload is unparsed and must not be trusted —
@@ -109,13 +101,9 @@ var link: ScNetLink = null
 ## Which session this process is. Zero on a server.
 var local_player_id: int = 0
 
-## Where the clock learns how long the link is, in milliseconds.
-##
-## dot-net never touches a transport and cannot measure it; dot-server's heartbeat already
-## does ([method DotClientLink.ping_ms]). A client that feeds nothing has a clock that
-## assumes an instant connection and stamps every command for a tick the server has already
-## simulated — and the symptom is every command being discarded as late. Two games in this
-## family shipped without a sample and read a median of an empty set.
+## Where the clock learns how long the link is, in milliseconds. dot-net cannot measure a transport;
+## dot-server's heartbeat does ([method DotClientLink.ping_ms]). Fed nothing, the clock assumes an
+## instant link and every command is stamped for a tick the server has already simulated.
 var rtt_source: Callable = Callable()
 
 ## Where a voice frame goes on the server. Assigned by [DotGameModule] to the services
@@ -132,22 +120,16 @@ var _entities: Node = null
 ## session id -> [ScPlayerNet].
 var _behaviours: Dictionary = {}
 
-## The next session id handed to somebody the world made itself.
-##
-## [b]Well above anything dot-server will issue, and a bot needs one at all because of how a
-## player id is written.[/b] Every id on the wire is `u<session>`, and a player called `bot`
-## parses back to session ZERO — so two bots are one entry in [member _behaviours], and
-## their JOIN carries a player id that is also dot-net's broadcast address.
+## The next session id handed to somebody the world made itself. Well above anything dot-server
+## issues: a player id `bot` parses back to session ZERO, which is also dot-net's broadcast address,
+## so two bots would be one entry in [member _behaviours].
 const FIRST_BOT_SESSION := 900000
 
 var _next_bot_session: int = FIRST_BOT_SESSION
 
-## net id -> the behaviour replicating that body, on BOTH ends.
-##
-## [b]Keyed by net id rather than by instance id, and that is what makes the tick loop the
-## same on both ends.[/b] A prop instance id and a vehicle instance id are two counters in
-## two addons that both start at 1, so a table keyed on either holds two different things
-## under one key the moment a chopper and a crate exist together.
+## net id -> the behaviour replicating that body, on BOTH ends. Keyed by net id, not instance id:
+## a prop and a vehicle instance id are counters in two addons that both start at 1, so one key
+## would hold two things once a chopper and a crate coexist.
 var _bodies: Dictionary = {}
 
 ## Server only: `"p<instance>"`, `"v<instance>"` or `"d<index>"` -> net id, so a removal can
@@ -157,27 +139,17 @@ var _net_of: Dictionary = {}
 var _player_of_peer: Dictionary = {}
 var _peer_of_player: Dictionary = {}
 var _ready_peers: Dictionary = {}
-## Server: peers whose READY came before their seat ([method add_player]). A client sends READY
-## when its link says PLAYING, which the link decides itself after sending `loaded` on another
-## channel; over ENet with loss the READY can overtake `loaded`, and a READY dropped here left
-## that client waiting for a world for ever. Admitted when seated.
-## Carries the game's profile runtime over this manager (rows down, for a remote admin's panel).
+## Server: peers whose READY came before their seat ([method add_player]); over lossy ENet READY can
+## overtake `loaded`, and dropping it left that client waiting for a world for ever. Admitted when seated.
 var profile_link: DotNetProfileLink = null
 var _ready_unseated: Dictionary = {}
 
 var _tick: int = 0
 var _game_ticked_for: int = -1
 
-## Server only: whether [method DotNetManager.server_tick] is on the stack, and the net ids
-## let go of while it was.
-##
-## [b]A round re-laid mid-tick leaks a lag-compensation track per platform, for ever.[/b]
-## The world ticks inside the first player behaviour's `_net_simulate`, so a round that ends
-## there unregisters every platform while `server_tick` is still holding the identity list
-## it took before simulating — and then records history for that list. The registry has
-## already told the history to forget each id; the record makes a fresh track for it again,
-## and nothing ever forgets it a second time. Twelve orphaned tracks per round, measured.
-## Forgotten again here once the manager has let go of its list.
+## Server only: whether [method DotNetManager.server_tick] is on the stack, and the net ids let go of
+## meanwhile. A round re-laid mid-tick otherwise leaks a lag-compensation track per platform, because
+## the record recreates a track the registry just forgot; forgotten again once the manager lets go.
 var _in_server_tick := false
 var _unregistered_in_tick: Array[int] = []
 var _client_ticked_for: int = -1
