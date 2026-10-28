@@ -49,6 +49,26 @@ func _run() -> void:
 	_check(not strict.load_layers().ok, "strict: an unknown key is refused")
 	DirAccess.remove_absolute("user://sc_config_bad.json")
 
+	_shipped_yml()
+
+	_layers()
+	_templates(binder)
+
+	_workbench(binder, config, keys)
+
+	console.free()
+	print("")
+	print("%d passed, %d failed" % [_passed, _failed])
+	for line in _failures:
+		print("  FAIL  %s" % line)
+	if _passed + _failed != CHECKS:
+		print("ERROR: %d checks ran, %d expected." % [_passed + _failed, CHECKS])
+		get_tree().quit(1)
+		return
+	get_tree().quit(1 if _failed > 0 else 0)
+
+
+func _shipped_yml() -> void:
 	var shipped := "res://cfg/game/%s/config_cannon/game.yml" % GAME
 	var kept := FileAccess.get_file_as_string(shipped)
 	DirAccess.make_dir_recursive_absolute(shipped.get_base_dir())
@@ -65,9 +85,8 @@ func _run() -> void:
 	yml.store_string(kept)
 	yml.close()
 
-	_layers()
-	_templates(binder)
 
+func _workbench(binder: DotGameConfigBinder, config: ScConfig, keys: PackedStringArray) -> void:
 	var wb := DotGameWorkbench.new()
 	wb.panel_mode = 1
 	wb.config = {"enabled": false}
@@ -91,18 +110,7 @@ func _run() -> void:
 	var files: Dictionary = wb.exporter.call("collect")
 	var text: String = files.get("cfg/game/%s/config_round/game.yml" % GAME, "")
 	_check(text.contains("impact_loss: 0.3"), "the export holds the edit in the cfg layout")
-
 	wb.free()
-	console.free()
-	print("")
-	print("%d passed, %d failed" % [_passed, _failed])
-	for line in _failures:
-		print("  FAIL  %s" % line)
-	if _passed + _failed != CHECKS:
-		print("ERROR: %d checks ran, %d expected." % [_passed + _failed, CHECKS])
-		get_tree().quit(1)
-		return
-	get_tree().quit(1 if _failed > 0 else 0)
 
 
 func _write_root(rel: String, text: String) -> void:
