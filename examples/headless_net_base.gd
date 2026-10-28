@@ -55,10 +55,9 @@ const INPUT_LEAD := 3
 const CLIENT_COLUMNS := 3
 const SERVER_COLUMNS := 5
 
-## A platform's lean is eleven bits over a range of one radian, so about half a
-## milliradian. Everything compared across the wire is checked against this and not against
-## zero — a quantised value is not the value, and a suite that demanded equality would be
-## asserting that the compression does not work.
+## A platform's lean is eleven bits over one radian, so about half a milliradian. Compare across
+## the wire against this, not zero: a quantised value is not the value, and demanding equality
+## would assert that the compression does not work.
 const LEAN_EPSILON := 0.004
 
 var _sections_entered := 0
@@ -220,14 +219,9 @@ func _exchange() -> void:
 	_flush()
 
 
-## One tick on both ends, with a real physics frame between them.
-##
-## [b]The awaited physics frame is not padding.[/b] Everything the cannon throws is a
-## [RigidBody3D], and a rigid body is integrated by Godot's physics server on the physics
-## frame and by nothing else. A suite that drove ticks in a tight loop would move no prop at
-## all: the server's would stay exactly where they were put, the client's copies would match
-## exactly, and every assertion about replication would pass without anything having been
-## replicated.
+## One tick on both ends, with a real physics frame between them: rigid bodies move only on
+## it, so a tight loop would move no prop and every replication assertion would pass with
+## nothing replicated.
 func _step(command: DotFpsCommand = null) -> void:
 	_tick += 1
 	var _ticks := _client_net.clock.advance(1.0 / float(maxi(_client_game.tick_rate, 1)))
@@ -245,18 +239,15 @@ func _steps(count: int, command: DotFpsCommand = null) -> void:
 		await _step(command)
 
 
-## How many times the predictor has had to correct this client.
-##
-## Off the predictor rather than off [DotNetStats], which counts packets. A correction is
-## the number that says whether the two ends are computing the same thing.
+## How many times the predictor has had to correct this client: off the predictor, not
+## [DotNetStats], which counts packets.
 func _corrections() -> int:
 	if _client_net == null or _client_net.predictor == null:
 		return 0
 
 	# [b]The published rate, not a private counter.[/b] `_corrections` is the predictor's own
-	# book-keeping and a suite that reached into it would be asserting about an
-	# implementation. `correction_rate()` is what the addon offers, and it is the number that
-	# says whether the two ends are computing the same thing.
+	# book-keeping; `correction_rate()` is what the addon offers and says whether the two ends
+	# compute the same thing.
 	return int(round(_client_net.predictor.correction_rate() * 1000.0))
 
 
