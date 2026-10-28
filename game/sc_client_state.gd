@@ -66,12 +66,9 @@ var settings: ScSettings = null
 ## The player's console. See [method DotConsoleKit.build].
 var console: DotConsoleController = null
 
-## The weapons in this player's own hands, once the showdown has started.
-##
-## [b]Drawn, never decided.[/b] `authority` is false and every shot that matters is the
-## server's; what this rig is for is a view model that moves — a deploy, a reload, a recoil
-## kick — because a weapon that appears fully formed and never animates reads as a texture
-## stuck to the screen.
+## The weapons in this player's own hands, once the showdown has started. Drawn, never decided:
+## every shot that matters is the server's; the rig is a view model that moves (deploy, reload,
+## recoil), because a gun that never animates reads as a texture stuck to the screen.
 var weapons: ZeeWeaponRig = null
 var view_model: ZeeViewModel = null
 

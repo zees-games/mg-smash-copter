@@ -48,16 +48,9 @@ func _watched_through_eyes() -> ScPlayer:
 	return game.players.get(game.spectate.watching(player.player_id))
 
 
-## Puts the camera where [ScSpectate] says, and takes it back when a round starts.
-##
-## [b]The camera leaves the player's node while they watch.[/b] Setting a global transform
-## on a camera hung under the chase arm is undone by the arm on its next frame, and one hung
-## under the body is under a body that is not where anything worth seeing is. So it is moved
-## to this node for as long as the player is out and handed back by `_place_camera` — the
-## same call a view swap uses — the moment they are not.
-##
-## Once a FRAME, like the rig: the target's pose is the drawn one, so a camera moved on the
-## tick would step at the tick rate however smoothly the target is drawn.
+## Puts the camera where [ScSpectate] says, and takes it back when a round starts. It leaves the
+## player's node while they watch (the chase arm undoes a set transform) and `_place_camera` hands
+## it back. Once a FRAME: the target's pose is the drawn one, so a tick-rate camera would step.
 func _drive_spectator_camera() -> bool:
 	if not is_spectating():
 		if camera.get_parent() == self:
@@ -202,24 +195,9 @@ func spectate_step(direction: int) -> void:
 			var _denied := audio.deny()
 
 
-## Everything a frame draws that a tick does not, in this order: the netcode's
-## interpolation, then every player's body, then every beacon. Returns how many bodies are
-## shown. Static so the net suite drives exactly this and not a copy of it.
-##
-## [b]The interpolation was never called in this game, and a comment here said it was.[/b]
-## `present_beacons`, which this replaces, read a remote player's node on the grounds that
-## "everybody else's node is written by the interpolator once a frame already" — and nothing
-## anywhere called `DotNetManager.interpolate_frame`, so nothing wrote it. The
-## `_net_interpolated` hooks on `ScPlayerNet`, `ScPropNet` (so `ScCopterNet`) and `ScPlatformNet` were written,
-## documented and reached by nothing, and every remote player, prop, chopper and the lean of
-## every platform moved only when a snapshot landed — the render-jitter class, paid for in
-## this family's fourth game. The other half was that a remote player had no body to move
-## ([ScFigure]).
-##
-## [param first_person] is whether [param own]'s camera is behind their eyes, which is what
-## hides their own body. [param alpha] is the fraction through the current tick; -1 derives it
-## from the engine, which is what a real frame wants. A suite passes it, because a suite's
-## frames are not an engine's.
+## What a frame draws that a tick does not: the netcode's interpolation (nothing else writes a remote
+## node), every body, every beacon; returns the bodies shown. Static so the net suite drives it.
+## [param first_person]: [param own]'s camera is behind their eyes. [param alpha]: -1 asks the engine.
 static func present_frame(
 	p_net: DotNetManager,
 	p_game: ScGame,
@@ -234,12 +212,9 @@ static func present_frame(
 	if networked:
 		p_net.interpolate_frame(alpha)
 
-	# Your own player is drawn at the clock's render alpha, not the engine's fraction: the
-	# clock stretches and shrinks its ticks while it settles on the server, so a physics frame
-	# now and then runs no tick or two, and drawn at the engine's fraction the eye stood still
-	# on one frame and moved double on the next. `DotFpsController.render_state` reads it from
-	# `render_clock` (dot-player-controller); by name both ways, so a shell older than either
-	# draws as before. Null offline, where every physics frame is one tick.
+	# Your own player is drawn at the clock's render alpha, not the engine's fraction: the clock
+	# stretches its ticks while settling, so the engine's fraction stalls the eye then doubles it.
+	# By name both ways, so an older shell draws as before; null offline (one tick per frame).
 	if own != null and own.controller != null:
 		own.controller.set(&"render_clock", p_net.clock if networked else null)
 
@@ -275,15 +250,8 @@ static func present_frame(
 	return shown
 
 
-## Where this frame draws [param body].
-##
-## [b]Two sources, and which one is not a detail.[/b] A player somebody else simulates — any
-## [param remote] player on a connected client — is placed by the interpolator, which writes
-## their node once a frame; their controller never ticks here, so its render state is a blend
-## of two ticks that never happened. A player THIS process simulates — the local player, and
-## every offline stand-in — has a node that moves once a tick, and `render_state` is the
-## blend between the last two, which is what the camera is drawn from too. Not while riding:
-## a rider's controller is not simulated, and the machine is what is drawn.
+## Where this frame draws [param body]: a [param remote] one where the interpolator put it, one
+## simulated here from `render_state` as the camera is, a rider as the machine.
 static func drawn_position(body: ScPlayer, remote: bool) -> Vector3:
 	if remote or body.riding or body.controller == null:
 		return body.global_position
@@ -294,10 +262,8 @@ static func drawn_position(body: ScPlayer, remote: bool) -> Vector3:
 func _unhandled_input(event: InputEvent) -> void:
 	# Tab, M and a click taking the pointer back are the platform's (DotGameClient).
 	if event.is_action_pressed("ui_cancel"):
-		# Opens the settings when the menu left this Escape alone, because a released pointer
-		# with nothing on screen to click was a key that did half a job.
-		# A second Escape never reaches here: dot-ui's stack
-		# sits deeper in the tree, sees it first, and closes the screen.
+		# Opens the settings when the menu left this Escape alone (a released pointer with nothing
+		# to click did half a job). A second Escape never reaches here: dot-ui's stack closes it.
 		if settings != null:
 			settings.open()
 		return
@@ -440,10 +406,9 @@ func describe() -> Dictionary:
 	return out
 
 
-## dot-game's chat box and microphone, with this game's channels and voice format. It also
-## draws dot-server's own lines (the vote between games, joins, an admin's `say`), which arrive
-## on the shell's client link rather than on this game's bridge. Static so a suite can build
-## the same box the client does.
+## dot-game's chat box and microphone with this game's channels and voice format; also draws
+## dot-server's own lines (votes, joins, `say`), which arrive on the client link. Static so a suite
+## builds the same box the client does.
 static func new_chat() -> DotGameChatClient:
 	var box := DotGameChatClient.new()
 	box.name = "Chat"
