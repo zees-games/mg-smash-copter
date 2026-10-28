@@ -14,45 +14,22 @@ const ScSpecials := preload("sc_specials.gd")
 const ScSpectate := preload("sc_spectate.gd")
 
 ## The simulation. Headless, authoritative, and the only thing that decides anything.
-##
-## [b]A round is two games and the join between them is the whole design.[/b] For two
-## minutes nobody can hurt anybody: the only threat is the floor, and the only skill is
-## deciding where to stand on something that leans toward you. Then the clock runs out, the
-## survivors are thrown into the corners with weapons they did not choose, and it becomes a
-## fight — between exactly the people who were good at the first half. Neither half would
-## be much on its own. What makes the second one work is that the people in it earned their
-## place by not falling over.
-##
-## [b]What it owns and what it borrows.[/b] The round, the sides and the scoreboard are
-## dot-match's; health and damage are dot-combat's; the props are dot-props'; the chopper is
-## dot-vehicle's; the weapons are dot-weapon's through zee-dot-weapons; the platforms are
-## [ScPlatforms] and are this game's own, because nothing in the family models a floor that
-## tips. The joins are the part that is new, and they are the part worth reading.
+## [b]A round is two games and the join between them is the design:[/b] a survival half where
+## only the floor is a threat, then a fight between exactly the people who earned it by not falling.
+## Round, sides, scoreboard, health, props, chopper and weapons are other addons'; [ScPlatforms] is ours.
 
 const CHANNEL := "sc.game"
 
-## Where this world publishes itself, so a module can find it.
-##
-## [b]A registry name and not an autoload, which is the family rule and here also a
-## requirement.[/b] A server and a client in one editor session is two of these, and the
-## suite builds two worlds in one process on purpose.
+## Where this world publishes itself, so a module can find it: a registry name, not an autoload,
+## because a server and a client in one process are two of these.
 const SERVICE := &"sc_game"
 
-## Snapshots a second, against the simulation tick.
-##
-## [b]Higher than game-buses-from-hell's twenty, and the platforms are why.[/b] Almost
-## nothing here is predicted and the one thing a player has to read continuously is the
-## lean of the floor they are standing on — which arrives only in a snapshot. At twenty a
-## platform's tilt updates in visible steps, and a step in the surface under your feet
-## reads as the game stuttering.
+## Snapshots a second. Higher than twenty because the lean of the floor underfoot arrives only in
+## a snapshot, and at twenty its tilt updates in visible steps that read as stutter.
 const NET_SNAPSHOT_RATE := 30
 
-## How far a position may be from the origin, in metres, on the wire.
-##
-## [b]A quantised position is decoded against this range.[/b] Two ends that disagree about
-## it do not lose precision, they land somewhere else entirely: game-arena had 256 against
-## 128 in two files that each looked right on its own, and drew sky in every direction. It
-## is written here, once, and both ends read it from here.
+## How far a position may be from the origin, in metres, on the wire. Both ends decode against
+## this one value: ends that disagree land somewhere else entirely, not just imprecisely.
 const NET_WORLD_EXTENT := 256.0
 
 ## The four teams-plus-two this game can play with, in id order. `DotTeam` ids start at 1.
@@ -81,23 +58,13 @@ enum Phase {
 	SHOWDOWN,
 }
 
-## Metres above the kill height at which a chopper counts as having reached the floor.
-##
-## A parked machine's origin rests 0.9 m above the surface it is on, measured, so a check at
-## the kill height itself never fires for one sitting on the floor. Two metres is that plus
-## a margin for a machine still bouncing, and is thirty-eight metres below any deck.
+## Metres above the kill height at which a chopper counts as on the floor: a parked machine's
+## origin rests 0.9 m above it, so the kill height itself never fires; two metres adds a bounce margin.
 const COPTER_FLOOR_CLEARANCE := 2.0
 
 ## Metres above the kill height at which a person on foot has reached the floor.
-##
-## [b]The floor's top IS the kill height, so nobody standing on it is below it.[/b] Until
-## 2026-09-25 the fall check was `y <= kill_height`, and a person who fell forty metres landed
-## on the floor with their feet a centimetre above it — the motor rests a capsule a skin width
-## off whatever it stands on — and stood there, alive, for the rest of the round. Every fall
-## check in the suites put a player five metres UNDER the floor with `place_at` and stepped
-## once, which a real fall never does; the first check that let somebody actually fall off a
-## collapsed platform found nobody had ever died of it. Half a metre is a step height with a
-## margin, and nothing in the world a person can stand on is within thirty-eight metres of it.
+## The floor's top IS the kill height and the motor rests a capsule a skin width above it, so
+## `y <= kill_height` never fired for someone who really fell; half a metre is a step with a margin.
 const FLOOR_REACH := 0.5
 
 signal player_added(player_id: StringName)
@@ -106,14 +73,9 @@ signal player_removed(player_id: StringName)
 ## A round began. The platforms have been re-laid by the time this fires.
 signal round_began(number: int, layout_id: StringName)
 
-## The field is about to be taken down and rebuilt.
-##
-## [b]Before, and a bridge that only listened for the rebuild was holding freed nodes.[/b]
-## Every platform is a replicated entity whose behaviour is a CHILD of the platform's own
-## body, so clearing the field frees the behaviours with it — and the bridge's table of
-## replicated bodies then holds a dozen freed instances, which Godot reports as "Trying to
-## assign invalid previously freed instance" once per entry per tick, for ever. The
-## dedicated run printed it twenty-three times before anybody noticed what it was.
+## The field is about to be taken down and rebuilt. Before, because clearing frees the
+## behaviours (children of each platform) and a bridge that waited for the rebuild would hold
+## freed instances in its table.
 signal world_clearing()
 
 ## Asked every tick of a world that ticks itself: true while a cover is up (the client's load
@@ -121,12 +83,9 @@ signal world_clearing()
 ## platforms, the cannon, the falls and the round clock wait. Unset, never held.
 var hold_clock: Callable = Callable()
 
-## The field has just been rebuilt, by a round starting or by the world opening.
-##
-## [b]Separate from [signal round_began] because it fires once more than that does.[/b] The
-## world lays itself out when it opens, before dot-match has run a warmup, so a bridge that
-## only replicated platforms on a round start would leave everybody who joined during the
-## warmup standing on a field the server knows about and no client has been told about.
+## The field has just been rebuilt, by a round starting or by the world opening. Separate from
+## [signal round_began] because the world lays itself out before the warmup, and players who joined
+## then would otherwise stand on a field no client was told about.
 signal world_rebuilt()
 
 ## A round ended. [param winner] is a team id, or 0 for a draw.
