@@ -42,12 +42,8 @@ var _top_speed := 0.0
 
 
 ## How far below the deck the lip a runner leaves from has gone by the time they reach it.
-##
-## [b]The platform's own model, stepped the way a run steps it.[/b] A lone runner from the
-## middle to the edge at full speed, loading the deck the way [ScGame] loads it, and the
-## surface under the edge read at the moment they arrive. That is the rise the jump has to
-## make up — at the ordinary numbers about 0.3 m mid-edge and 0.7 m at a corner, which on
-## a 1.15 m apex is most of the difference between a jump and a wall.
+## A lone runner from the middle to the edge at full speed, loading the deck as [ScGame] does:
+## the rise the jump has to make up (about 0.3 m mid-edge, 0.7 m at a corner, against a 1.15 m apex).
 func _run_up_dip(
 	platforms: ScPlatforms, config: ScConfig, from: int, to: int, leave: float
 ) -> float:
@@ -93,9 +89,8 @@ func _on_line(middle: Vector3, out: Vector2, across: Vector2, s: float, w: float
 
 
 ## Runs straight at [param target] until within [param stop] metres of it, or six seconds.
-##
-## And lets go of the key when it gets there: the motor repeats the last command it was
-## handed, so a runner nobody stops keeps running — off the far side of the platform.
+## Lets go of the key on arrival: the motor repeats its last command, so a runner nobody stops
+## runs off the far side of the platform.
 func _run_to(game: ScGame, player: ScPlayer, target: Vector3, stop: float) -> bool:
 	for _i in range(int(6.0 * TICK_RATE)):
 		var at := player.controller.state.position
