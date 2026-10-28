@@ -1,19 +1,5 @@
-extends DotGameModule
+extends "sc_module_base.gd"
 
-const ScNetBridge := preload("net/sc_net_bridge.gd")
-const ScServices := preload("sc_services.gd")
-const ScMapConfig := preload("sc_map_config.gd")
-const ScAmbience := preload("sc_ambience.gd")
-## The workbench kind of the ambience cvar set (saved to cfg/.../ambience/server.yml).
-const AMBIENT_KIND := "ambience"
-
-const ScGame := preload("sc_game.gd")
-const ScLayouts := preload("sc_layouts.gd")
-const ScPlayer := preload("sc_player.gd")
-const ScSpecials := preload("sc_specials.gd")
-const ScAvatars := preload("sc_avatars.gd")
-const ScVote := preload("sc_vote.gd")
-const ScMapSession := preload("sc_map_session.gd")
 
 ## This game, as a module a dedicated server loads.
 ##
@@ -41,9 +27,6 @@ const ScMapSession := preload("sc_map_session.gd")
 # name, so a second channel would split one module's records across two places an operator
 # has to know to turn up separately.
 
-## Seconds between checks of how many people are in the round.
-const ROSTER_INTERVAL := 2.0
-
 ## Where the services keep punishments. Empty is [DotGameServices]'s own default,
 ## `user://smash-copter_punishments.json` — the store a real server enforces.
 ##
@@ -53,33 +36,6 @@ const ROSTER_INTERVAL := 2.0
 ## every run appended the live tools' audit warnings to the real store, 106 of them by the
 ## time anybody counted.
 static var punishments_file: String = ""
-
-## The `sc_bots` cvar, held so the tick does not look it up sixty times a second.
-var _bots: DotConVar = null
-
-## dot-workbench over the config and the block rules; the F9 panel off a dedicated server, the HTTP page only with `workbench.enabled`.
-var workbench: DotGameWorkbench = null
-
-## `mp_forcecamera`, kept so the deprecated `sc_spectate_camera` writes through it.
-var _force_camera_cvar: Object = null
-
-## How many stand-ins, from how many people: dot-server's one rule for every game. See
-## [method _keep_the_round_full].
-var _quota: DotBotQuota = null
-
-var _since_roster_check: float = 0.0
-
-## How many stand-ins this module has put in, so it can take them out again.
-var _bot_ids: Array[StringName] = []
-
-## The players' vote for the next layout; null when it could not be built.
-var vote: ScVote = null
-
-## dot-map's session over the layouts: the catalogue `map`, `maps`, `mapinfo` and the ballot list.
-var maps: ScMapSession = null
-
-## The drawn ballot's notice topic. The client shell draws one menu per topic.
-const LAYOUT_BALLOT_TOPIC := &"map_ballot"
 
 
 func _module_name() -> String:
@@ -197,50 +153,7 @@ func _game_load() -> DotResult:
 	_wire_progress(world)
 	_add_tunables(world)
 
-	# Whether shots pass through team-mates: `mp_teammate_passthrough` 0 never, 1 a team-mate
-	# holding the muzzle (the default), 2 every team-mate in the line. dot-combat's cvar,
-	# defined there once for every game; live from the next shot, and a value the operator set
-	# first (argv, content.yml) is read back. NOTIFY, because players should know; REPLICATED,
-	# because every client's own manager predicts its tracers under it (the client follows it
-	# through its link, see the client's _build_netcode).
-	if world.combat != null:
-		var _passthrough := world.combat.bind_cvars(add_cvar, DotConVar.FLAG_NOTIFY | DotConVar.FLAG_REPLICATED)
-
-	# Dead bodies: dot-player-char's sv_ragdoll* set. The server only picks each death's reaction
-	# from them; REPLICATED, because the clients draw the bodies (see the client's _build_netcode).
-	var _ragdolls := world.ragdoll_rules.bind_cvars(
-		add_cvar, DotConVar.FLAG_ARCHIVE | DotConVar.FLAG_NOTIFY | DotConVar.FLAG_REPLICATED
-	)
-	# The field's toys: dot-props' sv_toys* set. REPLICATED, because a client hides the toys the
-	# server took away.
-	var _toys := world.toy_rules.bind_cvars(
-		add_cvar, DotConVar.FLAG_ARCHIVE | DotConVar.FLAG_NOTIFY | DotConVar.FLAG_REPLICATED
-	)
-
-	# mp_forcecamera, mp_freeroam, mp_freeroam_speed: dot-spectate's rules, so spectators
-	# free-roam unless an operator says otherwise. REPLICATED, because each client flies its
-	# own spectator camera under them (ScClient.toggle_roam).
-	for made: Object in world.spectate_rules.bind_cvars(
-		add_cvar, DotConVar.FLAG_ARCHIVE | DotConVar.FLAG_NOTIFY | DotConVar.FLAG_REPLICATED
-	):
-		if str(made.get(&"name")) == DotSpectatorRules.CVAR_FORCE_CAMERA:
-			_force_camera_cvar = made
-
-	# dot-player-controller's mp_forceview (first or third person: the player's choice, or one
-	# held) and mp_solidplayers (players and stand-ins block each other, 1 by default).
-	# REPLICATED: the client places its own camera under the first and predicts its own
-	# player under the second.
-	var _views := world.view_rules.bind_cvars(
-		add_cvar, DotConVar.FLAG_ARCHIVE | DotConVar.FLAG_NOTIFY | DotConVar.FLAG_REPLICATED
-	)
-	var _bodies := world.body_rules.bind_cvars(
-		add_cvar, DotConVar.FLAG_ARCHIVE | DotConVar.FLAG_NOTIFY | DotConVar.FLAG_REPLICATED
-	)
-	# sc_ambient*: REPLICATED, because each client plays its own ambience under the server's intent; the directory cvar stays local.
-	var _ambient := world.ambient_rules.bind_cvars(
-		add_cvar, DotConVar.FLAG_ARCHIVE | DotConVar.FLAG_NOTIFY | DotConVar.FLAG_REPLICATED,
-		DotConVar.FLAG_ARCHIVE | DotConVar.FLAG_NOTIFY
-	)
+	_bind_family_cvars(world)
 
 	# REPLICATED: the clients play the killcam, the server only lengthens the intermission for it.
 	var killcam := add_cvar("mp_killcam_time", _number(world.config.killcam_seconds),
@@ -280,6 +193,29 @@ func _game_load() -> DotResult:
 
 	log_info("the field is up", world.describe())
 	return DotResult.success(null)
+
+
+## The addons' rule sets as cvars, REPLICATED where a client predicts or draws under them.
+func _bind_family_cvars(world: ScGame) -> void:
+	var flags := DotConVar.FLAG_ARCHIVE | DotConVar.FLAG_NOTIFY | DotConVar.FLAG_REPLICATED
+
+	# `mp_teammate_passthrough` 0 never, 1 a team-mate holding the muzzle, 2 every team-mate.
+	if world.combat != null:
+		var _passthrough := world.combat.bind_cvars(add_cvar, DotConVar.FLAG_NOTIFY | DotConVar.FLAG_REPLICATED)
+
+	var _ragdolls := world.ragdoll_rules.bind_cvars(add_cvar, flags)
+	var _toys := world.toy_rules.bind_cvars(add_cvar, flags)
+
+	# mp_forcecamera, mp_freeroam: each client flies its own spectator camera under them.
+	for made: Object in world.spectate_rules.bind_cvars(add_cvar, flags):
+		if str(made.get(&"name")) == DotSpectatorRules.CVAR_FORCE_CAMERA:
+			_force_camera_cvar = made
+
+	# mp_forceview and mp_solidplayers: the client places its camera and predicts its player under them.
+	var _views := world.view_rules.bind_cvars(add_cvar, flags)
+	var _bodies := world.body_rules.bind_cvars(add_cvar, flags)
+	# sc_ambient*: each client plays its own ambience under the server's intent; the directory cvar stays local.
+	var _ambient := world.ambient_rules.bind_cvars(add_cvar, flags, DotConVar.FLAG_ARCHIVE | DotConVar.FLAG_NOTIFY)
 
 
 ## Who somebody is reaches the world: a face as they are seated, and the real name and
@@ -529,18 +465,6 @@ func _on_config_field(key: String, _value: Variant, source: String) -> void:
 	console.set_cvar(hand, str(text))
 
 
-## A number as an operator would type it: `34`, not `34.000000`.
-##
-## [b]Not `%g`, which GDScript's format strings do not have.[/b] It is accepted by the parser
-## and fails at RUNTIME with "unsupported format character" — inside `_game_load`, which is
-## the one place in the module sequence that unwinds everything above it. The symptom in
-## game-buses-from-hell was a server whose netcode came up, logged that it was ready, and
-## then reported that the game would not load.
-static func _number(value: float) -> String:
-	return "%d" % int(round(value)) if is_equal_approx(value, round(value)) else "%.3f" % value
-
-
-## One cvar, its default taken from the configuration rather than written twice.
 ##
 ## [b]The default is the value the world was built with, and that is the whole point.[/b] A
 ## cvar declared with a literal default is a second copy of a number that
@@ -923,121 +847,6 @@ func _wire_progress(world: ScGame) -> void:
 		if peer_id > 0:
 			bridge.call("notice", peer_id, "Achievement: %s (+%d)" % [title, points])
 	)
-
-
-func _on_say_requested(peer_id: int, channel_id: StringName, text: String) -> void:
-	var said: DotResult = services.call("say", peer_id, channel_id, text)
-
-	if said.ok:
-		return
-
-	# Back to the one person who asked. A refusal broadcast would be a rate limit announced
-	# to the server.
-	bridge.call("notice", peer_id, said.error.message)
-
-
-## A `!command` typed into chat. Run through the console as the person who typed it.
-##
-## [b]As THEM, not as the server.[/b] `run_command_as_uid` builds a context with that
-## player's own flags, so `!kick` from somebody without the flag is refused by the same file
-## that refuses it at the console — rather than by this function having an opinion.
-func _on_chat_command(peer_id: int, command: String, args: PackedStringArray) -> void:
-	if server == null:
-		return
-
-	var session := server.session_of(peer_id)
-
-	if session == null:
-		return
-
-	for reply in server.run_command_as_uid(
-		session.uid(), command, args, DotCmdContext.Source.CHAT
-	):
-		bridge.call("notice", peer_id, reply)
-
-
-func _cmd_say(ctx: DotCmdContext) -> void:
-	var text := ctx.rest()
-
-	if text.strip_edges() == "":
-		ctx.reply("Say what?")
-		return
-
-	if services == null or services.get("chat") == null:
-		ctx.reply("This server has no chat.")
-		return
-
-	var announced: Variant = services.get("chat").call("announce", text, ScServices.CH_ALL)
-
-	if announced is DotResult and not (announced as DotResult).ok:
-		ctx.reply_error(announced)
-		return
-
-	ctx.reply("Said: %s" % text)
-
-
-func _cmd_status(ctx: DotCmdContext) -> void:
-	var world := game as ScGame
-
-	if world == null:
-		ctx.reply("No world.")
-		return
-
-	ctx.reply_lines(world.describe_lines())
-
-
-func _cmd_net(ctx: DotCmdContext) -> void:
-	if bridge == null:
-		ctx.reply("No bridge; this server is not replicating anything.")
-		return
-
-	ctx.reply_lines(bridge.call("describe_lines"))
-
-	if services != null:
-		ctx.reply_lines(services.call("describe_lines"))
-
-
-func _cmd_layouts(ctx: DotCmdContext) -> void:
-	var world := game as ScGame
-
-	if world == null:
-		ctx.reply("No world.")
-		return
-
-	var lines := PackedStringArray(["the layouts this server plays"])
-
-	for layout in ScLayouts.all(world.config):
-		lines.append("  %-11s w=%-5s %s" % [
-			String(layout.id), _number(layout.weight), layout.blurb,
-		])
-
-	lines.append("playing: %s" % (String(world.layout.id) if world.layout != null else "-"))
-	ctx.reply_lines(lines)
-
-
-func _cmd_specials(ctx: DotCmdContext) -> void:
-	var world := game as ScGame
-
-	if world == null:
-		ctx.reply("No world.")
-		return
-
-	var lines := PackedStringArray(["the specials this server may draw"])
-	var allowed: Dictionary = {}
-
-	for special in ScSpecials.available(world.config):
-		allowed[special.id] = true
-
-	for special in ScSpecials.all():
-		lines.append("  %-9s %-14s %s%s" % [
-			String(special.id),
-			special.display_name,
-			"" if allowed.has(special.id) else "(excluded) ",
-			special.blurb,
-		])
-
-	lines.append("in force: %s" % (world.special_line() if not world.active.is_plain() else "-"))
-	ctx.reply_lines(lines)
 
 
 func describe() -> Dictionary:
