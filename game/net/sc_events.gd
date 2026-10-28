@@ -4,17 +4,12 @@ const ScGame := preload("../sc_game.gd")
 
 ## The wire format for everything that is not a snapshot or an input.
 ##
-## Encoders and decoders in pairs, and nothing checks that they are inverses for you —
-## `headless_net` round-trips every one of them, because this family has already shipped a
-## serialisation whose two ends never met: dot-moderation wrote `"voice muted"` and read
-## back a warning, and the one thing that addon existed for silently did nothing.
+## Encoders and decoders in pairs; `headless_net` round-trips every one, because nothing else
+## checks that they are inverses.
 ##
-## [b]The map is a description, not a file, and that is what this format is built
-## around.[/b] A round's platform field is an id and six numbers; a client rebuilds the
-## identical field from them and every platform in it comes out in the same order, which is
-## what lets a snapshot move platform number seven without ever saying what a platform is.
-## The alternative — a scene per layout — would be content to publish, to version and to
-## keep in step across two machines, in exchange for nothing this cannot say.
+## [b]The map is a description, not a file.[/b] A platform field is an id and six numbers the
+## client rebuilds identically, in the same order, so a snapshot can move platform seven without
+## saying what a platform is; a scene per layout would be content to publish and keep in step.
 
 enum Kind {
 	## Who you are, how fast the server ticks, and how long each half of a round is.
@@ -99,9 +94,7 @@ const AVATAR_BYTES := 1024
 ## Where a body may be, in metres, on the wire.
 ##
 ## [b]Read from [ScGame], not written here.[/b] A quantised position is decoded against this
-## range, so two files holding two numbers do not lose precision — they put the thing
-## somewhere else. game-arena had exactly this, 256 against 128, in two files that each
-## looked right on its own.
+## range, so two files holding two numbers put the thing somewhere else.
 const WORLD_EXTENT := ScGame.NET_WORLD_EXTENT
 const POS_BITS := 24
 
