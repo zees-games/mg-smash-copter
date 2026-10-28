@@ -260,15 +260,19 @@ func _build() -> void:
 	# A dot rather than a cross. For the whole first half there is nothing to aim at, and in
 	# the second half every weapon in the pack has its own spread — so what a player needs is
 	# "the point I am looking at", which is one pixel.
-	var dot := ColorRect.new()
+	var dot := DotCrosshair.new()
 	dot.name = "Crosshair"
-	dot.color = Color(1.0, 1.0, 1.0, 0.75)
-	dot.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	dot.offset_left = -3.0
-	dot.offset_top = -3.0
-	dot.offset_right = 3.0
-	dot.offset_bottom = 3.0
+	dot.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dot.length = 0.0
+	dot.base_gap = 0.0
+	dot.top_arm = false
+	dot.dynamic = false
+	dot.outline = false
+	dot.dot_radius = 3.0
+	dot.colour = Color(1.0, 1.0, 1.0, 0.75)
 	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if DotAddonApi.build_level("dot_ui") >= 14:
+		dot.set(&"alive_source", func() -> bool: return player == null or player.is_alive())
 	_root.add_child(dot)
 
 

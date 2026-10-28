@@ -48,7 +48,7 @@ const SECTIONS := 50
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 392
+const CHECKS := 393
 
 const TICK_RATE := 64
 const TICK := 1.0 / float(TICK_RATE)
@@ -3970,6 +3970,8 @@ func _test_blind_and_beacon_drawn() -> void:
 	var hud := ScHud.new()
 	add_child(hud)
 	hud.bind(game, me)
+	var xh := hud.find_child("Crosshair", true, false) as DotCrosshair
+	_check(xh != null and xh.alive_source.is_valid() and bool(xh.alive_source.call()), "the crosshair is a DotCrosshair bound to the player's alive state")
 
 	me.blinded = true
 	for _i in range(30):
