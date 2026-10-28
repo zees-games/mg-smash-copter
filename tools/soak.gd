@@ -6,17 +6,8 @@ const ScLayouts := preload("../game/sc_layouts.gd")
 const ScPlayer := preload("../game/sc_player.gd")
 
 ## Bot soak on the real game: N stand-ins play rounds on one layout for M simulated minutes through
-## dot-bot's DotBotSoak, fed by dot-spawn's DotSpawnWatch. A "map" here is a layout id.
-##
-## [codeblock]
-## ./game.sh soak [layout] [minutes]
-## godot --headless --path . res://tools/soak.tscn -- --map terraces --bots 4 --minutes 2
-## [/codeblock]
-##
-## Takes the harness's own flags too (--soak-max-stuck-sec and the rest of DotBotSoakConfig).
-## Writes .godot/test-logs/soak-<layout>.json, prints the SOAK line, exits 1 when the run fails.
-## Rounds run back to back. A stand-in is only judged stuck in the showdown while alive: on the
-## platforms it stands still by design, and a fall is the game. Kills are off.
+## dot-bot's DotBotSoak, fed by dot-spawn's DotSpawnWatch ("map" is a layout id). Run: `./game.sh soak
+## [layout] [minutes]`; writes .godot/test-logs/soak-<layout>.json, prints the SOAK line, exits 1 on failure.
 
 const DEFAULT_MAP := &"terraces"
 const DEFAULT_MINUTES := 1.0

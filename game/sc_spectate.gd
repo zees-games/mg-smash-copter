@@ -124,11 +124,8 @@ func setup(p_authoritative: bool, tick_rate: int, rules: DotSpectatorRules) -> D
 
 
 ## The policy this game adds to the operator's: how long the cameras hold and where they stand.
-##
-## Static so a suite can read the numbers without a world. [b]`force_camera` and
-## `allow_roaming` are not set here[/b]: they are the operator's (`mp_forcecamera`,
-## `mp_freeroam`) and default to anybody-may-watch with free roam on. Until 2026-10-21 this
-## forced roaming off whatever the operator said.
+## Static so a suite can read the numbers without a world. `force_camera` and `allow_roaming`
+## are the operator's (`mp_forcecamera`, `mp_freeroam`), not set here.
 static func configure_rules(rules: DotSpectatorRules, tick_rate: int, death_seconds := DEATH_CAM_SECONDS, freeze_seconds := FREEZE_CAM_SECONDS) -> DotSpectatorRules:
 	# Dead players stay dead until the next round, so a list that included them would be
 	# a list of bodies at the kill height.
@@ -171,10 +168,9 @@ func set_overviews(field: Transform3D, showdown: Transform3D) -> void:
 
 # --- What the world reports -------------------------------------------------
 
-## Somebody is out. Starts the death camera; the server's tick hands it over.
-##
-## [param at] is where they died. A fall is recorded at the kill height, so the death camera
-## is moved back up over the point they went down — see [constant DROP_CAM_RISE].
+## Somebody is out. Starts the death camera; the server's tick hands it over. [param at] is where
+## they died; a fall is recorded at the kill height, so the camera is moved back up over the point
+## they went down ([constant DROP_CAM_RISE]).
 func on_died(
 	player_id: StringName, by: StringName, fell: bool, at: Vector3, deck_height: float, tick: int
 ) -> void:
@@ -221,13 +217,9 @@ func advance(tick: int) -> void:
 
 # --- What a viewer asks for -------------------------------------------------
 
-## The free-roam key, asked of the server like every other camera change: into a free camera
-## from a player, and back onto one from it. Refused with a line to show when roaming is off
-## (`mp_freeroam 0`) or a restricted camera is set (`mp_forcecamera`).
-##
-## [b]The server owns the mode; the client flies the camera.[/b] The SPECTATE event carries
-## ROAMING, and each frame's pose is the client's own ([DotSpectatorFreeCam]), because a
-## camera position per frame is the wire cost this game's one small event avoids.
+## The free-roam key, asked of the server like every other camera change; refused with a line when
+## roaming is off (`mp_freeroam 0`) or a camera is forced. The server owns the mode (the SPECTATE
+## event carries ROAMING); the client flies the camera ([DotSpectatorFreeCam]), saving a pose per frame.
 func toggle_roam(player_id: StringName) -> DotResult:
 	if manager == null:
 		return DotResult.fail(DotError.CODE_STATE, "Spectating is not set up.")
@@ -319,10 +311,9 @@ func apply_view(
 	view.mode = clampi(mode, 0, DotSpectatorView.Mode.size() - 1) as DotSpectatorView.Mode
 	view.target = String(target)
 	view.killer = String(killer)
-	# [b]Carried by this game's own event.[/b] dot-spectate's wire had no death position
-	# until 2026-09-25 (it is `"d"` now), and a mirror without one puts every death camera
-	# at the world origin — which in this map is inside the cannon. The event stays this
-	# game's own because it is bit-packed and session-keyed, which the dictionary is not.
+	# Carried by this game's own event: a mirror without a death position puts every death camera at
+	# the world origin, inside the cannon here. It stays this game's own because it is bit-packed and
+	# session-keyed, which the dictionary is not.
 	view.death_position = death_at
 	view.until_tick = -1
 	view_changed.emit(player_id)

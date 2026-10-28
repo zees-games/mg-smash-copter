@@ -69,7 +69,6 @@ game/sc_player.gd::history	1
 game/sc_player.gd::long_block	34
 game/sc_progress.gd::banner	5
 game/sc_progress.gd::long_block	3
-game/sc_server.gd::long_block	3
 game/sc_services.gd::banner	1
 game/sc_services.gd::history	1
 game/sc_services.gd::long_block	12
@@ -77,8 +76,7 @@ game/sc_settings.gd::history	1
 game/sc_settings.gd::long_block	1
 game/sc_specials.gd::long_block	5
 game/sc_spectate.gd::banner	5
-game/sc_spectate.gd::history	1
-game/sc_spectate.gd::long_block	10
+game/sc_spectate.gd::long_block	8
 game/sc_textures.gd::history	1
 game/sc_textures.gd::long_block	11
 game/sc_vote.gd::long_block	6
@@ -93,4 +91,4 @@ tools/net_shot.gd::history	1
 tools/net_shot.gd::long_block	2
 tools/render_cover.gd::long_block	1
 tools/shot.gd::history	1
-tools/shot.gd::long_block	9
+tools/shot.gd::long_block	8

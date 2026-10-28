@@ -2,10 +2,9 @@ extends Node
 
 const ScPlayer := preload("sc_player.gd")
 
-## The killcam at a round's end. Client side: every frame drawn goes into dot-replay's
-## [DotKillcamBuffer], every decisive moment (a death, a finish) is noted, and when the round
-## ends on one, [DotKillcam] replays it from the eyes of the player it happened to.
-## The length is `mp_killcam_time`; 0 skips straight to [signal over].
+## The killcam at a round's end (client side): every drawn frame goes into dot-replay's
+## [DotKillcamBuffer], decisive moments are noted, and [DotKillcam] replays the last one from
+## its player's eyes. Length is `mp_killcam_time`; 0 skips to [signal over].
 
 const CHANNEL := "smashcopter.killcam"
 

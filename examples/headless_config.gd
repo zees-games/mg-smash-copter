@@ -1,10 +1,7 @@
 extends DotGameCheckSuite
 
 ## ScConfig through DotGameConfigBinder: fields, cvars, strict refusal, the diff, a shipped yml loading back, and the workbench round trip.
-##
-## [codeblock]
-## godot --headless --path . res://examples/headless_config.tscn
-## [/codeblock]
+## Run: `godot --headless --path . res://examples/headless_config.tscn`
 
 const ScConfig := preload("../game/sc_config.gd")
 const ROOT := "user://sc_cfgtest"

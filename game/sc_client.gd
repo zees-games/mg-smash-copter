@@ -579,8 +579,6 @@ func _on_special(_id: StringName, starting: bool, blurb: String) -> void:
 		var _flashed := game.effects.flash(&"special")
 
 
-# --- The end of a round: killcam, winner reveal, board -------------------------
-
 ## The round's last moment, a death. A shot puts the victim in the shooter's eyes, anything
 ## else (a fall, a crush, a blast) in the victim's own.
 func _note_death(victim: StringName, by: StringName, why: StringName) -> void:

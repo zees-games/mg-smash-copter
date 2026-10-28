@@ -3246,9 +3246,7 @@ func _test_the_airfield() -> void:
 
 
 ## Watchtowers' blurb: "The rows meet only at two towers. Climb the ramp, hold the high
-## ground, and mind the drop." Until 2026-10-23 nothing drove it, and each tower's rail ran
-## straight across both of its ramp mouths, so the one way up was drawn as fenced off. The
-## rail is opened where a ramp arrives now (`ScPlatforms._open_rail`), here and on The Ring,
+## ground, and mind the drop." The rail is opened where a ramp arrives (`ScPlatforms._open_rail`),
 ## and this runs a side up one ramp, over the tower and down the other onto the far row.
 func _test_watchtowers() -> void:
 	_section("Watchtowers: the rows meet only at a tower, up one ramp and down the other")

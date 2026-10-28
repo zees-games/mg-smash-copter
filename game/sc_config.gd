@@ -467,8 +467,6 @@ extends DotConfig
 ## further and run dry sooner.
 @export_range(0.1, 5.0, 0.05) var bot_spray_metres: float = 0.6
 
-# --- Impacts ---------------------------------------------------------------
-
 @export_group("Impacts")
 
 ## How far a falling prop has to be going down (m/s) before a landing counts as an impact. Keep above one tick of gravity or resting crates read as impacts.

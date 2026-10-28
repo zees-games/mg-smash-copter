@@ -3,11 +3,7 @@ extends DotGameCheckSuite
 const ScMapConfig := preload("../game/sc_map_config.gd")
 
 ## A layout gets its file's whitelisted values and the next layout gets the previous ones back.
-##
-## [codeblock]
-## godot --headless --path . res://examples/headless_mapcfg.tscn
-## [/codeblock]
-##
+## Run: `godot --headless --path . res://examples/headless_mapcfg.tscn`
 ## The cvars start away from the file's values, so "got them" cannot be a default showing through.
 
 const SECTIONS := 2

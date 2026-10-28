@@ -578,12 +578,9 @@ func _build_rail(body: AnimatableBody3D, size: Vector3) -> void:
 
 ## Takes the rail off the stretch of [param deck]'s [param side] where a ramp arrives.
 ##
-## [b]The fence ran straight across both ramp mouths until 2026-10-23[/b], so on Watchtowers
-## and The Ring the one way onto the high ground was drawn as the one edge nobody steps over.
-## The rail is mesh only and never stopped anybody, but it is what a runner coming up the
-## ramp reads. Every piece whose span overlaps the bridge's width ([param half_width] each
-## side of [param x]) is left out. Both ends build the field from the same cells, so both
-## open the same gap.
+## The rail is mesh only, but a fence across a ramp mouth reads as "no way up". Every piece
+## overlapping the bridge's width ([param half_width] each side of [param x]) is left out; both ends
+## build from the same cells, so both open the same gap.
 func _open_rail(deck: Deck, side: int, x: float, half_width: float) -> void:
 	if not deck.is_tower or deck.body == null:
 		return
