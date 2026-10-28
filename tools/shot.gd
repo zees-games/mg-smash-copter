@@ -307,23 +307,8 @@ func _place_camera(game: ScGame, view: String) -> void:
 			)
 			camera.look_at(Vector3(0.0, game.config.deck_height - 6.0, 0.0), Vector3.UP)
 		"lean":
-			await _lean_one(game)
-			var deck := game.platforms.deck_at(0)
-
-			if deck == null:
-				camera.global_position = Vector3(0.0, game.config.deck_height + 10.0, 30.0)
-				camera.look_at(Vector3(0.0, game.config.deck_height, 0.0), Vector3.UP)
+			if not await _look_lean(game, camera):
 				return
-
-			# [b]Square on to the axis it is leaning about, and far enough back to see both
-			# edges.[/b] A tilt photographed from above is a rhombus and a tilt photographed
-			# from on top of it is nothing at all: what says which way a platform has gone is
-			# one edge being lower than the other against the sky, which needs the camera at
-			# about deck height and off to the side of the lean rather than along it.
-			camera.global_position = deck.centre + Vector3(
-				0.0, 3.4, deck.half * 4.2
-			)
-			camera.look_at(deck.centre, Vector3.UP)
 		"copter":
 			var copter := _a_copter(game)
 
@@ -335,73 +320,13 @@ func _place_camera(game: ScGame, view: String) -> void:
 				camera.global_position = at + Vector3(9.0, 3.4, 9.0)
 				camera.look_at(at, Vector3.UP)
 		"rider":
-			# [b]A person standing on the machine.[/b] They are put on the cab roof and the
-			# camera sits beside it, which is the one picture of whether the carry reads as
-			# riding and not as hovering beside it.
-			var machine := _a_copter(game)
-			var rider: Node3D = null
-
-			for key: StringName in game.players:
-				rider = game.players[key]
-				break
-
-			if machine == null:
-				camera.global_position = Vector3(0.0, game.config.deck_height + 14.0, 26.0)
-				camera.look_at(Vector3(0.0, game.config.deck_height, 0.0), Vector3.UP)
-			else:
-				var up := machine.position()
-
-				if rider != null and rider.has_method("place_at"):
-					rider.place_at(up + Vector3(0.0, 2.4, 0.0), 0.0)
-
-				camera.global_position = up + Vector3(7.0, 2.6, 7.0)
-				camera.look_at(up + Vector3(0.0, 1.2, 0.0), Vector3.UP)
+			await _look_rider(game, camera)
 		"jump":
-			# [b]From where a runner stands before the jump the layout MEANS[/b], a little
-			# above their eye, looking along the line they will run. A field from above says
-			# where the platforms are and nothing about whether the gap between two of them
-			# is a jump; this is the picture of the one question the reach section asks.
-			var pair := _first_meant_jump(game)
-
-			if pair == Vector2i(-1, -1):
-				camera.global_position = Vector3(0.0, game.config.deck_height + 18.0, 42.0)
-				camera.look_at(Vector3(0.0, game.config.deck_height, 0.0), Vector3.UP)
-			else:
-				var from := game.platforms.deck_at(pair.x).centre
-				var to := game.platforms.deck_at(pair.y).centre
-				var line := Vector3(to.x - from.x, 0.0, to.z - from.z).normalized()
-				camera.global_position = from - line * 4.0 + Vector3.UP * 3.2
-				camera.look_at(to + Vector3.UP * 0.5, Vector3.UP)
+			await _look_jump(game, camera)
 		"bridge":
-			# [b]From beside the first bridge, at deck height, with one end weighed down.[/b]
-			# What it answers is whether a bridge lies on its two lips: the loaded platform's
-			# near edge dips, and the bridge has to run from that dipped lip to the level one
-			# with no step at either end and no lean of its own.
-			var span := await _lean_a_bridge(game)
-
-			if span == null:
-				camera.global_position = Vector3(0.0, game.config.deck_height + 18.0, 42.0)
-				camera.look_at(Vector3(0.0, game.config.deck_height, 0.0), Vector3.UP)
-			else:
-				var outside := -1.0 if span.centre.x <= 0.0 else 1.0
-				camera.global_position = span.centre + Vector3(outside * 11.0, 1.4, 0.0)
-				camera.look_at(span.centre + Vector3(0.0, -0.8, 0.0), Vector3.UP)
+			await _look_bridge(game, camera)
 		"beacon":
-			var marked := _beacon_a_stand_in(game)
-
-			if marked == null:
-				camera.global_position = Vector3(0.0, game.config.deck_height + 18.0, 42.0)
-				camera.look_at(Vector3(0.0, game.config.deck_height, 0.0), Vector3.UP)
-			else:
-				# Let the client draw it for a while, so the ripple is somewhere in its spread
-				# rather than always at the frame it started.
-				for _i in range(36):
-					await get_tree().process_frame
-				var at := marked.global_position
-				# Across the field and a little above deck height, which is how a player on
-				# another platform sees somebody — the column has to read from there.
-				camera.global_position = at + Vector3(-16.0, 7.0, 20.0)
-				camera.look_at(at + Vector3(0.0, 4.0, 0.0), Vector3.UP)
+			await _look_beacon(game, camera)
 		"ring":
 			# From team 0's pad at eye height, across the catwalk at the ring: its cover
 			# block should stand square in the middle of the frame.
@@ -410,61 +335,11 @@ func _place_camera(game: ScGame, view: String) -> void:
 			camera.global_position = pad + Vector3.UP * 1.7
 			camera.look_at(ring_middle + Vector3.UP * 0.6, Vector3.UP)
 		"junction":
-			# Above the LAST team's catwalk where it meets the ring, looking down at the join:
-			# with three sides that is an oblique one, where a slab that runs on into the ring
-			# shows as kerb stubs standing on the ring's floor.
-			var ring_middle := game.arena.showdown_centre()
-			var count := game.config.team_count
-			var pad := game.arena.corner_point(count - 1, count)
-			var out := Vector3(pad.x - ring_middle.x, 0.0, pad.z - ring_middle.z).normalized()
-			var join := ring_middle + out * game.arena.ring_half()
-			camera.global_position = join + out * 9.0 + Vector3.UP * 11.0
-			camera.look_at(join - out * 2.0, Vector3.UP)
+			await _look_junction(game, camera)
 		"flank":
-			# From behind perch 0 and above it, at the ring: the perch in front, the two flank
-			# catwalks running off to the pads either side, and the ring's blocks side-on.
-			var ring_middle := game.arena.showdown_centre()
-			var perch := game.arena.perch_point(0, game.config.team_count)
-			var away := Vector3(perch.x - ring_middle.x, 0.0, perch.z - ring_middle.z).normalized()
-			camera.global_position = perch + away * 14.0 + Vector3.UP * 9.0
-			camera.look_at(ring_middle + Vector3.UP * 0.6, Vector3.UP)
+			await _look_flank(game, camera)
 		"armed":
-			# [b]Somebody else holding a gun, close[/b]: the clock wound to the showdown, a
-			# stand-in that was handed a weapon, and the camera a few metres in front of them
-			# and to their left, at chest height — where the question "is the gun in the hand,
-			# the right way round and the right size" has an answer.
-			# Shorten the survival half with `--sc-survival-seconds=10 --seconds=16` rather than
-			# winding the clock here: a wound clock skipped the handover's teleport and ended the
-			# round. Waited out until somebody is armed, for up to ten seconds.
-			var waited := 0.0
-			while waited < 10.0 and game.phase != ScGame.Phase.SHOWDOWN:
-				waited += get_process_delta_time()
-				await get_tree().process_frame
-			for _i in range(90):
-				await get_tree().process_frame
-			var carrier: Node3D = null
-			for key: StringName in game.players:
-				var body: Node3D = game.players[key]
-				if body != null and bool(body.get("is_bot")) and body.call("is_alive") \
-						and body.get("weapons") != null:
-					carrier = body
-					break
-			if carrier == null:
-				camera.global_position = game.arena.showdown_centre() + Vector3(0.0, 12.0, 18.0)
-				camera.look_at(game.arena.showdown_centre(), Vector3.UP)
-			else:
-				var figure: Node3D = carrier.get("figure")
-				var at: Vector3 = figure.global_position if figure != null else carrier.global_position
-				var facing: Vector3 = -(figure.global_basis.z if figure != null else carrier.global_basis.z)
-				facing.y = 0.0
-				facing = facing.normalized()
-				var left := facing.cross(Vector3.UP).normalized() * -1.0
-				camera.global_position = at + facing * 3.2 + left * 1.6 + Vector3.UP * 1.5
-				camera.look_at(at + Vector3.UP * 1.1, Vector3.UP)
-				print("armed: %s holding %s" % [
-					String(carrier.get("player_id")),
-					str(figure.call("describe").get("holding", "")) if figure != null else "no figure",
-				])
+			await _look_armed(game, camera)
 		"showdown":
 			var middle := game.arena.showdown_centre()
 			camera.global_position = middle + Vector3(
@@ -484,6 +359,157 @@ func _place_camera(game: ScGame, view: String) -> void:
 
 	camera.current = true
 	await get_tree().process_frame
+
+
+func _look_lean(game: ScGame, camera: Camera3D) -> bool:
+	await _lean_one(game)
+	var deck := game.platforms.deck_at(0)
+
+	if deck == null:
+		camera.global_position = Vector3(0.0, game.config.deck_height + 10.0, 30.0)
+		camera.look_at(Vector3(0.0, game.config.deck_height, 0.0), Vector3.UP)
+		return false
+
+	# Square on to the lean axis at about deck height: a tilt from above is a rhombus.
+	camera.global_position = deck.centre + Vector3(0.0, 3.4, deck.half * 4.2)
+	camera.look_at(deck.centre, Vector3.UP)
+	return true
+
+
+func _look_rider(game: ScGame, camera: Camera3D) -> void:
+	# A person on the cab roof, camera beside: does the carry read as riding?
+	var machine := _a_copter(game)
+	var rider: Node3D = null
+
+	for key: StringName in game.players:
+		rider = game.players[key]
+		break
+
+	if machine == null:
+		camera.global_position = Vector3(0.0, game.config.deck_height + 14.0, 26.0)
+		camera.look_at(Vector3(0.0, game.config.deck_height, 0.0), Vector3.UP)
+	else:
+		var up := machine.position()
+
+		if rider != null and rider.has_method("place_at"):
+			rider.place_at(up + Vector3(0.0, 2.4, 0.0), 0.0)
+
+		camera.global_position = up + Vector3(7.0, 2.6, 7.0)
+		camera.look_at(up + Vector3(0.0, 1.2, 0.0), Vector3.UP)
+
+
+func _look_jump(game: ScGame, camera: Camera3D) -> void:
+	# [b]From where a runner stands before the jump the layout MEANS[/b], a little
+	# above their eye, looking along the line they will run. A field from above says
+	# where the platforms are and nothing about whether the gap between two of them
+	# is a jump; this is the picture of the one question the reach section asks.
+	var pair := _first_meant_jump(game)
+
+	if pair == Vector2i(-1, -1):
+		camera.global_position = Vector3(0.0, game.config.deck_height + 18.0, 42.0)
+		camera.look_at(Vector3(0.0, game.config.deck_height, 0.0), Vector3.UP)
+	else:
+		var from := game.platforms.deck_at(pair.x).centre
+		var to := game.platforms.deck_at(pair.y).centre
+		var line := Vector3(to.x - from.x, 0.0, to.z - from.z).normalized()
+		camera.global_position = from - line * 4.0 + Vector3.UP * 3.2
+		camera.look_at(to + Vector3.UP * 0.5, Vector3.UP)
+
+
+func _look_bridge(game: ScGame, camera: Camera3D) -> void:
+	# [b]From beside the first bridge, at deck height, with one end weighed down.[/b]
+	# What it answers is whether a bridge lies on its two lips: the loaded platform's
+	# near edge dips, and the bridge has to run from that dipped lip to the level one
+	# with no step at either end and no lean of its own.
+	var span := await _lean_a_bridge(game)
+
+	if span == null:
+		camera.global_position = Vector3(0.0, game.config.deck_height + 18.0, 42.0)
+		camera.look_at(Vector3(0.0, game.config.deck_height, 0.0), Vector3.UP)
+	else:
+		var outside := -1.0 if span.centre.x <= 0.0 else 1.0
+		camera.global_position = span.centre + Vector3(outside * 11.0, 1.4, 0.0)
+		camera.look_at(span.centre + Vector3(0.0, -0.8, 0.0), Vector3.UP)
+
+
+func _look_beacon(game: ScGame, camera: Camera3D) -> void:
+	var marked := _beacon_a_stand_in(game)
+
+	if marked == null:
+		camera.global_position = Vector3(0.0, game.config.deck_height + 18.0, 42.0)
+		camera.look_at(Vector3(0.0, game.config.deck_height, 0.0), Vector3.UP)
+	else:
+		# Let the client draw it for a while, so the ripple is somewhere in its spread
+		# rather than always at the frame it started.
+		for _i in range(36):
+			await get_tree().process_frame
+		var at := marked.global_position
+		# Across the field and a little above deck height, which is how a player on
+		# another platform sees somebody — the column has to read from there.
+		camera.global_position = at + Vector3(-16.0, 7.0, 20.0)
+		camera.look_at(at + Vector3(0.0, 4.0, 0.0), Vector3.UP)
+
+
+func _look_junction(game: ScGame, camera: Camera3D) -> void:
+	# Above the LAST team's catwalk where it meets the ring, looking down at the join:
+	# with three sides that is an oblique one, where a slab that runs on into the ring
+	# shows as kerb stubs standing on the ring's floor.
+	var ring_middle := game.arena.showdown_centre()
+	var count := game.config.team_count
+	var pad := game.arena.corner_point(count - 1, count)
+	var out := Vector3(pad.x - ring_middle.x, 0.0, pad.z - ring_middle.z).normalized()
+	var join := ring_middle + out * game.arena.ring_half()
+	camera.global_position = join + out * 9.0 + Vector3.UP * 11.0
+	camera.look_at(join - out * 2.0, Vector3.UP)
+
+
+func _look_flank(game: ScGame, camera: Camera3D) -> void:
+	# From behind perch 0 and above it, at the ring: the perch in front, the two flank
+	# catwalks running off to the pads either side, and the ring's blocks side-on.
+	var ring_middle := game.arena.showdown_centre()
+	var perch := game.arena.perch_point(0, game.config.team_count)
+	var away := Vector3(perch.x - ring_middle.x, 0.0, perch.z - ring_middle.z).normalized()
+	camera.global_position = perch + away * 14.0 + Vector3.UP * 9.0
+	camera.look_at(ring_middle + Vector3.UP * 0.6, Vector3.UP)
+
+
+func _look_armed(game: ScGame, camera: Camera3D) -> void:
+	# [b]Somebody else holding a gun, close[/b]: the clock wound to the showdown, a
+	# stand-in that was handed a weapon, and the camera a few metres in front of them
+	# and to their left, at chest height — where the question "is the gun in the hand,
+	# the right way round and the right size" has an answer.
+	# Shorten the survival half with `--sc-survival-seconds=10 --seconds=16` rather than
+	# winding the clock here: a wound clock skipped the handover's teleport and ended the
+	# round. Waited out until somebody is armed, for up to ten seconds.
+	var waited := 0.0
+	while waited < 10.0 and game.phase != ScGame.Phase.SHOWDOWN:
+		waited += get_process_delta_time()
+		await get_tree().process_frame
+	for _i in range(90):
+		await get_tree().process_frame
+	var carrier: Node3D = null
+	for key: StringName in game.players:
+		var body: Node3D = game.players[key]
+		if body != null and bool(body.get("is_bot")) and body.call("is_alive") \
+				and body.get("weapons") != null:
+			carrier = body
+			break
+	if carrier == null:
+		camera.global_position = game.arena.showdown_centre() + Vector3(0.0, 12.0, 18.0)
+		camera.look_at(game.arena.showdown_centre(), Vector3.UP)
+	else:
+		var figure: Node3D = carrier.get("figure")
+		var at: Vector3 = figure.global_position if figure != null else carrier.global_position
+		var facing: Vector3 = -(figure.global_basis.z if figure != null else carrier.global_basis.z)
+		facing.y = 0.0
+		facing = facing.normalized()
+		var left := facing.cross(Vector3.UP).normalized() * -1.0
+		camera.global_position = at + facing * 3.2 + left * 1.6 + Vector3.UP * 1.5
+		camera.look_at(at + Vector3.UP * 1.1, Vector3.UP)
+		print("armed: %s holding %s" % [
+			String(carrier.get("player_id")),
+			str(figure.call("describe").get("holding", "")) if figure != null else "no figure",
+		])
 
 
 ## The first pair of platforms the round's layout means a player to jump between.
