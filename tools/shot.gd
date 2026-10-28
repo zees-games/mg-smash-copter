@@ -79,16 +79,8 @@ func _run() -> void:
 	var client: Node = load("res://game/sc.tscn").instantiate()
 	add_child(client)
 
-	# --view=cover: the loading cover dot-game's DotGameClient puts up first, before it lifts.
 	if view == "cover":
-		for _i in 2:
-			await RenderingServer.frame_post_draw
-		var platform: DotGameClient = client.get("platform")
-		print("cover %s" % ("lifted" if platform.is_shown() else "up"))
-		var cover_path := ProjectSettings.globalize_path(out)
-		DirAccess.make_dir_recursive_absolute(cover_path.get_base_dir())
-		print("saved %s: %s" % [out, error_string(get_viewport().get_texture().get_image().save_png(cover_path))])
-		get_tree().quit(0)
+		await _shoot_cover(client, out)
 		return
 
 	var elapsed := 0.0
@@ -112,50 +104,8 @@ func _run() -> void:
 		get_tree().quit(0)
 		return
 
-	# The two admin marks go on through the flags the server would have set — offline, the
-	# client IS the server — and are then drawn by the client's own `_process`, which is the
-	# whole path a connected client takes after a snapshot has delivered them.
-	if game != null and view == "blind":
-		var me: Node = client.get("player")
-		if me != null:
-			me.set("blinded", true)
-		for _i in range(40):
-			await get_tree().process_frame
-	elif game != null and view == "spectate":
-		# Off the edge, through the same fall check a real one goes through, and then long
-		# enough for the death camera to hand over. What is drawn is the client's own
-		# `_process` putting its camera where `ScSpectate` says — nothing here places one.
-		var out_of_it: Node = client.get("player")
-		if out_of_it != null:
-			var at: Vector3 = (out_of_it.get("controller") as DotFpsController).state.position
-			out_of_it.call("place_at", Vector3(at.x, game.config.kill_height - 5.0, at.z), 0.0)
-		var waited := 0.0
-		while waited < 2.4:
-			waited += get_process_delta_time()
-			await get_tree().process_frame
-	elif game != null and view == "killcam":
-		# Everybody else goes over the edge through the fall check, so the round ends on the
-		# last of them; ~2 s later is the replay, ~8 the podium.
-		var me_k: Node = client.get("player")
-		for who: Node in game.players.values():
-			if who != me_k:
-				var at_k: Vector3 = (who.get("controller") as DotFpsController).state.position
-				who.call("place_at", Vector3(at_k.x, game.config.kill_height - 5.0, at_k.z), 0.0)
-		var waited_k := 0.0
-		while waited_k < seconds:
-			waited_k += get_process_delta_time()
-			await get_tree().process_frame
-	elif game != null and view == "hands":
-		# The local player's own eyes once the showdown is on: the gun the handover dealt, in
-		# their hands, and its counter. Offline the hands were never armed (ScClient._start_offline).
-		var waited_hands := 0.0
-		while waited_hands < 60.0 and game.phase != ScGame.Phase.SHOWDOWN:
-			waited_hands += get_process_delta_time()
-			await get_tree().process_frame
-		for _i in range(60):
-			await get_tree().process_frame
-	elif game != null and view != "eyes":
-		await _place_camera(game, view)
+	if game != null:
+		await _stage_view(client, game, view, seconds)
 
 	if game != null and ballot:
 		var list: Array = []
@@ -175,6 +125,64 @@ func _run() -> void:
 			print(line)
 
 	get_tree().quit(0)
+
+
+## --view=cover: the loading cover dot-game's DotGameClient puts up first, before it lifts.
+func _shoot_cover(client: Node, out: String) -> void:
+	for _i in 2:
+		await RenderingServer.frame_post_draw
+	var platform: DotGameClient = client.get("platform")
+	print("cover %s" % ("lifted" if platform.is_shown() else "up"))
+	var cover_path := ProjectSettings.globalize_path(out)
+	DirAccess.make_dir_recursive_absolute(cover_path.get_base_dir())
+	print("saved %s: %s" % [out, error_string(get_viewport().get_texture().get_image().save_png(cover_path))])
+	get_tree().quit(0)
+
+
+## The admin marks go on through the flags the server would set (offline the client IS the server)
+## and are drawn by the client's own `_process`, the whole path a connected client takes.
+func _stage_view(client: Node, game: ScGame, view: String, seconds: float) -> void:
+	if view == "blind":
+		var me: Node = client.get("player")
+		if me != null:
+			me.set("blinded", true)
+		for _i in range(40):
+			await get_tree().process_frame
+	elif view == "spectate":
+		# Off the edge, through the same fall check a real one goes through, and then long
+		# enough for the death camera to hand over. What is drawn is the client's own
+		# `_process` putting its camera where `ScSpectate` says — nothing here places one.
+		var out_of_it: Node = client.get("player")
+		if out_of_it != null:
+			var at: Vector3 = (out_of_it.get("controller") as DotFpsController).state.position
+			out_of_it.call("place_at", Vector3(at.x, game.config.kill_height - 5.0, at.z), 0.0)
+		var waited := 0.0
+		while waited < 2.4:
+			waited += get_process_delta_time()
+			await get_tree().process_frame
+	elif view == "killcam":
+		# Everybody else goes over the edge through the fall check, so the round ends on the
+		# last of them; ~2 s later is the replay, ~8 the podium.
+		var me_k: Node = client.get("player")
+		for who: Node in game.players.values():
+			if who != me_k:
+				var at_k: Vector3 = (who.get("controller") as DotFpsController).state.position
+				who.call("place_at", Vector3(at_k.x, game.config.kill_height - 5.0, at_k.z), 0.0)
+		var waited_k := 0.0
+		while waited_k < seconds:
+			waited_k += get_process_delta_time()
+			await get_tree().process_frame
+	elif view == "hands":
+		# The local player's own eyes once the showdown is on: the gun the handover dealt, in
+		# their hands, and its counter. Offline the hands were never armed (ScClient._start_offline).
+		var waited_hands := 0.0
+		while waited_hands < 60.0 and game.phase != ScGame.Phase.SHOWDOWN:
+			waited_hands += get_process_delta_time()
+			await get_tree().process_frame
+		for _i in range(60):
+			await get_tree().process_frame
+	elif view != "eyes":
+		await _place_camera(game, view)
 
 
 ## `--action <kind> <id>` (`--action emote dance`): the local player, in third person, playing an
