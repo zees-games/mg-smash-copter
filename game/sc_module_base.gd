@@ -65,11 +65,8 @@ func _on_say_requested(peer_id: int, channel_id: StringName, text: String) -> vo
 	bridge.call("notice", peer_id, said.error.message)
 
 
-## A `!command` typed into chat. Run through the console as the person who typed it.
-##
-## [b]As THEM, not as the server.[/b] `run_command_as_uid` builds a context with that
-## player's own flags, so `!kick` from somebody without the flag is refused by the same file
-## that refuses it at the console — rather than by this function having an opinion.
+## A `!command` typed into chat. Run through the console as the person who typed it, with that
+## player's own flags, so `!kick` is refused by the same file that refuses it at the console.
 func _on_chat_command(peer_id: int, command: String, args: PackedStringArray) -> void:
 	if server == null:
 		return
