@@ -202,7 +202,56 @@ func _build() -> void:
 	vitals.offset_bottom = -170.0
 	_root.add_child(vitals)
 
+	_build_hand()
 
+	_field = _label(size)
+	_field.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_field.offset_left = -400.0
+	_field.offset_right = -30.0
+	_field.offset_top = -80.0
+	_field.offset_bottom = -26.0
+	_field.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+
+	# Bottom middle, above where the chat box's input line opens, and under nothing else:
+	# the health number is bottom-left and the field bottom-right, and a player who is out
+	# has no use for either.
+	watching_label = _label(size)
+	watching_label.name = "Watching"
+	watching_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	watching_label.offset_left = -520.0
+	watching_label.offset_right = 520.0
+	watching_label.offset_top = -140.0
+	watching_label.offset_bottom = -104.0
+	watching_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	watching_label.add_theme_color_override("font_color", Color(0.80, 0.90, 1.0))
+
+	_build_tilt()
+
+	_build_crosshair()
+
+## The point being looked at, as a dot.
+func _build_crosshair() -> void:
+	# A dot rather than a cross. For the whole first half there is nothing to aim at, and in
+	# the second half every weapon in the pack has its own spread — so what a player needs is
+	# "the point I am looking at", which is one pixel.
+	var dot := DotCrosshair.new()
+	dot.name = "Crosshair"
+	dot.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dot.length = 0.0
+	dot.base_gap = 0.0
+	dot.top_arm = false
+	dot.dynamic = false
+	dot.outline = false
+	dot.dot_radius = 3.0
+	dot.colour = Color(1.0, 1.0, 1.0, 0.75)
+	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if DotAddonApi.build_level("dot_ui") >= 14:
+		dot.set(&"alive_source", func() -> bool: return player == null or player.is_alive())
+	_root.add_child(dot)
+
+
+## Ammo counter, weapon icon and hit marker, bottom right.
+func _build_hand() -> void:
 	# Bottom right, above the field line: what is in hand and how much is in it. The play test
 	# found a gun with no counter anywhere; dot-ui's DotAmmoCounter is the family's one.
 	ammo = DotAmmoCounter.new()
@@ -233,47 +282,6 @@ func _build() -> void:
 	hit_marker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	hit_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(hit_marker)
-
-	_field = _label(size)
-	_field.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	_field.offset_left = -400.0
-	_field.offset_right = -30.0
-	_field.offset_top = -80.0
-	_field.offset_bottom = -26.0
-	_field.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-
-	# Bottom middle, above where the chat box's input line opens, and under nothing else:
-	# the health number is bottom-left and the field bottom-right, and a player who is out
-	# has no use for either.
-	watching_label = _label(size)
-	watching_label.name = "Watching"
-	watching_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
-	watching_label.offset_left = -520.0
-	watching_label.offset_right = 520.0
-	watching_label.offset_top = -140.0
-	watching_label.offset_bottom = -104.0
-	watching_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	watching_label.add_theme_color_override("font_color", Color(0.80, 0.90, 1.0))
-
-	_build_tilt()
-
-	# A dot rather than a cross. For the whole first half there is nothing to aim at, and in
-	# the second half every weapon in the pack has its own spread — so what a player needs is
-	# "the point I am looking at", which is one pixel.
-	var dot := DotCrosshair.new()
-	dot.name = "Crosshair"
-	dot.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	dot.length = 0.0
-	dot.base_gap = 0.0
-	dot.top_arm = false
-	dot.dynamic = false
-	dot.outline = false
-	dot.dot_radius = 3.0
-	dot.colour = Color(1.0, 1.0, 1.0, 0.75)
-	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if DotAddonApi.build_level("dot_ui") >= 14:
-		dot.set(&"alive_source", func() -> bool: return player == null or player.is_alive())
-	_root.add_child(dot)
 
 
 ## The one instrument in the game: how far over the floor you are standing on has gone.
