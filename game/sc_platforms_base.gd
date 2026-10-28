@@ -44,11 +44,9 @@ const WHY_SHATTERED := &"shattered"  ## One impact was simply too big.
 const WHY_ROUND := &"round"      ## The round asked for the field to be cleared.
 const WHY_UNSUPPORTED := &"unsupported"  ## A bridge lost a platform it was resting on.
 
-## One platform: where it is, what it is doing, and the four numbers it is doing it with.
-##
-## An inner class rather than parallel arrays. The arrays would be faster and this is a
-## dozen entries; what they would cost is the one thing that matters in a file like this,
-## which is being able to read one platform's whole state in one place.
+## One platform: where it is, what it is doing, and the four numbers it is doing it with. An inner
+## class rather than parallel arrays: they would be faster for a dozen entries, but one platform's
+## whole state would no longer read in one place.
 class Deck extends RefCounted:
 	## Where the pillar's axis meets the deck plane. The platform pivots about this.
 	var centre := Vector3.ZERO
@@ -123,16 +121,9 @@ class Deck extends RefCounted:
 	func is_live() -> bool:
 		return state != State.GONE
 
-	## The surface's normal, from the lean.
-	##
-	## [b]A lean of `+x` puts the +X edge DOWN, and the normal therefore tips toward +X —
-	## which is the opposite of what it looks like it should be.[/b] Work it through on the
-	## plane rather than on the picture: a plane through the pivot with normal
-	## `(sin t, cos t, 0)` puts a point at `+x` at `y = pivot - x * tan(t)`, which is below
-	## the pivot. The first version wrote `-sin`, every lean came out leaning away from
-	## whatever was standing on it, and the suite caught it as the far side of a platform
-	## being the low one. Nothing about it errors: the platform still tips, still collapses
-	## and still carries people — in the wrong direction.
+	## The surface's normal, from the lean. A lean of `+x` puts the +X edge DOWN, so the normal tips
+	## toward +X, the opposite of how it looks: the plane `(sin t, cos t, 0)` through the pivot is lower
+	## at `+x`. Writing `-sin` still tips and collapses, in the wrong direction, and nothing errors.
 	func normal() -> Vector3:
 		return Vector3(sin(lean.x), 1.0, sin(lean.y)).normalized()
 
@@ -151,12 +142,9 @@ class Deck extends RefCounted:
 
 @export var config: ScConfig = null
 
-## Whether this instance decides anything. A client mirrors what it is told instead.
-##
-## [b]A client runs no model at all.[/b] It is handed a lean and a sink twice a second and
-## interpolates between them, which is the same bargain dot-props makes about a crate and
-## is made for a stronger reason: a platform is the floor, and a floor that disagrees
-## between two machines is a player falling through one.
+## Whether this instance decides anything. A client runs no model: it is handed a lean and a sink
+## twice a second and interpolates, because a floor that disagrees between two machines is a player
+## falling through one.
 @export var authoritative: bool = true
 
 ## Every platform, in layout order. The index is what the wire carries.
@@ -173,12 +161,8 @@ var grip: float = 1.0
 ## down; a layout can too.
 var stiffness_scale: float = 1.0
 
-## Node instance id -> deck index, so a motor's `ground_id` answers in one lookup.
-##
-## [b]The reverse index the motor needs, kept here rather than searched for.[/b]
-## `DotFpsState.ground_id` is the instance id of whatever is underfoot and it is read once
-## per player per tick; walking every deck to match it would be the same scan dot-entity
-## exists to remove, in miniature.
+## Node instance id -> deck index, so a motor's `ground_id` answers in one lookup: it is read once
+## per player per tick, and walking every deck to match it is the scan dot-entity exists to remove.
 var _by_body: Dictionary = {}
 
 var _physics: DotPhysicsLayout = null
