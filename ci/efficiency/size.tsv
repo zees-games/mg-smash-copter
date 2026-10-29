@@ -51,10 +51,7 @@ game/sc_client.gd	1484
 game/sc_client.gd::_build_netcode	86
 game/sc_config.gd::validate	81
 game/sc_content.gd::props	124
-game/sc_game.gd	3193
-game/sc_game.gd::_aim_bot	86
 game/sc_game.gd::_build_combat	83
-game/sc_game.gd::_place_players	84
 game/sc_hud.gd::_build	106
 game/sc_layouts.gd::_own	154
 game/sc_module.gd	859

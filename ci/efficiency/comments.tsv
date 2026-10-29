@@ -50,9 +50,8 @@ game/sc_content.gd::long_block	9
 game/sc_copter.gd::long_block	9
 game/sc_figure.gd::history	1
 game/sc_figure.gd::long_block	2
-game/sc_game.gd::banner	14
-game/sc_game.gd::history	3
-game/sc_game.gd::long_block	78
+game/sc_game.gd::history	2
+game/sc_game.gd::long_block	20
 game/sc_hud.gd::history	1
 game/sc_hud.gd::long_block	10
 game/sc_layouts.gd::history	8
