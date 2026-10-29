@@ -104,6 +104,9 @@ func _test_a_swing_is_drawn() -> void:
 	figure.pose(Vector3.ZERO, 0.0, 0.0)
 	await get_tree().process_frame
 	figure.pose(Vector3.ZERO, 0.0, 0.0)
+	# The wall-clock step kept a timestamp; game time leaves it alone.
+	_check(figure.person != null and figure._posed_at_usec == -1,
+		"a figure animates by game time (frame_delta), not the wall clock", str(figure._posed_at_usec))
 	var held_at: Array[Quaternion] = []
 	for b in arms:
 		held_at.append(bones.get_bone_pose_rotation(b))

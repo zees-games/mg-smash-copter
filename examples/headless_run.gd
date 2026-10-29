@@ -27,7 +27,7 @@ const SECTIONS := 50
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 399
+const CHECKS := 400
 
 
 func _ready() -> void:
