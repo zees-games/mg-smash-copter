@@ -198,11 +198,11 @@ func _on_special_changed(id: StringName, starting: bool, blurb: String) -> void:
 	_broadcast(ScEvents.Kind.SPECIAL, ScEvents.write_special(id, starting, blurb))
 
 
-func _on_player_died(player_id: StringName, by: StringName, why: StringName) -> void:
+func _on_player_died(player_id: StringName, by: StringName, why: StringName, weapon_id: StringName) -> void:
 	var who: ScPlayer = game.players.get(player_id) if game != null else null
 	_broadcast(ScEvents.Kind.DEATH, ScEvents.write_death(
 		session_of(player_id), session_of(by) if by != &"" else 0, why,
-		who.death if who != null else null
+		who.death if who != null else null, weapon_id
 	))
 
 

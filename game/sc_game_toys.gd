@@ -330,7 +330,7 @@ func _on_player_died(player: ScPlayer, damage: DotDamage) -> void:
 	if authoritative:
 		player.death = decide_death(player, damage)
 
-	player_died.emit(player.player_id, by, why)
+	player_died.emit(player.player_id, by, why, damage.weapon_id)
 	DotLog.debug(CHANNEL, "player died", {
 		"id": String(player.player_id), "by": String(by), "why": String(why),
 	})

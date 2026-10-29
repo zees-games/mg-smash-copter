@@ -97,7 +97,7 @@ signal phase_changed(phase: int)
 signal special_changed(id: StringName, starting: bool, blurb: String)
 
 ## Somebody fell, was crushed, or was shot.
-signal player_died(player_id: StringName, by: StringName, why: StringName)
+signal player_died(player_id: StringName, by: StringName, why: StringName, weapon_id: StringName)
 
 ## A platform came off its pillar. The client draws it; this decides it.
 signal platform_collapsed(index: int, why: StringName)

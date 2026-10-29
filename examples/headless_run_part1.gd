@@ -551,6 +551,40 @@ func _test_sides_agree() -> void:
 	_finished()
 
 
+## The killcam banner's weapon icon through the real hop: DEATH on the wire, the client's note, the round's
+## end, the banner. An empty weapon id (a fall) shows the words only.
+func _killcam_icon(client: ScClient, game: ScGame, victim: ScPlayer) -> void:
+	var other: ScPlayer = game.players[&"other"]
+	var wire := ScEvents.read_death(DotNetReader.new(ScEvents.write_death(5, 0, ScGame.DIED_SHOT, null, &"pistol")))
+	_check(wire["weapon_id"] == &"pistol", "a DEATH carries the weapon id")
+	var unarmed := ScEvents.read_death(DotNetReader.new(ScEvents.write_death(5, 0, ScGame.DIED_FELL)))
+	_check(unarmed["weapon_id"] == &"", "and none reads as empty")
+	var clock := [0.0]
+	var kc := ScKillcam.new()
+	kc.now_fn = func() -> float: return clock[0]
+	kc.players_fn = func() -> Array: return game.players.values()
+	kc.player_for_fn = func(key: StringName) -> Variant: return game.players.get(key)
+	kc.feet_fn = func(p: ScPlayer) -> Vector3: return p.global_position
+	add_child(kc)
+	client.killcam = kc
+	for weapon: StringName in [&"pistol", &""]:
+		clock[0] = 1.0
+		kc.frame()
+		clock[0] = 2.0
+		client._note_death(victim.player_id, other.player_id, ScGame.DIED_SHOT, weapon)
+		var played := kc.round_ended()
+		var banner := kc.killcam.banner
+		_check(played and banner != null, "the round's end plays the killcam")
+		if weapon != &"":
+			_check(banner.icon_rect.visible and banner.icon_rect.texture != null, "the banner shows the killing weapon's picture")
+		else:
+			_check(not banner.icon_rect.visible and banner.icon_rect.texture == null, "and with no weapon it shows words only")
+		kc.skip()
+		kc.buffer.clear()
+	client.killcam = null
+	kc.free()
+
+
 func _test_falling_off() -> void:
 	_section("running out of map is fatal")
 
@@ -561,7 +595,7 @@ func _test_falling_off() -> void:
 
 	var deaths: Array[StringName] = []
 	game.player_died.connect(
-		func(id: StringName, _by: StringName, why: StringName) -> void:
+		func(id: StringName, _by: StringName, why: StringName, _weapon_id: StringName) -> void:
 			deaths.append(why)
 	)
 
@@ -592,6 +626,7 @@ func _test_falling_off() -> void:
 	_check(bool(bare["ok"]) and not bare.has("death"), "and a DEATH without it still reads")
 	var client := ScClient.new()
 	client.game = game
+	await _killcam_icon(client, game, player)
 	client._build_ragdolls()
 	client.remove_child(client.ragdolls)
 	add_child(client.ragdolls)

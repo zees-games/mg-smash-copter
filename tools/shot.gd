@@ -161,13 +161,15 @@ func _stage_view(client: Node, game: ScGame, view: String, seconds: float) -> vo
 			waited += get_process_delta_time()
 			await get_tree().process_frame
 	elif view == "killcam":
-		# Everybody else goes over the edge through the fall check, so the round ends on the
-		# last of them; ~2 s later is the replay, ~8 the podium.
+		# Everybody else is shot, so the round ends on the last of them; ~2 s later is the replay, ~8 the podium.
 		var me_k: Node = client.get("player")
 		for who: Node in game.players.values():
 			if who != me_k:
-				var at_k: Vector3 = (who.get("controller") as DotFpsController).state.position
-				who.call("place_at", Vector3(at_k.x, game.config.kill_height - 5.0, at_k.z), 0.0)
+				# Shot by the local player with a pistol, so the banner has a weapon to draw.
+				var shot := DotDamage.make(int(me_k.get("entity_id")), int(who.get("entity_id")), 1.0e6, null)
+				shot.weapon_id = &"pistol"
+				shot.tick = game._tick
+				var _hit: Variant = game.combat.apply_damage(shot)
 		var waited_k := 0.0
 		while waited_k < seconds:
 			waited_k += get_process_delta_time()

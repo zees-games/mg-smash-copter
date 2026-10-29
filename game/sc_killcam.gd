@@ -1,6 +1,7 @@
 extends Node
 
 const ScPlayer := preload("sc_player.gd")
+const ScWeaponIcons := preload("sc_weapon_icons.gd")
 
 ## The killcam at a round's end (client side): every drawn frame goes into dot-replay's
 ## [DotKillcamBuffer], decisive moments are noted, and [DotKillcam] replays the last one from
@@ -48,6 +49,7 @@ func _ready() -> void:
 	killcam = DotKillcam.new()
 	killcam.name = "Killcam"
 	killcam.skip_actions = SKIP_ACTIONS
+	killcam.icon_provider = _weapon_icon
 	add_child(killcam)
 	killcam.started.connect(_on_started)
 	killcam.frame_drawn.connect(_apply)
@@ -73,9 +75,9 @@ func frame() -> void:
 
 ## A moment worth replaying: [param subject] is whose eyes the replay is behind, [param what]
 ## the banner's words ("reached the end", "caught by a trap"), [param victim] the one a shot
-## put down or "".
-func note_moment(subject: StringName, what: String, victim: String = "") -> void:
-	buffer.note_event(now_fn.call(), &"moment", {"subject": String(subject), "what": what, "victim": victim})
+## put down or "", [param weapon_id] what did it, for the banner's icon ("" for none).
+func note_moment(subject: StringName, what: String, victim: String = "", weapon_id: StringName = &"") -> void:
+	buffer.note_event(now_fn.call(), &"moment", {"subject": String(subject), "what": what, "victim": victim, "weapon_id": String(weapon_id)})
 
 
 ## The round ended: replay its last moment if there is one to show. False means [signal over]
@@ -94,6 +96,7 @@ func round_ended() -> bool:
 		"killer": String(subject.get(&"display_name")),
 		"victim": String(moment["data"].get("victim", "")),
 		"weapon": String(moment["data"].get("what", "")),
+		"weapon_id": String(moment["data"].get("weapon_id", "")),
 		"hint": "Jump to skip",
 	})
 	if not played.ok:
@@ -101,6 +104,11 @@ func round_ended() -> bool:
 		over.emit(false)
 		return false
 	return true
+
+
+## The banner's icon for a weapon id; null (an empty or unknown id) keeps the text only.
+func _weapon_icon(id: String) -> Texture2D:
+	return ScWeaponIcons.shared.menu_texture(StringName(id)) if id != "" else null
 
 
 func skip() -> void:

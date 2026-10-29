@@ -489,7 +489,7 @@ func _on_event(message: DotNetMessage) -> void:
 				if fell != null and death.has("death"):
 					fell.death = death["death"]
 				death_received.emit(
-					int(death["player_id"]), int(death["by"]), death["why"]
+					int(death["player_id"]), int(death["by"]), death["why"], death["weapon_id"]
 				)
 		ScEvents.Kind.COLLAPSE:
 			var fell := ScEvents.read_collapse(reader)

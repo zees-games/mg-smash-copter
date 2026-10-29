@@ -47,7 +47,7 @@ signal phase_received(phase: int)
 signal special_received(special_id: StringName, starting: bool, blurb: String)
 
 ## Somebody died, and what did it.
-signal death_received(player_id: int, by: int, why: StringName)
+signal death_received(player_id: int, by: int, why: StringName, weapon_id: StringName)
 
 ## A platform came off its pillar. What a client shakes the screen for.
 signal collapse_received(index: int, why: StringName)

@@ -172,7 +172,7 @@ func _on_round_over(_number: int, winner: int) -> void:
 		_tally.drawn += 1
 
 
-func _on_died(player_id: StringName, by: StringName, why: StringName) -> void:
+func _on_died(player_id: StringName, by: StringName, why: StringName, _weapon_id: StringName) -> void:
 	var mine := String(player_id).begins_with("p")
 	# A kill after the round is decided (the last shots in flight) decides nothing.
 	if _game.phase == ScGame.Phase.IDLE:

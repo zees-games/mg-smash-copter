@@ -178,7 +178,7 @@ func _start_offline() -> void:
 	_hear_the_world()
 	game.round_began.connect(func(n: int, _layout: StringName) -> void: _round_presentation(n, true, 0))
 	game.round_over.connect(func(n: int, winner: int) -> void: _round_presentation(n, false, winner))
-	game.player_died.connect(func(id: StringName, by: StringName, why: StringName) -> void: _note_death(id, by, why))
+	game.player_died.connect(_note_death)
 
 	# Offline the world counts for the player at this keyboard, so it is the world that says
 	# what they earned. Connected, the same line arrives as a notice from the server.
@@ -463,13 +463,13 @@ func _on_special(_id: StringName, starting: bool, blurb: String) -> void:
 
 ## The round's last moment, a death. A shot puts the victim in the shooter's eyes, anything
 ## else (a fall, a crush, a blast) in the victim's own.
-func _note_death(victim: StringName, by: StringName, why: StringName) -> void:
+func _note_death(victim: StringName, by: StringName, why: StringName, weapon_id: StringName = &"") -> void:
 	if killcam == null:
 		return
 	var who: ScPlayer = game.players.get(victim)
 	var name_of := who.display_name if who != null else String(victim)
 	if by != &"" and game.players.has(by) and by != victim:
-		killcam.note_moment(by, "put down", name_of)
+		killcam.note_moment(by, "put down", name_of, weapon_id)
 		return
 	var what := "was shot"
 	match why:
@@ -603,11 +603,11 @@ func _round_presentation(number: int, began: bool, winner: int) -> void:
 		_begin_round_end(number, winner)
 
 
-func _on_death(session_id: int, by: int, why: StringName) -> void:
+func _on_death(session_id: int, by: int, why: StringName, weapon_id: StringName = &"") -> void:
 	var id := ScNetBridge.player_key(session_id)
 	var who: ScPlayer = game.players.get(id)
 
-	_note_death(id, ScNetBridge.player_key(by) if by > 0 else &"", why)
+	_note_death(id, ScNetBridge.player_key(by) if by > 0 else &"", why, weapon_id)
 
 	_hear_death(who, why)
 
@@ -812,7 +812,7 @@ func _hear_the_world() -> void:
 	game.special_changed.connect(func(_id: StringName, starting: bool, _blurb: String) -> void:
 		if starting:
 			var _heard := audio.on_special())
-	game.player_died.connect(func(id: StringName, _by: StringName, why: StringName) -> void:
+	game.player_died.connect(func(id: StringName, _by: StringName, why: StringName, _weapon_id: StringName) -> void:
 		_hear_death(game.players.get(id), why))
 	game.platform_collapsed.connect(func(index: int, _why: StringName) -> void:
 		_hear_collapse(index))

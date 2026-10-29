@@ -27,7 +27,7 @@ const SECTIONS := 50
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 393
+const CHECKS := 399
 
 
 func _ready() -> void:
@@ -216,7 +216,7 @@ func _test_a_collapse_takes_everybody() -> void:
 	var other := game.add_player(&"other", "Other", 2)
 
 	var fell: Dictionary = {}
-	game.player_died.connect(func(id: StringName, _by: StringName, why: StringName) -> void:
+	game.player_died.connect(func(id: StringName, _by: StringName, why: StringName, _weapon_id: StringName) -> void:
 		fell[id] = why)
 
 	game.start()
@@ -526,7 +526,7 @@ func _test_the_chopper() -> void:
 
 	var deaths: Array[StringName] = []
 	game.player_died.connect(
-		func(id: StringName, _by: StringName, why: StringName) -> void:
+		func(id: StringName, _by: StringName, why: StringName, _weapon_id: StringName) -> void:
 			if id == &"pilot":
 				deaths.append(why)
 	)
