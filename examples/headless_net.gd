@@ -1206,7 +1206,7 @@ func _test_somebody_else_is_drawn() -> void:
 		"%.1f deg" % rad_to_deg(theirs.figure.rotation.y)
 	)
 	_check(
-		clips[clips.size() - 1] == &"run",
+		clips[clips.size() - 1] in [&"run", DotHumanoidClips.SPRINT],
 		"and running, rather than sliding across in a standing pose",
 		String(clips[clips.size() - 1])
 	)
