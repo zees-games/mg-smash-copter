@@ -16,9 +16,8 @@ game/net/sc_event.gd::long_block	1
 game/net/sc_events.gd::banner	10
 game/net/sc_events.gd::history	1
 game/net/sc_events.gd::long_block	13
-game/net/sc_net_bridge.gd::banner	11
-game/net/sc_net_bridge.gd::history	4
-game/net/sc_net_bridge.gd::long_block	36
+game/net/sc_net_bridge.gd::history	1
+game/net/sc_net_bridge.gd::long_block	11
 game/net/sc_net_command.gd::long_block	1
 game/net/sc_net_link.gd::banner	2
 game/net/sc_net_link.gd::history	1

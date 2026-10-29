@@ -41,8 +41,6 @@ examples/headless_run.gd::_test_what_a_player_keeps	149
 examples/headless_run.gd::_test_world_builds	96
 examples/headless_run.gd::_test_zee_art_root	108
 game/net/sc_events.gd	822
-game/net/sc_net_bridge.gd	2022
-game/net/sc_net_bridge.gd::_apply_prop	83
 game/net/sc_net_bridge.gd::_on_event	144
 game/net/sc_net_bridge.gd::attach	104
 game/sc_arena.gd	1100
