@@ -60,7 +60,6 @@ const WORLD_OWNER := &"world"
 static func props(_config: ScConfig) -> DotPropCatalogue:
 	var catalogue := DotPropCatalogue.new()
 
-	# --- Tier one: it wobbles ------------------------------------------------
 	#
 	# [b]Survivable by standing still, and that is what it teaches.[/b] The first twenty
 	# seconds of a round are only crates, so a player learns the one rule — a platform
@@ -105,7 +104,6 @@ static func props(_config: ScConfig) -> DotPropCatalogue:
 	cone.meta = {META_TIER: 1}
 	catalogue.add(cone)
 
-	# --- Tier two: it tips ---------------------------------------------------
 
 	var barrel := DotPropDef.make(BARREL, BARREL_SCENE)
 	barrel.display_name = "Barrel"
@@ -133,7 +131,6 @@ static func props(_config: ScConfig) -> DotPropCatalogue:
 	boulder.meta = {META_TIER: 2}
 	catalogue.add(boulder)
 
-	# --- Tier three: it takes a corner off -----------------------------------
 
 	var container := DotPropDef.make(CONTAINER, CONTAINER_SCENE)
 	container.display_name = "Container"
@@ -155,7 +152,6 @@ static func props(_config: ScConfig) -> DotPropCatalogue:
 	slab.meta = {META_TIER: 3}
 	catalogue.add(slab)
 
-	# --- Tier four: it deletes the platform ----------------------------------
 	#
 	# [b]Rare, and it has to be rare to work.[/b] A map where every fourth shot removes a
 	# platform outright is a map nobody survives a minute of; at one shot in twenty it is

@@ -124,7 +124,6 @@ static func _w() -> DotNetWriter:
 	return DotNetWriter.new()
 
 
-# --- Hello -----------------------------------------------------------------
 
 static func write_hello(
 	player_id: int,
@@ -166,7 +165,6 @@ static func read_hello(r: DotNetReader) -> Dictionary:
 	}
 
 
-# --- The map ---------------------------------------------------------------
 
 ## The whole of this round's geometry.
 ##
@@ -319,7 +317,6 @@ static func read_collapse(r: DotNetReader) -> Dictionary:
 	return {"index": index, "why": StringName(why), "ok": r.ok()}
 
 
-# --- Players ---------------------------------------------------------------
 
 ## A join, or a change to who somebody is: their name, their side, their avatar.
 ##
@@ -431,7 +428,6 @@ static func read_armed(r: DotNetReader) -> Dictionary:
 	return {"player_id": player_id, "weapon_id": StringName(weapon_id), "ok": r.ok()}
 
 
-# --- What is in the world --------------------------------------------------
 
 ## Something the world has put out: a prop, or a chopper.
 ##
@@ -491,7 +487,6 @@ static func read_seat(r: DotNetReader) -> Dictionary:
 	return {"player_id": player_id, "net_id": net_id, "seated": seated, "ok": r.ok()}
 
 
-# --- The round -------------------------------------------------------------
 
 ## The clock, and the three numbers a client cannot count for itself.
 ##
@@ -606,7 +601,6 @@ static func read_blast(r: DotNetReader) -> Dictionary:
 	return {"position": at, "radius": radius, "ok": r.ok()}
 
 
-# --- Watching --------------------------------------------------------------
 
 ## A view dot-spectate decided, for the one player it belongs to.
 ##
@@ -657,7 +651,6 @@ static func read_ask_spectate(r: DotNetReader) -> Dictionary:
 	return {"direction": clampi(raw, 0, 2) - 1, "ok": r.ok()}
 
 
-# --- Impacts ---------------------------------------------------------------
 
 ## Where something landed, and what it did to the platform. [param outcome] is
 ## [enum ScPlatforms.Impact].
@@ -678,7 +671,6 @@ static func read_impact(r: DotNetReader) -> Dictionary:
 	return {"position": at, "outcome": outcome, "impulse": impulse, "ok": r.ok()}
 
 
-# --- Asking ----------------------------------------------------------------
 
 static func write_board() -> PackedByteArray:
 	var w := _w()
@@ -697,7 +689,6 @@ static func read_ask_team(r: DotNetReader) -> Dictionary:
 	return {"team": team, "ok": r.ok()}
 
 
-# --- Chat ------------------------------------------------------------------
 
 ## A chat line's own field widths. Wider than the rules allow, so a rule can be raised
 ## without the wire silently truncating what it lets through.
@@ -803,7 +794,6 @@ static func read_notice(r: DotNetReader) -> Dictionary:
 	return {"text": text, "ok": r.ok()}
 
 
-# --- A hit ----------------------------------------------------------------------
 
 static func write_hit(point: Vector3, killed: bool, headshot: bool) -> PackedByteArray:
 	var w := _w()

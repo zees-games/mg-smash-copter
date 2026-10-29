@@ -166,7 +166,6 @@ func set_overviews(field: Transform3D, showdown: Transform3D) -> void:
 	manager.fixed_cameras = cameras
 
 
-# --- What the world reports -------------------------------------------------
 
 ## Somebody is out. Starts the death camera; the server's tick hands it over. [param at] is where
 ## they died; a fall is recorded at the kill height, so the camera is moved back up over the point
@@ -215,7 +214,6 @@ func advance(tick: int) -> void:
 		manager.advance(tick)
 
 
-# --- What a viewer asks for -------------------------------------------------
 
 ## The free-roam key, asked of the server like every other camera change; refused with a line when
 ## roaming is off (`mp_freeroam 0`) or a camera is forced. The server owns the mode (the SPECTATE
@@ -319,7 +317,6 @@ func apply_view(
 	view_changed.emit(player_id)
 
 
-# --- What is drawn ----------------------------------------------------------
 
 func is_spectating(player_id: StringName) -> bool:
 	return manager != null and manager.is_spectating(String(player_id))
@@ -399,7 +396,6 @@ func _name_of(player_id: StringName) -> String:
 	return body.display_name if body != null else String(player_id)
 
 
-# --- The manager's callables ------------------------------------------------
 
 func _participants() -> PackedStringArray:
 	var out := PackedStringArray()
@@ -439,7 +435,6 @@ func _pose_of(key: String) -> Transform3D:
 	return Transform3D(basis, at + Vector3(0.0, ScPlayer.EYE_HEIGHT, 0.0))
 
 
-# --- Team-mates first -------------------------------------------------------
 
 func _on_view_changed(key: String, mode: int, target: String) -> void:
 	_prefer_side(key, mode, target)

@@ -42,7 +42,6 @@ const ScPlatforms := preload("sc_platforms.gd")
 
 const CHANNEL := "sc.progress"
 
-# --- The numbers -------------------------------------------------------------
 
 ## Rounds a player was in from the start to the end.
 const ROUNDS_PLAYED := &"sc.rounds_played"
@@ -98,7 +97,6 @@ var _keys: Dictionary = {}
 var _ids: Dictionary = {}
 
 
-# --- The documents -----------------------------------------------------------
 
 static func ids() -> Array[StringName]:
 	return [
@@ -201,7 +199,6 @@ static func _sum(
 	return out
 
 
-# --- Building ---------------------------------------------------------------
 
 ## [param directory] empty keeps achievement progress in memory; see
 ## [member ScConfig.progress_directory]. [param report] is [member ScConfig.report_progress].
@@ -251,7 +248,6 @@ func setup(directory: String, report: bool) -> DotResult:
 	return link.start().wrap("smash-copter's stats-to-achievements link")
 
 
-# --- Counting ---------------------------------------------------------------
 
 ## Files one reading for one person, and starts counting for them the first time.
 ##
@@ -354,7 +350,6 @@ func filed_under(player_id: StringName) -> StringName:
 	return _keys.get(player_id, player_id)
 
 
-# --- What the world reports -------------------------------------------------
 
 func on_round_began() -> void:
 	_in_round.clear()

@@ -98,7 +98,6 @@ func _run() -> void:
 	_report_sections(_sections_entered, _sections_finished, SECTIONS, CHECKS)
 
 
-# --- Sections ---------------------------------------------------------------
 
 func _test_world_builds() -> void:
 	_section("the world comes up")
@@ -1104,7 +1103,6 @@ func _test_the_dais() -> void:
 		"%.1f m in %.2f s (%.2f s at %.2f m/s), top %.2f" % [
 			route, seconds, route / max_speed, max_speed, fastest])
 
-	# --- Cover that turns, and the high ground. -----------------------------------------
 	#
 	# From every pad and every perch: somebody crouched against the dais' far side is out
 	# of sight, and somebody standing there is not. A ring block covers from one pad; the

@@ -96,7 +96,6 @@ func _live() -> bool:
 	return live
 
 
-# --- Sending ---------------------------------------------------------------
 
 ## One routed chat line, to one peer.
 ##
@@ -181,7 +180,6 @@ func send_request(payload: PackedByteArray) -> void:
 		_net_request.rpc_id(1, payload)
 
 
-# --- Receiving -------------------------------------------------------------
 
 ## State from the authority. Unreliable: a newer snapshot supersedes a lost one, and
 ## resending a hundred-millisecond-old lean is worse than useless.

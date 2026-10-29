@@ -194,7 +194,6 @@ func _player_of(peer_id: int) -> ScPlayer:
 	return (game as ScGame).players.get(ScNetBridge.player_key(session_id))
 
 
-# --- dot-moderation's live tools ---------------------------------------------
 
 ## What the admin set means here, one callable per ability. See `DotGameServices`.
 ##

@@ -1,24 +1,8 @@
 extends "sc_client_spectate.gd"
 
-## One local player, a camera and a HUD over an [ScGame] — offline, or against a server.
+## One local player, a camera and a HUD over an [ScGame], offline or against a server.
 ##
-## [b]One client for both, and the offline half is not a demo mode.[/b] It is the same world
-## class with `authoritative` true and nothing else different: the same platforms, the same
-## cannon, the same rules. What changes is where the answers come from, and the whole of
-## that difference is [ScNetBridge]. A separate single-player build would be a second game to
-## keep in step, and this family has watched two copies of one thing drift more than once.
-##
-## [b]Which half runs is decided by whether there is a link in the registry.[/b] A dot-server
-## client publishes a [DotClientLink] under `dot_client_link` before the game scene loads; no
-## link means nobody connected us to anything, and the honest answer to that is a playable
-## field rather than an error. `--offline` forces it.
-##
-## [b]First person and third, and the motor does not know which.[/b] The camera is
-## presentation: the simulation is first-person, command-driven and predictable in both, and
-## what changes is where the camera sits. That is the line dot-player-controller draws
-## between its motor and its view, drawn again here — and it matters more in this game than
-## in most, because the thing a player most needs to see is the platform under their own
-## feet, which is the one thing a first-person camera cannot show them.
+## One client for both: offline is the same world class with `authoritative` true, and the whole difference is [ScNetBridge], so there is no second game to keep in step. Which half runs depends on a [DotClientLink] published under `dot_client_link` before the scene loads (`--offline` forces offline). First or third person is camera only, since the simulation is first-person and predictable in both.
 
 
 func _ready() -> void:
@@ -69,10 +53,7 @@ func _ready() -> void:
 	if _offline:
 		_start_offline()
 	else:
-		# [b]Here, in `_ready`, which runs INSIDE `DotClientLink._load_scene`.[/b] The link
-		# adds this scene and tells the server it has loaded on the next line, so the netcode
-		# is up before the server has been told there is anybody to send to — which is the
-		# order that leaves nothing to be missed.
+				# In `_ready`, which runs INSIDE `DotClientLink._load_scene`: the link tells the server it has loaded on the next line, so the netcode must already be up.
 		var netted := _build_netcode()
 		DotLog.result(CHANNEL, "the netcode", netted)
 		if netted.ok:
@@ -105,11 +86,7 @@ func _build_world(config: ScConfig, binder: DotGameConfigBinder) -> void:
 
 ## The load gate is [member DotGameClient.gate].
 ##
-## [b]Covered also means the round does not run.[/b] Offline the world ticks itself, so the
-## phase clock, the platforms' lean, the cannon and the falls would all have run in front of a
-## picture; `ScGame.hold_clock` stops them and steps only the bodies, which settle onto the
-## decks under the cover with their input off. Connected, the server owns the round; what is
-## left to hold is this end's sampling and keys, which wait on [method _covered].
+## Covered also means the round does not run: `ScGame.hold_clock` stops the phase clock, lean, cannon and falls and steps only the bodies. Connected, the server owns the round, and what is left to hold is this end's sampling and keys ([method _covered]).
 
 
 ## A field is built: held from the moment the old one starts to go, released once the new one
@@ -122,7 +99,6 @@ func _hold_for_fields() -> void:
 
 
 
-# --- Dead bodies -----------------------------------------------------------
 
 
 
@@ -139,10 +115,9 @@ func _ragdoll_sound(id: StringName, at: Vector3, volume: float) -> void:
 		var _played := audio.on_body(id, at, volume)
 
 
-## [param who]'s body falls the way the server picked ([member ScPlayer.death]), copied from the
-## figure this client draws; the figure itself stays hidden while they are dead
-## ([method ScPlayer.present_body]). Nobody's figure, nothing: a first-person player who never
-## had one drawn here.
+## [param who]'s body falls the way the server picked ([member ScPlayer.death]), copied from the figure this client draws.
+##
+## The figure stays hidden while they are dead ([method ScPlayer.present_body]); nobody's figure, nothing.
 func _fall(who: ScPlayer) -> void:
 	if who == null or ragdolls == null or who.figure == null or not who.figure.is_inside_tree():
 		return
@@ -153,7 +128,6 @@ func _fall(who: ScPlayer) -> void:
 	var _body := ragdolls.spawn(who.figure, who.death if who.death != null else DotPlayerDeath.new(), velocity)
 
 
-# --- Offline ---------------------------------------------------------------
 
 func _exit_tree() -> void:
 	# A static outlives the game: the next one the shell loads must not look for its art here.
@@ -244,14 +218,10 @@ func _bind_bot_console() -> void:
 			DotBotSettings.of(game).set_difficulty(args[index + 1]))
 
 
-# --- Connected -------------------------------------------------------------
 
 ## Follows the server's replicated cvars: this end traces, places its camera and predicts under them.
 func _follow_server_cvars() -> void:
-	# The server's `mp_teammate_passthrough`, and every change to it, through the link: this
-	# end traces its own shots for tracers and impacts, and on its default 1 against a server
-	# on 0 or 2 they ended in (or went through) a team-mate where the server's did the
-	# opposite. An older shell's link cannot say, and the manager keeps its default.
+		# The server's `mp_teammate_passthrough`, through the link: this end traces its own shots, and a differing default would end them in a team-mate where the server's did not. An older shell's link cannot say; the manager keeps its default.
 	if game.combat != null and link != null:
 		var _following := game.combat.follow_cvars(link)
 	# The server's sv_ragdoll* set: this end draws the bodies.
@@ -374,10 +344,7 @@ func _on_hello(session_id: int) -> void:
 
 ## A player arrived or changed. The one we are waiting for might be us.
 ##
-## [b]Connected before anything can create a player rather than only checked on HELLO.[/b]
-## HELLO and JOIN are both reliable and ordered, so HELLO does arrive first — but "the
-## ordering happens to save us" is exactly the reasoning that put this bug in another game
-## here, and a check that costs nothing is cheaper than depending on it.
+## Connected before anything can create a player, not only checked on HELLO: HELLO and JOIN are ordered, but depending on that ordering is what caused this bug in another game.
 func _on_roster_changed(session_id: int) -> void:
 	if session_id == _watch_id and player == null:
 		_adopt(game.players.get(ScNetBridge.player_key(session_id)))
@@ -418,16 +385,12 @@ func _adopt(candidate: ScPlayer) -> void:
 		hud.bind(game, player)
 
 
-# --- What the server says --------------------------------------------------
 
 func _on_seat_changed(session_id: int, seated: bool) -> void:
 	if player == null or session_id != _watch_id:
 		return
 
-	# The camera goes up into the cab. [constant ScPlayer.EYE_HEIGHT] is where a person's
-	# eyes are when they are standing on a platform; a pilot's are above the instruments, and
-	# a camera left at standing height while the machine carries the body means flying with
-	# your chin on the floor.
+		# The camera goes up into the cab: a pilot's eyes are above the instruments, and standing height while the machine carries the body is flying with your chin on the floor.
 	_place_camera(seated)
 
 
@@ -631,9 +594,7 @@ func _on_death(session_id: int, by: int, why: StringName, weapon_id: StringName 
 
 ## A platform went. The screen shakes if it was near enough to matter.
 ##
-## [b]Distance-scaled, which is what makes it information rather than noise.[/b] A collapse
-## across the map is a thing you look at; one under the platform you are standing on is a
-## thing you react to, and the difference between them has to be felt rather than read.
+## Distance-scaled, so a far collapse is seen and one under your feet is felt.
 func _on_collapse(index: int, _why: StringName) -> void:
 	_hear_collapse(index)
 
@@ -649,12 +610,10 @@ func _on_collapse(index: int, _why: StringName) -> void:
 	game.effects.shake_at(&"collapse", deck.centre, 42.0)
 
 
-# --- What it sounds like -----------------------------------------------------
 
 ## The player's settings, applied to everything that reads them. See [ScSettings].
 ##
-## After the audio and the sampler, because both are bound here and a binding applies at
-## once. The camera arrives with the player and is bound in [method _adopt].
+## After the audio and the sampler, because both are bound here and a binding applies at once; the camera is bound in [method _adopt].
 func _build_settings() -> void:
 	settings = ScSettings.new()
 	settings.name = "Settings"
@@ -707,11 +666,7 @@ func _build_settings() -> void:
 
 ## The Tab board: dot-menu's, with this game's columns.
 ##
-## [b]Online it is the server's roster with this game's state merged in.[/b] Names, pings and
-## how long each player has been on come from dot-server, which is the only thing that knows
-## them for everybody; the side, whether somebody is still up there and how often the floor
-## has warped them are already replicated here, so they are joined in by id. The sides are
-## the board's teams, in their colours. Offline it is [method board_snapshot].
+## Online it is the server's roster (names, pings, time on) with the replicated side, alive and warp counts joined in by id; sides are the board's teams. Offline it is [method board_snapshot].
 func _dress_board() -> void:
 	if board == null:
 		return
@@ -796,10 +751,7 @@ func _build_audio() -> void:
 
 ## Offline: the world IS the authority, so its own signals are what happened.
 ##
-## [b]Two sources and one set of sounds.[/b] A connected client hears the same things from
-## the bridge's signals instead (see [method _hear_the_wire]); both call the same [ScAudio]
-## method with the same arguments, so offline and online can only differ in where a fact
-## came from and never in what it sounds like.
+## Both this and [method _hear_the_wire] call the same [ScAudio] method, so offline and online differ only in where a fact came from, never in what it sounds like.
 func _hear_the_world() -> void:
 	if audio == null or game == null:
 		return
@@ -903,14 +855,10 @@ func _on_armed(session_id: int, weapon_id: StringName) -> void:
 	chat.say_locally("You were handed a %s." % String(weapon_id), Color(0.86, 0.92, 0.80))
 
 
-# --- The weapons, drawn ----------------------------------------------------
 
 ## Builds a view model for this player's own hands at the handover.
 ##
-## [b]Drawn, never decided, and `authority` is false for exactly that reason.[/b] The server
-## owns every shot; what this is for is a gun that moves. A player whose weapon never
-## deploys, never reloads and never kicks is a player who cannot tell a weapon that is ready
-## from one that is not.
+## Drawn, never decided (`authority` is false): the server owns every shot and this is a gun that visibly deploys, reloads and kicks.
 func _arm_locally() -> void:
 	if weapons != null or player == null:
 		return
@@ -968,10 +916,9 @@ func _give_locally(weapon_id: StringName) -> void:
 		DotLog.warn(CHANNEL, "the drawn rig refused a weapon", {"weapon": String(weapon_id), "why": given.error.message})
 
 
-## Gives the drawn rig what this player was dealt: offline the world's own rig's weapons, the
-## selected one first; connected, every ARMED the server sent (`ScPlayer.dealt`, noted by the
-## bridge, the selected one first). An ARMED that arrives after the rig is built is given by
-## [method _on_armed].
+## Gives the drawn rig what this player was dealt: offline the world's rig weapons, selected first; connected, every ARMED the server sent (`ScPlayer.dealt`).
+##
+## An ARMED that arrives after the rig is built is given by [method _on_armed].
 func _give_dealt() -> void:
 	if weapons == null or player == null:
 		return
@@ -1006,7 +953,6 @@ func _disarm_locally() -> void:
 		view_model = null
 
 
-# --- The camera ------------------------------------------------------------
 
 func _build_camera() -> void:
 	if camera != null or player == null:
@@ -1017,10 +963,7 @@ func _build_camera() -> void:
 	camera.fov = 92.0
 	camera.current = true
 
-	# Other players and stand-ins: hidden when one is at the lens, faded in third person when
-	# one stands between the camera and you. It rides the camera wherever the camera goes.
-	# Handed the figures rather than found by a query: a player's hull is off while
-	# mp_solidplayers is 0, and a body walking through you is exactly when it is needed.
+		# Other players and stand-ins: hidden when one is at the lens, faded in third person when between camera and you. Handed the figures rather than found by a query: a hull is off while mp_solidplayers is 0, exactly when a body walks through you.
 	_fade = DotCameraFade.new()
 	_fade.name = "Fade"
 	_fade.bodies_fn = _other_players
@@ -1035,11 +978,7 @@ func _build_camera() -> void:
 
 ## Puts the camera where this view mode wants it, rebuilding the rig if the mode changed.
 ##
-## [b]A boom in third person and nothing in first.[/b] The boom is what stops the camera
-## going through a platform when the player backs up to the edge of one — which on this map
-## is every few seconds, and which without it is a view from inside the floor. dot-core's
-## [DotCameraBoom] sweeps a sphere from the eye and eases in ahead of it; the spring arm it
-## replaced cast a ray from a pivot above the head and snapped to whatever it hit.
+## A boom in third person, nothing in first: dot-core's [DotCameraBoom] sweeps a sphere from the eye so backing to a platform edge does not put the view inside the floor, and eases in rather than snapping like a ray.
 func _place_camera(seated: bool) -> void:
 	if camera == null or player == null:
 		return
@@ -1134,9 +1073,7 @@ func _build_hud() -> void:
 
 ## The chat box, before the netcode and before any player exists.
 ##
-## [b]Built in both halves and attached to the bridge afterwards.[/b] A box built after the
-## first line arrived would miss it — the backlog a joining player is sent is the first thing
-## the server says.
+## Built in both halves and attached to the bridge afterwards: the backlog a joining player is sent is the first thing the server says.
 func _build_chat() -> void:
 	chat = new_chat()
 	add_child(chat)
@@ -1196,15 +1133,10 @@ func _suspend_input(suspended: bool) -> void:
 
 
 
-# --- The frame -------------------------------------------------------------
 
 ## The sampled command, on a connected client, once per tick the clock says has passed.
 ##
-## [b]Offline this does nothing and the world ticks itself.[/b] The player samples inside
-## [method ScPlayer.simulate] there, which is the shape a single process wants; a connected
-## client cannot use it, because its local player has to be simulated by the PREDICTOR from
-## the same command that was sent, and a second sample would predict something different from
-## what the server was told.
+## Offline this does nothing and the world ticks itself. Connected, the local player is simulated by the PREDICTOR from the command that was sent, and a second sample would predict something the server was not told.
 func _physics_process(delta: float) -> void:
 	if _offline:
 		_drive_offline(delta)
@@ -1225,13 +1157,7 @@ func _physics_process(delta: float) -> void:
 	var move := _sampler.sample(delta) if _sampler != null else DotFpsCommand.new()
 	_stamp(move)
 
-	# [b]Each pass is its own tick.[/b] `advance` has already moved the clock by all of
-	# them, so `input_tick()` is the LAST one on every pass: a frame worth two ticks sent
-	# the second twice and the first never, the server repeated a stale command for the
-	# one it never got, and the predictor's replay stopped at the hole and drew the player
-	# short of where they were -- after every hitch, and on every frame the display and
-	# the tick rate do not line up. Arithmetic here rather than a new dot-net call,
-	# because a pack has to run on whatever client shell the player already has.
+		# Each pass is its own tick: `advance` has moved the clock by all of them, so `input_tick()` is the LAST one every pass, and a two-tick frame would send the second twice and the first never, leaving the predictor's replay stopped at the hole. Arithmetic here, not a new dot-net call, so a pack runs on whatever shell the player has.
 	for i in range(ticks):
 		if not net.clock.is_synced():
 			continue
@@ -1241,15 +1167,9 @@ func _physics_process(delta: float) -> void:
 	_drive_view_model(move)
 
 
-## Keeps the settings' sensitivity and invert bound to the tunables the offline sampler
-## reads now.
+## Keeps the settings' sensitivity and invert bound to the tunables the offline sampler reads now.
 ##
-## [b]A respawn hands the sampler new tunables.[/b] `ScPlayer.retune` (every respawn, every
-## special) builds a fresh object at DotFpsTunables' default, and the settings stayed bound to
-## the old one, so the first respawn put the view back to 0.25 degrees per count whatever the
-## slider said. Asked every tick rather than from `retune` because the player knows nothing
-## of the settings; one identity comparison is the whole cost. The old object is unbound so a
-## long session does not collect one per round.
+## A respawn builds fresh tunables at the default, so asked every tick (one identity comparison) because the player knows nothing of the settings; the old object is unbound so a session does not collect one per round.
 func _follow_look() -> void:
 	if settings == null or player == null or player.sampler == null:
 		return
@@ -1327,13 +1247,9 @@ func _drive_view_model(command: DotFpsCommand) -> void:
 
 
 
-## Brings the drawn gun's magazine and reserve (what the HUD counts) to the server's once it has
-## been quiet [constant DRAWN_SETTLE_SEC]: online from this player's owner-only snapshot fields,
-## offline from the world's own rig. True when it changed anything.
+## Brings the drawn gun's magazine and reserve (what the HUD counts) to the server's once it has been quiet [constant DRAWN_SETTLE_SEC]: online from this player's owner-only fields, offline from the world's rig. True when it changed anything.
 ##
-## [b]The drawn gun predicts, so it can be wrong, and nothing else puts it right.[/b] A shot the
-## server refused or a fresh round's refill leaves the counter on the client's own sum otherwise
-## (mg-prop-hunt's `correct_drawn`, game-zombie-zone's 15 / 105).
+## The drawn gun predicts, so a refused shot or a fresh refill leaves its counter wrong and nothing else corrects it.
 func correct_drawn() -> bool:
 	if weapons == null or weapons.arsenal == null or _drawn_quiet < DRAWN_SETTLE_SEC:
 		return false
@@ -1418,11 +1334,7 @@ func _process(delta: float) -> void:
 		_present_effects(delta)
 		return
 
-	# Drawn every FRAME from the controller's own interpolated view, not once per tick.
-	# Another game in this family measured what the other way costs: a client stepping physics
-	# at one rate and drawing at another advances the camera in bursts, which is a 47% change
-	# in apparent speed several times a second and reads as "the game is jittery" with every
-	# simulated number correct.
+		# Drawn every FRAME from the controller's interpolated view, not per tick: a camera advanced in bursts is a 47% apparent-speed change several times a second, which reads as jitter with every number correct.
 	var state := player.controller.state
 	var pitch := deg_to_rad(state.pitch)
 	var yaw := deg_to_rad(state.yaw)
@@ -1442,17 +1354,9 @@ func _process(delta: float) -> void:
 
 	rig.rotation = Vector3(pitch, yaw, 0.0)
 
-	# [b]And the position from between the last two ticks, which the angles above never
-	# needed.[/b] The rig hangs off the player's node and the node only moves on a tick, so
-	# a camera left there advances in steps: measured offline at 64 ticks and 144 frames,
-	# 160 frames in 288 did not move at all while the player ran, and the per-frame step
-	# varied by 112%. `render_state` blends the last two ticks by the engine's own physics
-	# fraction, which this client makes a fraction through a tick by running the engine at
-	# the world's rate. Written globally rather than by moving the node, because the tick
-	# writes the node and prediction reads it back.
-	#
-	# Not while riding: the controller is not simulated then, the machine carries the node,
-	# and a blend between two ticks that never happened would drag the view backwards.
+		# And the position from between the last two ticks: the rig hangs off the node, which only moves on a tick, so the camera advanced in steps (160 of 288 frames did not move at 64 ticks and 144 fps). `render_state` blends by the engine's physics fraction. Written globally, because the tick writes the node and prediction reads it back.
+		#
+		# Not while riding: the controller is not simulated, the machine carries the node, and a blend between ticks that never happened would drag the view backwards.
 	if not player.riding:
 		var drawn := player.controller.render_state()
 		rig.global_position = drawn.position + Vector3(0.0, _rig_height, 0.0)

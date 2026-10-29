@@ -4,19 +4,9 @@ const ScConfig := preload("sc_config.gd")
 const ScTextures := preload("sc_textures.gd")
 const ScLayouts := preload("sc_layouts.gd")
 
-## Everything in the world that is not a platform: the sky, the floor a player lands on,
-## the tube in the middle, and the corners the round is finished in.
+## Everything in the world that is not a platform: the sky, the floor a player lands on, the tube in the middle, and the corners the round is finished in.
 ##
-## [b]Built in code and prototype-textured, like every other map in this family.[/b] There
-## is no art here and there does not need to be — the whole of this game's geometry is a
-## grid of squares, a cylinder and a ring of pads, and what a player has to read off it is
-## height, distance and which way the floor is tilting. A one-metre grid is better at all
-## three than a texture would be.
-##
-## [b]The floor is drawn even though nobody survives touching it.[/b] Forty metres of
-## nothing under a platform is a drop a player cannot judge; forty metres of grid going
-## past is a drop they can count. It is also the only thing on screen that tells somebody
-## who has just fallen that they are falling rather than that the game has stopped.
+## Built in code with prototype textures: a player reads height, distance and tilt off a one-metre grid better than off art. The floor is drawn even though nobody survives it: forty metres of grid going past is a drop they can count, and it tells a faller they are falling rather than that the game stopped.
 
 const CHANNEL := "sc.arena"
 
@@ -25,9 +15,7 @@ const FLOOR_MARGIN := 46.0
 
 ## How tall the tube in the middle is, as a fraction of the deck height.
 ##
-## Below one on purpose: the muzzle is under the platforms, so a prop leaves the tube,
-## climbs past the decks and comes down on them. A tube that finished above the decks
-## would be a wall down the middle of the map.
+## Below one on purpose: the muzzle is under the platforms, so a prop climbs past the decks; a taller tube would be a wall down the middle.
 const TUBE_HEIGHT_FRACTION := 0.86
 
 ## The tube's radius, in metres. Wide enough to read as a mouth from across the map.
@@ -35,19 +23,12 @@ const TUBE_RADIUS := 3.1
 
 ## Metres above the top of the tube that a prop is actually created at.
 ##
-## [b]Clear of the rim, and the first version was not.[/b] A body spawned overlapping the
-## tube's own collider is two solid shapes sharing a volume, which the solver resolves by
-## throwing the lighter one sideways at a speed nothing asked for — so every third shot
-## went out flat instead of up and the cannon read as broken.
+## Clear of the rim: a body overlapping the tube's collider is thrown sideways by the solver, so shots went out flat instead of up.
 const MUZZLE_CLEARANCE := 2.6
 
 ## How far every platform has to stay from the line the cannon fires up, in metres.
 ##
-## [b]The widest thing the tube throws, from its middle to its furthest corner.[/b] A
-## monolith is 3.4 x 1.4 x 3.0 m and leaves the muzzle tumbling, so 2.4 m in any direction
-## is what it sweeps; the muzzle is three metres under the decks, so a platform edge inside
-## that is a platform the shot goes up into rather than over. The suite's throat section
-## measures every layout against this and then fires at each of them.
+## The widest thing the tube throws (a 3.4 x 1.4 x 3.0 m monolith, tumbling) sweeps 2.4 m, and the muzzle is 3 m under the decks, so a closer edge is one the shot goes up into. The suite's throat section measures every layout against this.
 const THROAT_CLEARANCE := 2.5
 
 ## How wide a catwalk between a corner pad and the middle of the showdown ring is.
@@ -55,19 +36,12 @@ const CATWALK_WIDTH := 3.4
 
 ## How high the lip around a corner pad and the ring is.
 ##
-## [b]Low, and it is not a wall.[/b] Falling is this map's one rule and it stays true in
-## the showdown; what a lip stops is sliding off something you were not looking at, which
-## is a death nobody chose. It is a kerb, not cover.
+## Low, a kerb and not cover: falling stays the map's one rule, and the lip only stops sliding off something you were not looking at.
 const CORNER_LIP := 0.34
 
 ## How wide the band around a pad's edge is, in metres.
 ##
-## [b]The same answer the platforms reached, for the same reason, on the half of the map
-## where being wrong is permanent.[/b] A pad sixty metres up against a flat sky has no
-## horizon behind it and no neighbour beside it, so its edge seen from a standing player's
-## eye height is a line one pixel thick against a background the same brightness. The
-## platforms got a coloured band for this; the showdown was built without one because the
-## screenshot that would have shown it was taken from above.
+## Same answer as the platforms: a pad 60 m up against a flat sky has no horizon, so its edge seen from standing height is a one-pixel line of the same brightness.
 const PAD_BAND := 0.6
 const LIP_HEIGHT := 0.55
 
@@ -111,31 +85,10 @@ func _clear() -> void:
 	_floor_body = null
 
 
-# --- The sky ----------------------------------------------------------------
 
 ## The sun and the sky, as a dot-lighting document.
 ##
-## [b]Built here rather than left to the host scene, and the first render of
-## game-buses-from-hell is why.[/b] A Godot scene with no [DirectionalLight3D] and no
-## [WorldEnvironment] is not dark — it is FLAT: every surface comes back its own albedo
-## with no shading at all, so a deck, the pillar under it and the sky behind it are three
-## tones of the same colour and the depth a player judges a forty-metre drop by is simply
-## absent. It reads as a fog bug and is the absence of any lighting whatsoever.
-##
-## A clear afternoon, the family's look (game-arena's built-in maps): a warm sun high and
-## to one side, a blue sky that continues under the horizon (the field floats forty metres
-## up and the showdown higher, so the lower half of the sky is in every falling frame), a
-## pale cool fill, a little haze far out, filmic tone map and glow.
-##
-## [b]The sun is high on purpose.[/b] A low sun over a field of platforms puts every deck
-## in the shadow of its neighbour, and a deck a player cannot see the tilt of is a deck they
-## cannot play on — which is the one thing this map's lighting has to protect. The angles
-## are dot-lighting's source convention (a negative pitch is a sun in the sky); the
-## brightness is divided by the profile's reference and square-rooted. The ambient is the
-## light in the shade, a pale cool grey: the underside of a platform is what a falling
-## player looks at, and black there is the wrong answer. `sky_top` is this game's (the rig
-## draws the zenith in the ambient colour); the fog distances are source units (metres /
-## 0.01905): haze from 120 m, so nothing a player has to react to is hidden in it.
+## Built here, not left to the host scene: with no [DirectionalLight3D] and [WorldEnvironment] a scene is FLAT (every surface its own albedo), so the depth a player judges a forty-metre drop by is absent. The sun is high on purpose, since a low one shades every deck by its neighbour and hides the tilt. Angles follow dot-lighting's source convention (negative pitch is a sun in the sky); fog distances are source units (metres / 0.01905), haze from 120 m.
 const DAYLIGHT := {
 	"sun": {
 		"pitch_src": -58.0,
@@ -174,13 +127,7 @@ func _build_light() -> void:
 
 ## What this machine draws of [constant DAYLIGHT]: dot-lighting's `painted()`.
 ##
-## [b]Shadows stay on in the browser[/b], unlike dot-lighting's `web()`: the field is a
-## few dozen boxes, and a platform's shadow on the deck below is how a player sees where a
-## deck is from above. `painted()` is the family's profile for a world of flat colours: a
-## longer filmic shoulder and a lower exposure (a sunlit deck was 30 % pure white under
-## Compatibility and the grid, which is what a player reads a tilt off, went with it), a
-## shadowless fill from the side the sun is not on (a deck's underside and its pillar keep
-## their edges in shade), and its numbers matched to the renderer.
+## Shadows stay on in the browser, unlike dot-lighting's `web()`: a platform's shadow on the deck below is how a player sees where a deck is from above. `painted()` is the family's profile for flat colours (lower exposure, so the grid a tilt is read from is not 30 % white).
 static func light_profile() -> DotLightProfile:
 	var p := DotLightProfile.painted()
 	p.sun_shadows = true
@@ -188,7 +135,6 @@ static func light_profile() -> DotLightProfile:
 	return p
 
 
-# --- The floor --------------------------------------------------------------
 
 func _build_floor() -> void:
 	var reach := _field_reach() + FLOOR_MARGIN
@@ -210,14 +156,7 @@ func _build_floor() -> void:
 	var box := BoxMesh.new()
 	box.size = shape.size
 	mesh.mesh = box
-	# [b]Its own muted colour, and the first render is why.[/b] The floor was the hazard
-	# colour, on the reasoning that it is the one surface nobody survives — and it came out
-	# as four hundred metres of bright red filling ninety percent of every frame, with the
-	# platforms a player actually has to read reduced to pale specks on top of it. The thing
-	# that says "do not go there" is the drop, which is forty metres of nothing; the floor's
-	# job is to be far away and to carry a grid so the drop can be counted. It was then the
-	# pillars' charcoal; it is a muted sky blue (`ScTextures.Role.FLOOR`), which says "far
-	# below" in a sunny sky without being a dark hole under the field.
+		# Its own muted sky blue (`ScTextures.Role.FLOOR`): the hazard red filled ninety percent of every frame and reduced the platforms to specks. The drop says "do not go there"; the floor only has to be far away and carry a grid so the drop can be counted.
 	mesh.material_override = ScTextures.surface(ScTextures.Role.FLOOR)
 	body.add_child(mesh)
 
@@ -228,9 +167,7 @@ func _build_floor() -> void:
 
 ## How far the platform field reaches from the middle, in metres.
 ##
-## [b]The field alone, and [method showdown_centre] is placed from it.[/b] A reach that
-## included the showdown would be a definition that chases itself: the arena is put a reach
-## away, which makes the reach bigger, which moves the arena.
+## The field alone: [method showdown_centre] is placed from it, and a reach including the showdown would chase itself.
 func _field_reach() -> float:
 	# The widest of every layout, because this arena is built once and the layout changes
 	# under it every round. A reach taken from the configured grid alone puts the showdown
@@ -255,13 +192,10 @@ func _map_reach() -> float:
 	return maxf(_field_reach(), to_showdown)
 
 
-# --- The cannon's tube ------------------------------------------------------
 
 ## Where a launched prop leaves from.
 ##
-## [b]One number, and the tube, the cannon and the client's copy all read it.[/b] This
-## family has shipped the same figure in two files before and watched them drift; a muzzle
-## in one place and a mouth drawn in another is a cannon that visibly fires from nowhere.
+## One number the tube, the cannon and the client's copy all read, so a mouth drawn in one place cannot fire from another.
 func muzzle() -> Vector3:
 	return Vector3(0.0, config.deck_height * TUBE_HEIGHT_FRACTION + MUZZLE_CLEARANCE, 0.0)
 
@@ -297,10 +231,7 @@ func _build_tube() -> void:
 	_classify(body, &"world")
 	add_child(body)
 
-	# A collar at the mouth, mesh only. It is what makes the tube read as a barrel rather
-	# than as a pillar somebody forgot to put a platform on — and it carries no collider
-	# deliberately, because a lip at the one height props pass through is a lip that
-	# catches them.
+		# A collar at the mouth, mesh only, so the tube reads as a barrel; no collider, since a lip at the height props pass through would catch them.
 	var collar := MeshInstance3D.new()
 	collar.name = "Collar"
 	var ring := CylinderMesh.new()
@@ -314,22 +245,10 @@ func _build_tube() -> void:
 	add_child(collar)
 
 
-# --- The corners ------------------------------------------------------------
 
 ## Where the showdown happens: a structure in the sky, well clear of the platform field.
 ##
-## [b]Off to one side rather than over the middle, and the suite found out why.[/b] The
-## first version put the ring on the map's own centre line at a few metres above the decks
-## — which is exactly where the cannon's tube is, where the cannon's arc passes, and where
-## a chopper parks. A machine spawned on its pad came up inside the underside of the ring
-## and sat there pinned, holding perfectly level and refusing to climb, with every number
-## about it correct. It reads as a broken helicopter and is two pieces of geometry sharing
-## a volume.
-##
-## So the whole complex is moved a map's width away along -Z. It is still in plain sight
-## from every platform — which is the point, because a player who can see where the round
-## ends plays the first half differently — and nothing this game fires, flies or drops can
-## reach it.
+## A map's width away along -Z, not over the middle: there it shares volume with the tube, the cannon's arc and the chopper pad, and a spawned chopper sat pinned under the ring with every number correct. Still in plain sight, since a player who sees where the round ends plays the first half differently.
 func showdown_centre() -> Vector3:
 	return Vector3(
 		0.0,
@@ -340,9 +259,7 @@ func showdown_centre() -> Vector3:
 
 ## Where team [param index] of [param count] finishes the round, on the pad's surface.
 ##
-## [b]Evenly around a circle, starting at +X, so two teams are at opposite ends.[/b] That
-## is the arrangement the map this game is built from uses for its own two-sided finish,
-## and it is the only one where the number of teams does not change what a corner means.
+## Evenly round a circle from +X, so two teams are opposite and the team count does not change what a corner means.
 func corner_point(index: int, count: int) -> Vector3:
 	var teams := maxi(count, 1)
 	var angle := TAU * float(index) / float(teams)
@@ -357,9 +274,7 @@ func corner_point(index: int, count: int) -> Vector3:
 
 ## Where one player stands when they arrive in a corner.
 ##
-## Spread along the pad's inner edge rather than stacked on its middle: sixteen capsules
-## at one coordinate is dot-spawn's own documented failure, and it happens here every time
-## a full team survives.
+## Spread along the pad's inner edge: sixteen capsules at one coordinate is dot-spawn's documented failure.
 func showdown_spawn(team_index: int, team_count: int, slot: int, slots: int) -> Vector3:
 	var centre := corner_point(team_index, team_count)
 	var middle := showdown_centre()
@@ -381,11 +296,7 @@ func showdown_spawn(team_index: int, team_count: int, slot: int, slots: int) -> 
 
 ## Which way a player faces when they arrive: toward the middle, in degrees.
 ##
-## [b]Degrees, because that is what [DotFpsState.yaw] is in, and the two disagree
-## everywhere in this family.[/b] `DotSpawnSite.yaw` is radians and the motor's forward is
-## `(-sin y, 0, -cos y)`, so facing a direction is `atan2(-dx, -dz)` and not `atan2(dz,
-## dx)`. A teleport that gets the position right and the yaw wrong is invisible to every
-## count and obvious to every player, who arrives looking at a wall.
+## Degrees because [DotFpsState.yaw] is, while `DotSpawnSite.yaw` is radians. The motor's forward is `(-sin y, 0, -cos y)`, so the yaw is `atan2(-dx, -dz)`; a wrong one passes every count and the player arrives facing a wall.
 func showdown_yaw(team_index: int, team_count: int) -> float:
 	var centre := corner_point(team_index, team_count)
 	var middle := showdown_centre()
@@ -399,11 +310,7 @@ func showdown_yaw(team_index: int, team_count: int) -> float:
 
 ## The pads, the ring and the catwalks between them.
 ##
-## [b]Connected, and a ring of separate pads would not be a fight.[/b] Six teams put in
-## six corners with nothing between them is six people looking at each other across sixty
-## metres of air until the clock runs out. The ring in the middle is the thing worth
-## taking and the catwalks are the only way to it, so the showdown has a shape: hold your
-## pad and shoot, or commit to the walk and close.
+## Connected: six pads with nothing between would be six people looking at each other across 60 m until the clock ran out. The ring is the thing worth taking and the catwalks the only way to it.
 func _build_showdown() -> void:
 	_showdown = Node3D.new()
 	_showdown.name = "Showdown"
@@ -473,24 +380,9 @@ func ring_half() -> float:
 	return config.corner_size * 0.85
 
 
-## Team [param index]'s catwalk from its pad to the ring, as a Dictionary: `out` (the
-## direction from the ring's middle to the pad, on XZ), `across` (square to it, to the
-## right), `yaw`, and for each LONG side — `w` is -half and +half a width across — where that
-## side leaves the ring's edge (`from`) and meets the pad's (`to`), in metres from the
-## ring's middle along `out`. `corners` is the slab's top, on the surface, in the order
-## (-w, from), (+w, from), (+w, to), (-w, to).
+## Team [param index]'s catwalk from its pad to the ring, as a Dictionary.
 ##
-## [b]Ends on both edges, cut along them, until 2026-09-29 a box that did not.[/b] The slab
-## was a rectangle from `ring_half()` to the pad's `corner_size / 2`, measured along its
-## middle as if every catwalk met its edges square on. With two or four sides they do. With
-## three, five or six a catwalk leaves the square ring at an angle, so the ring's edge is
-## farther out than that along the catwalk's middle and farther still along one side: at the
-## default sizes with three sides the slab ran 3.2 m on into the ring along one side and 1.3
-## along the other, coplanar with it, and carried its two long kerbs in with it — stubs
-## standing on the ring's floor past the ring's own kerb line. The pad's end did the same
-## thing on the pad. The ends are cut along each edge now, so the slab touches the ring and
-## the pad and overlaps neither; a rectangle stopped short of the edge instead would have
-## left a wedge of air at the join, which is the one thing a catwalk may not have.
+## `out` is the direction from the ring's middle to the pad (XZ), `across` square to it, `yaw`; for each long side (`w` is -half and +half a width) `from` and `to` are where it meets the ring's and the pad's edges along `out`; `corners` is the slab's top in the order (-w, from), (+w, from), (+w, to), (-w, to). The ends are cut along each edge: with three, five or six sides a catwalk meets the ring at an angle, so a square-ended slab overlaps coplanar floor and drags kerb stubs in, and stopping short leaves a wedge of air.
 func catwalk(index: int) -> Dictionary:
 	var count := config.team_count
 	var middle := showdown_centre()
@@ -652,23 +544,9 @@ static func _prism_mesh(points: PackedVector3Array) -> ArrayMesh:
 	return tool.commit()
 
 
-## The cover on the showdown ring: one block per team, on the line from the ring's middle
-## to that team's catwalk, [constant RING_COVER_OUT] of the way out and square to it, so it
-## stands between the ring and that team's pad. Each is a transform whose origin is the
-## block's centre.
+## The cover on the showdown ring: one block per team, on the line from the ring's middle to that team's catwalk, [constant RING_COVER_OUT] of the way out and square to it. Each is a transform whose origin is the block's centre.
 ##
-## [b]Added 2026-09-26, because a flat ring is not worth taking.[/b] The ring is "the
-## thing worth taking" and the catwalks the only way to it, and until then it was the
-## most exposed floor in the sky: a survivor who walked onto it stood in every pad's line
-## of fire with nothing between, so the showdown was six people holding their pads. A
-## block chest high, facing a pad, is somewhere to hold the ring FROM against that pad,
-## which is what makes committing to the walk a plan.
-##
-## [b]Facing the pads, not between the catwalks,[/b] which is where the first draft put
-## them: the pads stand on the catwalk lines, so a block between two catwalks is end-on to
-## both and covers nobody from either. Half-way in, so a survivor coming off a catwalk has
-## seven metres of floor before it and walks round it; `headless_run`'s walk onto the ring
-## stops two metres inside the rim and never reaches one.
+## Without cover the ring is the most exposed floor in the sky, in every pad's line of fire. The blocks face the pads, not sit between catwalks (end-on to both, covering nobody), and half-way in so a survivor has seven metres of floor before it.
 func ring_cover() -> Array[Transform3D]:
 	var out: Array[Transform3D] = []
 	var middle := showdown_centre()
@@ -695,22 +573,10 @@ func ring_cover() -> Array[Transform3D]:
 const RING_COVER_SIZE := Vector3(2.4, 1.1, 0.6)
 
 
-# --- The dais (2026-10-01) ------------------------------------------------------
 
 ## The block in the ring's middle: 4 m square, 0.9 m high.
 ##
-## [b]Added because every piece of cover on the ring faced ONE way.[/b] A ring block
-## covers a survivor from the pad it faces and nothing else, and the ring's middle — where
-## every catwalk's line crosses — was open floor. The dais is cover that turns: crouched
-## against whichever side is away from a threat, a survivor is out of sight of that pad or
-## perch (the line from a pad's eye to somebody crouched 0.4 m off its far side passes the
-## near edge at 0.76 m, under its 0.9 m top), so it is the one place on the ring that can be
-## held against whichever side is shooting, by moving round it.
-##
-## [b]And its top is the ring's high ground, which is the trade.[/b] 0.9 m is one jump
-## (the apex is 1.15) and never a step (0.45), so nobody drifts onto it; standing on it a
-## survivor's eye is 2.5 m over the ring, over every block, and in sight of every pad and
-## every perch. 4 m square, so the ring's floor still goes round it between the blocks.
+## Cover that turns: every ring block covers only from the pad it faces, so a survivor crouched on the side away from a threat is out of sight of that pad or perch. Its top is the high ground: 0.9 m is one jump (apex 1.15) and never a step (0.45), and the eye there (2.5 m over the ring) sees every pad and perch.
 const DAIS_SIZE := Vector3(4.0, 0.9, 4.0)
 
 
@@ -722,17 +588,13 @@ func dais() -> Transform3D:
 const RING_COVER_OUT := 0.5
 
 
-# --- The flanks ---------------------------------------------------------------
 
 ## How wide a perch is: the small pad on the flank between two teams' pads.
 const PERCH_SIZE := 8.0
 
 ## How far a flank catwalk's surface sits under the pads it joins, in metres.
 ##
-## A flank catwalk leaves a square pad at an angle (with two sides, from its very corner),
-## so it runs half its own width INTO both ends to leave no notch of air beside the join —
-## and two coplanar tops fight over every pixel of that overlap. Two centimetres down, the
-## pad's own surface wins and the step back up is nothing the controller notices.
+## It runs half its width into both ends to leave no notch of air, and two coplanar tops z-fight; two centimetres down the pad's surface wins and the step is unnoticed.
 const FLANK_DROP := 0.02
 
 ## Where perch [param index] of [param count] stands: on the pads' own circle, half-way
@@ -749,18 +611,9 @@ func perch_point(index: int, count: int) -> Vector3:
 	)
 
 
-## Every flank catwalk, as one Dictionary each: `pad` and `perch` (indices), `out` (the
-## direction it leaves the pad in, as a Vector2 on XZ), `back` (the direction it leaves the
-## perch in), `from` and `to` (where its centre line crosses the pad's and the perch's
-## edges, on the surface), and `centre`, `yaw` and `length` (the slab, overlap included).
+## Every flank catwalk, as one Dictionary each: `pad` and `perch` (indices), `out`/`back` (directions it leaves the pad/perch in, Vector2 on XZ), `from` and `to` (where its centre line crosses the pad's and perch's edges, on the surface), and `centre`, `yaw`, `length` (the slab, overlap included).
 ##
-## [b]Added 2026-09-29: the long way round.[/b] The ring's cover faces the pads, so until
-## this a survivor who took the ring and crouched behind the block facing an enemy pad
-## was out of reach of everybody but somebody willing to walk the same catwalk into them.
-## A perch between every two pads, joined to both by a catwalk that never touches the
-## ring, is a second route to an enemy's pad and — with two sides — a line on the ring
-## from ninety degrees off, where no block covers anybody. One description: the pads'
-## kerb openings, the perches, the slabs and the suite all read this.
+## A perch between every two pads, joined by catwalks that never touch the ring, is a second route to an enemy pad and, with two sides, a line on the ring from 90 degrees off where no block covers anybody. The pads' kerb openings, the perches, the slabs and the suite all read this.
 func flank_walks() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var teams := config.team_count
@@ -904,36 +757,9 @@ func _pad(
 	return body
 
 
-## The kerb this function's own name has promised since it was written.
+## The kerb a pad, the ring or a catwalk has round its edges.
 ##
-## [b]It was documented in two places and built in neither.[/b] [constant CORNER_LIP] had a
-## doc comment explaining why the lip is low and is not cover, `_pad` was described as "one
-## flat surface with a kerb around it", and no line anywhere put one in the world — which is
-## the same shape of gap as a value produced correctly and consumed by nothing, and just as
-## invisible to a suite. A render of the showdown is what found it: three flat shapes
-## floating against a flat sky with no edge on any of them.
-##
-## Two things, and they do different jobs. The BAND is drawn a hair proud of the surface
-## with no collider, so an edge seen almost edge-on is still a line — that is the fix the
-## platforms already have. The KERB is a real collider standing on the band, low enough to
-## walk over deliberately and high enough to stop a body sliding off something its owner was
-## not looking at. Falling stays this map's one rule; what a kerb removes is the death
-## nobody chose.
-## [param ends] is false for a catwalk, and that is not a detail.
-##
-## A catwalk's two SHORT edges are its junctions with the pad at one end and the ring at the
-## other, so a kerb there is a step across the walkway rather than a rail beside it — a third
-## of a metre high, at the exact moment a player is running for cover. It cost nothing to see
-## in a render and would have been very hard to read as a bug from inside the game: a body
-## that catches on it reads as the movement code being wrong.
-##
-## [b]And it is open where a catwalk arrives, which it was not until 2026-09-23.[/b] The
-## paragraph above kept the catwalk's own ends clear and the pad's and the ring's kerbs ran
-## straight across the same junctions from the other side — so a survivor walking to the
-## ring was stopped at their own pad's edge, running or walking, and stopped again at the
-## ring's. dot-player-controller's step-up does not take a 0.34 m kerb 0.6 m deep. The
-## suite's "a pad is edged on four sides" counted the kerbs and passed; the reach section
-## now walks a survivor from their corner onto the ring, and that failed first.
+## A BAND (hair proud, no collider) keeps an edge visible edge-on; the KERB is a collider on it, walkable but stopping a slide. [param ends] is false for a catwalk, whose short edges are junctions where a kerb would be a step; and it is open where a catwalk arrives, since the step-up does not take a 0.34 m kerb 0.6 m deep.
 func _build_kerb(
 	body: StaticBody3D, size: Vector2, ends: bool = true, openings: Array[Vector2] = []
 ) -> void:
@@ -997,13 +823,9 @@ func _kerb_piece(
 	body.add_child(collider)
 
 
-## What is left of one edge's kerb once every catwalk crossing it is cut out, as (from, to)
-## along the edge.
+## What is left of one edge's kerb once every catwalk crossing it is cut out, as (from, to) along the edge.
 ##
-## [b]Cut where the catwalk's STRIP crosses the edge, not where its middle does.[/b] With
-## two or four sides every catwalk meets its edge square on; with three, five or six it
-## meets the square ring at an angle, and a gap one catwalk wide measured along the edge is
-## narrower than the walkway coming through it.
+## Cut where the catwalk's STRIP crosses the edge, not its middle: at three, five or six sides it meets the ring at an angle, and a gap measured along the edge is narrower than the walkway.
 static func _kerb_pieces(
 	edge: Vector3, along_x: bool, half_run: float, openings: Array[Vector2]
 ) -> Array[Vector2]:
@@ -1011,10 +833,7 @@ static func _kerb_pieces(
 	var half_width := CATWALK_WIDTH * 0.5
 
 	for d in openings:
-		# A point on this edge is `fixed` on one axis and `s` along the other. It is inside
-		# the catwalk's strip when its distance from the line through the middle along `d`
-		# is at most half a width — |d_fixed * s - d_run * fixed| — and on the catwalk's
-		# side when it is ahead along `d`.
+				# A point on this edge is `fixed` on one axis and `s` along the other; it is inside the catwalk's strip when |d_fixed * s - d_run * fixed| is at most half a width, and on its side when ahead along `d`.
 		var fixed := edge.x if along_x else edge.z
 		var d_fixed := d.x if along_x else d.y
 		var d_run := d.y if along_x else d.x
@@ -1053,12 +872,10 @@ static func _kerb_pieces(
 	return pieces
 
 
-# --- Where a chopper waits --------------------------------------------------
 
 ## Where chopper [param index] of [param count] is parked at the start of a round.
 ##
-## Above the middle of the map and off to one side, so taking one is a decision made in
-## the open: everybody on the platforms can see who is walking toward it.
+## Above the middle and off to one side, so taking one is a decision made in the open.
 func chopper_pad(index: int, count: int) -> Vector3:
 	var places := maxi(count, 1)
 	var angle := TAU * float(index) / float(places) + PI * 0.25
@@ -1071,7 +888,6 @@ func chopper_pad(index: int, count: int) -> Vector3:
 	)
 
 
-# --- Helpers ----------------------------------------------------------------
 
 func _classify(body: Node, layer_id: StringName) -> void:
 	if physics == null:

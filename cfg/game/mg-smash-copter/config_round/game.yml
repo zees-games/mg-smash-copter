@@ -4,7 +4,7 @@
 # --- The round
 # Seconds the survival phase runs before the survivors are sent to the corners. [10.0..900.0]
 # survival_seconds: 120.0
-# Seconds the showdown runs before the round is called on the clock. [10.0..900.0]
+# Seconds the showdown runs before the round is called on the clock; a draw if nobody has won. [10.0..900.0]
 # showdown_seconds: 90.0
 # Seconds between the survival phase ending and the showdown starting. [0.0..30.0]
 # showdown_warmup_seconds: 4.0

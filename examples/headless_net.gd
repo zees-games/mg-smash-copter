@@ -3,28 +3,7 @@ extends "headless_net_base.gd"
 
 ## mg-smash-copter over the wire: a real server, a real client, and a lossy loopback.
 ##
-## [codeblock]
-## godot --headless --path . res://examples/headless_net.tscn
-## [/codeblock]
-##
-## [b]Everything here is the real path minus the socket.[/b] Two [ScGame]s, two
-## [DotNetManager]s, two [ScNetBridge]s and two links, with `ScNetLink.loopback` standing in
-## for the RPC — so the encoders, the schema seal, the snapshot build, the prediction and
-## the reconciliation all run. What it cannot test is Godot's own RPC routing, and that is
-## what `dedicated.gd` and a real client are for.
-##
-## [b]The client world lives in its own [World3D], and that is a finding rather than
-## tidiness.[/b] Both halves are in one scene tree, so without it they share one physics
-## space: the client's frozen mirrors sit exactly where the server's real bodies are, and
-## every server body spends the round being pushed out of a copy of itself. Nothing errors —
-## the positions simply stop agreeing, which reads as the replication being wrong when it is
-## the harness that is.
-##
-## [b]And the client is deliberately on a different tick rate and a different field than the
-## server.[/b] One process has one engine rate and one default configuration, so two halves
-## agree by construction and a check asserting they agree passes for the wrong reason. A
-## real client is a separate program with its own export. Make them disagree, and let HELLO
-## and LAYOUT correct it.
+## Run: `godot --headless --path . res://examples/headless_net.tscn`. Everything is the real path minus the socket (`ScNetLink.loopback` stands in for the RPC), so encoders, seal, snapshots, prediction and reconciliation run; Godot's own RPC routing is for `dedicated.gd`. The client lives in its own [World3D] (else mirrors sit where the server's bodies are and push them) and on a different tick rate and field than the server, so HELLO and LAYOUT must correct it rather than agree by construction.
 
 const SECTIONS := 25
 const CHECKS := 254
@@ -83,15 +62,10 @@ func _run() -> void:
 	_report_sections(_sections_entered, _sections_finished, SECTIONS, CHECKS)
 
 
-# --- The wire ---------------------------------------------------------------
 
 ## Every encoder against its own decoder, and nothing else.
 ##
-## [b]Nothing checks that a pair are inverses for you.[/b] This family has already shipped a
-## serialisation whose two ends never met: dot-moderation wrote `"voice muted"` and read back
-## a warning, and the one thing that addon existed for silently did nothing. Every pair in
-## `ScEvents` is round-tripped here, and a new one without a line in this section is a new
-## one nothing has ever decoded.
+## Nothing else checks a pair are inverses (dot-moderation once wrote `"voice muted"` and read back a warning). Every pair in `ScEvents` is round-tripped here, so a new one needs a line.
 func _test_the_wire() -> void:
 	_section("every message survives the trip")
 
@@ -319,10 +293,7 @@ func _test_the_wire() -> void:
 
 ## A truncated message says so, and every kind fits its field.
 func _check_wire_limits() -> void:
-	# [b]A reader past its end returns plausible zeros rather than failing.[/b] dot-net
-	# shipped with exhaustion that was not sticky, so a decoder that skipped the `ok` check
-	# got a believable value for the field AFTER the overrun — and a truncated packet decodes
-	# as a valid message about nothing.
+		# A reader past its end returns plausible zeros: exhaustion was not sticky in dot-net, so a decoder skipping the `ok` check read a believable value after the overrun.
 	var truncated := ScEvents.read_hello(DotNetReader.new(PackedByteArray([1, 2])))
 	_check(not bool(truncated["ok"]), "and a truncated message says so rather than guessing")
 
@@ -336,7 +307,6 @@ func _check_wire_limits() -> void:
 		"%d kinds in %d bits" % [DotChatMessage.KIND_NAMES.size(), ScEvents.CHAT_KIND_BITS])
 
 
-# --- Building both halves ---------------------------------------------------
 
 func _build() -> bool:
 	_section("bringing both halves up")
@@ -386,10 +356,7 @@ func _build() -> bool:
 	_client_net = _make_manager(
 		false, &"client", CLIENT_PEER, client_side, _client_game.tick_rate
 	)
-	# This harness stamps every command itself (`_tick + INPUT_LEAD`), not from the client's
-	# clock, so the client must not ask for dot-net's input-lead report: steered by reports
-	# about commands it never stamped, the clock runs away from them (only dot-net's cap
-	# holds it). By the constant map, so this parses against a dot-net from before the report.
+		# This harness stamps every command itself (`_tick + INPUT_LEAD`), so the client must not ask for dot-net's input-lead report or its clock runs away from commands it never stamped. By the constant map, so it parses against an older dot-net.
 	var lead_bit := int((DotNetMessageRegistry as Script).get_script_constant_map().get("FEATURE_INPUT_LEAD", 0))
 	_client_net.messages.features &= ~lead_bit
 
@@ -429,10 +396,7 @@ func _build() -> bool:
 		String(_server_bridge.link.name)
 	)
 
-	# [b]Two builds, not one.[/b] Each end registers an OPTIONAL message type the other has
-	# never heard of -- a server one release ahead, a client one release ahead -- and the
-	# whole of the rest of this suite plays over that. They must still agree on what has
-	# to match, and every section after this one is the proof that they can play.
+		# Two builds, not one: each end registers an OPTIONAL message type the other has never heard of (a release ahead each way), and the rest of the suite plays over that.
 	_server_net.messages.register(
 		SkewServerNews.NAME, SkewServerNews, DotNetMessage.Delivery.RELIABLE,
 		DotNetMessage.Direction.TO_CLIENT, false
@@ -490,14 +454,9 @@ func _build() -> bool:
 		"%d bodies" % int(_server_bridge.describe()["bodies"])
 	)
 
-	# [b]The flag and the callable together, because either alone is a lie.[/b] dot-combat
-	# defaults lag compensation ON and resolves every shot against the present when nothing
-	# is wired to it, so a server can report the feature as enabled and not have it — this
-	# family's second most repeated bug, and one a delivered boot log caught here saying so
-	# twice. The world builds with it off and the bridge turns it on in the same breath as
-	# the two callables, so these three checks are one fact asserted from three sides.
-	#
-	# Armed: with the assignment in `_wire_lag_compensation` removed, the first fails.
+		# The flag and the callable together, because either alone is a lie: dot-combat defaults lag compensation ON and resolves against the present when nothing is wired. The world builds with it off and the bridge turns it on with the two callables, so these three checks are one fact from three sides.
+		#
+		# Armed: with the assignment in `_wire_lag_compensation` removed, the first fails.
 	_check(
 		_server_game.combat.rewind_fn.is_valid(),
 		"the server's combat can rewind"
@@ -515,7 +474,6 @@ func _build() -> bool:
 	return _failed == 0
 
 
-# --- Joining ----------------------------------------------------------------
 
 func _test_a_client_joins() -> void:
 	_section("a client joins")
@@ -533,21 +491,13 @@ func _test_a_client_joins() -> void:
 	_exchange()
 	_exchange()
 
-	# [b]And then let the round actually begin, which re-lays the field from inside the
-	# netcode's own loop.[/b] dot-match runs a warmup before the first round and nothing has
-	# ticked yet, so without this every section below would be asserting about a world that
-	# had not started — and the round would begin in the middle of whichever one ticked
-	# first. It is also what a real client joining a live server sees: the field is rebuilt
-	# under them at the top of every round.
+		# Then let the round actually begin, which re-lays the field from inside the netcode's loop: dot-match runs a warmup first, and every section below would otherwise assert about a world not started. A real client joining sees the same rebuild each round.
 	await _steps(12)
 
 	_check(_client_bridge.local_player_id == SESSION, "and the client is told who it is",
 		"%d" % _client_bridge.local_player_id)
 
-	# [b]The server's tick rate, and another game in this family shipped with HELLO carrying
-	# it and nothing reading it.[/b] A browser client counted at the 60 its export declared
-	# against a server on 128, so every replicated time was out by 128/60 — produced
-	# correctly and consumed by nothing.
+		# The server's tick rate: another game shipped HELLO carrying it with nothing reading it, so a browser client counted at its export's 60 against a server on 128.
 	_check(
 		_client_game.tick_rate == SERVER_TICK_RATE,
 		"it adopts the server's tick rate",
@@ -591,7 +541,6 @@ func _test_a_client_joins() -> void:
 	_finished()
 
 
-# --- The field --------------------------------------------------------------
 
 func _test_the_field_arrives() -> void:
 	_section("the field arrives")
@@ -602,10 +551,7 @@ func _test_the_field_arrives() -> void:
 		"%d vs %d" % [_client_game.platforms.count(), _server_game.platforms.count()]
 	)
 
-	# [b]In the same ORDER, which is what the wire addresses a platform by.[/b] A client that
-	# derived the field from a catalogue of its own would build the right field right up
-	# until its build was one layout behind — and then its platform seven would be somewhere
-	# else and every snapshot after that would move the wrong floor, silently.
+		# In the same ORDER, which is what the wire addresses a platform by; a client deriving the field from its own catalogue would move the wrong floor once a layout behind.
 	var same_places := true
 	var worst := 0.0
 
@@ -664,7 +610,6 @@ func _test_the_field_arrives() -> void:
 	_finished()
 
 
-# --- A platform, over the wire ----------------------------------------------
 
 func _test_a_platform_leans_across_the_wire() -> void:
 	_section("a lean crosses the wire")
@@ -675,13 +620,7 @@ func _test_a_platform_leans_across_the_wire() -> void:
 
 	_check(there.tilt() < 0.01, "the client's copy starts level", "%.4f rad" % there.tilt())
 
-	# [b]An impact rather than a load, and the difference is the game's own tick.[/b]
-	# `ScGame._load_platforms` calls `begin_loads()` every tick and re-gathers what is
-	# standing on each platform, so a load added by hand from outside is wiped before it is
-	# ever integrated — the first version of this section did that and measured the lean of
-	# the one player who happened to be standing there. An impact is not a load: it is a
-	# push on the lean velocity, which is exactly what a prop landing does, and it survives
-	# the next `begin_loads`.
+		# An impact, not a load: `ScGame._load_platforms` calls `begin_loads()` every tick, wiping a hand-added load before it is integrated. An impact pushes the lean velocity, as a landing prop does, and survives it.
 	var _hit := _server_game.platforms.report_impact(0, 260.0, 12.0, at)
 
 	for _i in range(20):
@@ -743,10 +682,7 @@ func _test_a_platform_collapses_across_the_wire() -> void:
 	_check(not there.is_standing(), "and its own copy stops standing",
 		ScPlatforms.State.keys()[there.state])
 
-	# [b]The collider goes with it, and this is the check that matters.[/b] A client that
-	# knew a platform had gone and left the floor there is a player standing on something
-	# that does not exist anywhere else — which is the worst version of the bug the whole
-	# platform model exists to avoid.
+		# The collider goes with it, and this is the check that matters: a client that left the floor of a gone platform has a player standing on something that exists nowhere else.
 	var collider := there.body.get_node_or_null(^"Collision") as CollisionShape3D \
 		if there.body != null else null
 	_check(collider == null or collider.disabled, "and the floor under it is gone")
@@ -761,7 +697,6 @@ func _test_a_platform_collapses_across_the_wire() -> void:
 	_finished()
 
 
-# --- Props ------------------------------------------------------------------
 
 func _test_props_arrive() -> void:
 	_section("what the cannon throws arrives")
@@ -821,7 +756,6 @@ func _test_props_arrive() -> void:
 	_finished()
 
 
-# --- Moving -----------------------------------------------------------------
 
 func _test_moving() -> void:
 	_section("a client moves itself and the server agrees")
@@ -885,23 +819,10 @@ func _test_moving() -> void:
 	_finished()
 
 
-# --- The local player is predicted -------------------------------------------
 
 ## [b]This client's own player is predicted, and nobody else is.[/b]
 ##
-## Until 2026-09-25 `ScNetBridge._apply_join` mirrored every player with owner 0, this
-## client's own included, so `is_owner` was false for the local player, `predicted()` was
-## empty, and `client_tick` simulated nobody: the player moved only when a snapshot came
-## back, a round trip behind the keys, and the camera — drawn from `render_state`, a blend
-## against a previous tick the controller never recorded — lurched between wherever the
-## player last teleported and wherever the server had them. "A client moves itself and the
-## server agrees" passed throughout, because a client adopting every snapshot also agrees
-## with the server, and its correction rate was zero because the predictor never ran.
-##
-## So these assert the MECHANISM rather than the agreement: who owns the entity, what the
-## registry predicts, that a key moves the player in the tick it is pressed with no snapshot
-## in between, and that a move the client could not know about is corrected and converges.
-## mg-buses-from-hell had the same line and found it first.
+## Asserts the MECHANISM, not agreement: a client adopting every snapshot also agrees with the server, while the owner, the registry's `predicted()`, a key moving the player in its own tick and the correction of an unknowable move are what show the predictor runs.
 func _test_the_local_player_is_predicted() -> void:
 	_section("the local player is predicted, and nobody else is")
 
@@ -1008,10 +929,7 @@ func _test_the_local_player_is_predicted() -> void:
 		)
 	)
 
-	# [b]A disagreement the client cannot know about[/b]: an admin puts the player somewhere
-	# on the server. The client predicted standing still, so the next snapshot is a
-	# correction — and the proof that the predictor RUNS, rather than the client simply
-	# adopting what it is sent, is that its correction count moves.
+		# A disagreement the client cannot know about (an admin moves the player): the next snapshot is a correction, and its count moving proves the predictor RUNS rather than adopting what it is sent.
 	var corrected_before := int(_client_net.predictor.describe()["corrections"])
 	var moved_to := server_player.controller.state.position + Vector3(1.5, 0.0, 0.0)
 	server_player.place_at(moved_to, server_player.controller.state.yaw)
@@ -1033,14 +951,7 @@ func _test_the_local_player_is_predicted() -> void:
 		]
 	)
 
-	# [b]Once the floor has settled, and not before.[/b] Moving somebody a metre and a half
-	# across a platform moves its load, so the platform swings to a new lean over the next
-	# couple of seconds — and a client draws that lean from snapshots it runs INPUT_LEAD
-	# ticks ahead of, so a player standing on a floor that is still moving is corrected by a
-	# centimetre now and then (the epsilon is one). That is the floor being the server's, as
-	# it must be; the first version of this check measured the thirty ticks straight after the
-	# move and failed one run in two on exactly that. Two seconds is the spring's damping
-	# taking the swing down to a twentieth.
+		# Once the floor has settled: moving a player across a platform swings its lean over a couple of seconds, and the client runs INPUT_LEAD ticks ahead of the snapshots it draws that lean from, so a one-centimetre correction is the floor being the server's. Two seconds takes the damped swing down to a twentieth.
 	await _steps(128)
 	var settled := int(_client_net.predictor.describe()["corrections"])
 	await _steps(30)
@@ -1053,22 +964,10 @@ func _test_the_local_player_is_predicted() -> void:
 	_finished()
 
 
-# --- Somebody else, drawn ---------------------------------------------------
 
 ## A second person on their own peer, as this client draws them.
 ##
-## [b]Nothing drew another player on a connected client until 2026-09-24,[/b] and nothing
-## called `DotNetManager.interpolate_frame` either, so what a remote player's node did was
-## step at the snapshot rate towards a body that did not exist. Every check here goes
-## through `ScClient.present_frame`, the function the real client's `_process` calls, at
-## FRAMES_PER_TICK frames a tick with the fraction a renderer would pass.
-## Who somebody is reaches every client: the face they were seated with, and a new name and
-## face when the server learns them — which is what dot-platform's admission, a wardrobe
-## change and an operator's rename all end in.
-##
-## [b]Asserted on the drawn figure, not on the field.[/b] A client that stored the avatar
-## and drew the hash anyway would pass every check about the document; the atlas the
-## figure was BUILT with is the thing a player sees.
+## Every check goes through `ScClient.present_frame`, the real client's `_process` function, at FRAMES_PER_TICK frames a tick. Who somebody is (the seated face, then the new name and face from admission, a wardrobe change or a rename) is asserted on the drawn figure: the atlas it was BUILT with is what a player sees.
 func _test_who_somebody_is_crosses() -> void:
 	_section("who somebody is crosses, and is what is drawn")
 
@@ -1211,11 +1110,7 @@ func _test_somebody_else_is_drawn() -> void:
 		"in third person its own body is drawn, and back in first it is gone again"
 	)
 
-	# Running across a platform along -X (a yaw of -90 in this controller), from near one
-	# edge to past the middle — a second at full speed, which on a 10.5 m deck is most of the
-	# way across. Put there first, the way the game puts anybody, so the run stays on it.
-	# A STANDING deck: an earlier section collapsed one, and a player put on that is a
-	# player falling forty metres with a slightly different start.
+		# Running along -X (yaw -90) from near one edge to past the middle, a second at full speed, put on a STANDING deck first (an earlier section collapsed one).
 	var deck = null
 	for index in range(_server_game.platforms.count()):
 		var candidate = _server_game.platforms.deck_at(index)
@@ -1280,12 +1175,7 @@ func _test_somebody_else_is_drawn() -> void:
 		"last drawn %s" % str(last.snapped(Vector3.ONE * 0.01))
 	)
 
-	# Smoothness: each frame should move the body by about what the frame before it did. A
-	# client that draws only when a snapshot lands moves it on one frame in several and not
-	# at all on the rest. [b]Measured against the server's own run[/b], because the run is
-	# not steady here: a platform leans toward whoever is on it and the deck's surface moves
-	# under them, and the server's per-tick step halves in a single tick at one point of this
-	# run. A drawn body may change its pace as sharply as the server's did, and no more.
+		# Smoothness: each frame should move the body by about what the frame before did; a client drawing only on snapshots moves one frame in several. Measured against the server's own run, whose per-tick step halves once as the deck leans: a drawn body may change pace as sharply as the server's did, no more.
 	var mean := 0.0
 	var steps: Array[float] = []
 	for j in range(1, drawn.size()):
@@ -1387,7 +1277,6 @@ func _test_somebody_else_is_drawn() -> void:
 	_finished()
 
 
-# --- Phases, specials, chat -------------------------------------------------
 
 func _test_the_phases() -> void:
 	_section("the round's halves reach the client")
@@ -1439,12 +1328,7 @@ func _test_the_phases() -> void:
 
 ## What a watcher can see of somebody else's weapon.
 ##
-## [b]A counter, never an event per shot.[/b] An RPC per shot needs a reliable channel for
-## something worthless if it arrives late, costs a packet per shot per watcher, and
-## desynchronises from the state it belongs with — so a watcher sees the muzzle flash of a
-## weapon the same snapshot says has been holstered. game-playground shipped weapons that
-## were free and that nobody could see anybody else holding, from a `write_weapon` whose
-## `read_weapon` was never called.
+## A counter, never an event per shot: an RPC per shot needs a reliable channel for something worthless late, costs a packet per watcher, and desynchronises from the state, so a watcher would see a muzzle flash on a holstered weapon.
 func _test_a_weapon_crosses() -> void:
 	_section("a weapon crosses")
 
@@ -1490,10 +1374,7 @@ func _test_a_weapon_crosses() -> void:
 		"%d vs %d" % [int(watcher.get(&"net_slot")), theirs.weapons.arsenal.current_slot()]
 	)
 
-	# [b]The gun in their hand, as somebody else draws it.[/b] Dealt the way the module
-	# announces a deal — every weapon, the selected one first — and drawn from the slot the
-	# snapshot carries, because a slot alone names no weapon. The client's copy of this player
-	# is drawn as a watcher would draw it (not its own first-person view).
+		# The gun in their hand, as somebody else draws it: dealt as the module announces (every weapon, selected first) and drawn from the snapshot's slot, since a slot alone names no weapon.
 	var current := theirs.weapons.arsenal.current_def()
 	_server_bridge.announce_armed(theirs.player_id, current.id)
 	for slot in theirs.weapons.arsenal.slots():
@@ -1544,10 +1425,7 @@ func _test_a_weapon_crosses() -> void:
 	_check(not uses.is_empty(), "which a watcher reads as a number of uses",
 		"%d reports" % uses.size())
 
-	# [b]Owner-only, and it is information rather than bandwidth.[/b] Exact ammunition is
-	# something an opponent should not have; dot-combat makes the same decision about the
-	# same two numbers. This client IS the owner, so it does get them — what the check can
-	# say is that the field is declared that way at all.
+		# Owner-only, as information: opponents should not know exact ammunition (dot-combat decides the same for the same two numbers). This client IS the owner, so the check is that the field is declared so at all.
 	var owner_only := false
 
 	for spec in ZeeWeaponNet.all_specs():
@@ -1556,10 +1434,7 @@ func _test_a_weapon_crosses() -> void:
 
 	_check(owner_only, "and the magazine is owner-only")
 
-	# [b]Lag compensation, wired rather than declared.[/b] dot-combat takes a rewind and a
-	# restore as callables and, unset, says so once at boot and resolves every shot against
-	# the present anyway — a flag reported as enabled with nothing behind it. This is the
-	# check that says the two ends of that seam are actually joined.
+		# Lag compensation, wired rather than declared: unset, dot-combat says so once at boot and resolves against the present. This checks the two ends of that seam are joined.
 	var combat := _server_game.combat.describe()
 	_check(bool(combat["lagcomp"]), "lag compensation is wired to the netcode's history")
 	_check(
@@ -1572,10 +1447,8 @@ func _test_a_weapon_crosses() -> void:
 	_finished()
 
 
-## The weapon-feel pass's wire half (`ScGame.hit_landed` → HIT → `hit_received`, and the owner-only
-## magazine that `ScClient.correct_drawn` adopts). `headless_run` only proves the offline half,
-## where the world's own signal flashes the marker and nothing crosses. Armed: with the bridge's
-## HIT send removed the first check fails; sent with `_broadcast` the second does.
+## The weapon-feel pass's wire half (`ScGame.hit_landed` -> HIT -> `hit_received`, and the owner-only magazine `ScClient.correct_drawn` adopts).
+## `headless_run` proves only the offline half. Armed: without the bridge's HIT send the first check fails; sent with `_broadcast` the second does.
 func _test_a_hit_is_the_shooters() -> void:
 	_section("a shot that lands is told to the shooter alone, and the drawn gun takes the server's count")
 	var key := ScNetBridge.player_key(SESSION)
@@ -1765,7 +1638,6 @@ func _test_chat_crosses() -> void:
 	_finished()
 
 
-# --- A bad link -------------------------------------------------------------
 
 func _test_a_lossy_link() -> void:
 	_section("a link that loses things")
@@ -1796,10 +1668,7 @@ func _test_a_lossy_link() -> void:
 	_drop_every = 0
 	await _steps(8)
 
-	# [b]The STANDING ones, because a falling platform's lean is not a comparable
-	# number.[/b] It grows without bound on the way down and the wire carries half a radian,
-	# so a falling platform saturates by design — and a check that included one would be
-	# asserting that a quantised field can hold a value outside its own range.
+		# The STANDING ones: a falling platform's lean grows without bound while the wire carries half a radian, so it saturates by design.
 	var worst := 0.0
 	var compared := 0
 
@@ -1820,19 +1689,10 @@ func _test_a_lossy_link() -> void:
 	_finished()
 
 
-# --- An admin's marks -------------------------------------------------------
 
-## An administrator's blind and beacon, through the real handlers, over a link that drops one
-## snapshot in three.
+## An administrator's blind and beacon, through the real handlers, over a link that drops one snapshot in three.
 ##
-## [b]The audience is the whole point of both.[/b] The client owns Ada and does not own the
-## stand-in. A blind is its owner's screen and nobody else's, so Ada's must reach this client
-## and the stand-in's must NOT — an opponent who could read it would know the moment
-## somebody could not see. A beacon is for everybody, so both must arrive. Asserted on the
-## client's own copy of each player, which is what its HUD and its renderer read.
-##
-## Armed: with `to_owner_only()` dropped from `ScPlayerNet`, "the client is never told
-## about somebody else's" fails.
+## The audience is the point: a blind reaches its owner only (the stand-in's must NOT reach this client), a beacon everybody. Asserted on the client's own copy of each player. Armed: with `to_owner_only()` dropped from `ScPlayerNet`, "never told about somebody else's" fails.
 func _test_blind_and_beacon() -> void:
 	_section("an admin's blind and beacon: who is told")
 
@@ -1923,10 +1783,7 @@ func _test_blind_and_beacon() -> void:
 
 ## The two things a client makes a noise about that it could not have seen for itself.
 ##
-## [b]A landing exists only on the server[/b] — a client runs no platform model and its
-## props are frozen mirrors — so the IMPACT event is the only way it hears one. And the
-## cannon's bang is a prop that ARRIVED at the muzzle, which is only true if the position a
-## client is told is the one the prop was fired from rather than where it had got to.
+## A landing exists only on the server (a client's props are frozen mirrors), so the IMPACT event is the only way it hears one; and the cannon's bang is true only if the position is where the prop was fired from.
 func _test_what_is_heard_arrives() -> void:
 	_section("what a client hears about arrives")
 
@@ -1974,11 +1831,7 @@ func _test_what_is_heard_arrives() -> void:
 
 ## Somebody who is out is told where to look, by the server, and nobody else is.
 ##
-## [b]The policy is the server's and the camera is the client's.[/b] The client's world
-## runs a mirror, and what crosses is one `SPECTATE` event per decision, to the one peer it
-## belongs to. What this asserts is the end state a player would see: the death camera over
-## the drop rather than in the floor, a team-mate's eyes afterwards drawn from the client's
-## OWN copy of that team-mate, and a refusal that comes back as words.
+## The policy is the server's and the camera the client's: one `SPECTATE` event per decision, to the one peer. Asserts the end state: the death camera over the drop, a team-mate drawn from the client's OWN copy, and a refusal that comes back as words.
 func _test_somebody_out_watches() -> void:
 	_section("somebody who is out is told where to look")
 
@@ -2146,10 +1999,7 @@ func _test_leaving() -> void:
 
 	var before := _client_game.players.size()
 
-	# [b]The stand-in, not the client under test.[/b] `remove_player` takes a leaver out of
-	# the ready set before it announces the LEAVE, which is correct — a server has nothing to
-	# tell somebody who has gone — and it means the one departure a single-client suite can
-	# actually observe is somebody else's.
+		# The stand-in, not the client under test: `remove_player` takes a leaver out of the ready set before announcing LEAVE, so the one departure a single-client suite observes is somebody else's.
 	var bot_session := 0
 
 	for session_id in _server_bridge._behaviours.keys():
@@ -2192,7 +2042,6 @@ func _test_leaving() -> void:
 	_finished()
 
 
-# --- The harness ------------------------------------------------------------
 
 
 ## A type only the server's build has, which a client can do without.
@@ -2237,15 +2086,10 @@ class SkewVital extends DotNetMessage:
 		pass
 
 
-# --- Two builds --------------------------------------------------------------
 
 ## [b]A server and a client built from different sources, on one wire.[/b]
 ##
-## Each registered an optional type the other lacks (see `_build`). Their tables cross as
-## the join happens; each sends the other its own type, and each skips what it does not
-## know without disturbing anything after it -- which the seventeen sections after this one
-## then play on top of. And a client that REQUIRES a type this server lacks, or lacks the
-## types this game requires, is refused with a sentence rather than left to misread.
+## Each registered an optional type the other lacks (see `_build`); each skips what it does not know, and a client that REQUIRES a type this server lacks, or lacks the types this game requires, is refused with a sentence.
 func _test_two_builds_share_the_wire() -> void:
 	_section("two builds with different message types share the wire")
 

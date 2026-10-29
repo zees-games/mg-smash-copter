@@ -163,7 +163,6 @@ func _shut_down() -> void:
 	await get_tree().process_frame
 
 
-# --- Booting ----------------------------------------------------------------
 
 func _boot() -> void:
 	_section("booting")
@@ -243,7 +242,6 @@ func _boot() -> void:
 	_finished()
 
 
-# --- The module -------------------------------------------------------------
 
 func _test_the_module_loads() -> void:
 	_section("the module")

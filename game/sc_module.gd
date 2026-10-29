@@ -3,38 +3,13 @@ extends "sc_module_base.gd"
 
 ## This game, as a module a dedicated server loads.
 ##
-## [b]A hundred and forty lines, against the five hand-written modules' 837 to 1,816.[/b]
-## [DotGameModule] holds the netcode and its four load-bearing constants, the bridge, the
-## message seal, the identity layer, the roster, the authoritative tick and a teardown in
-## the reverse order. Two of those five hand-written copies had the same line wrong and
-## nobody could ever join those servers. What is left here is what is actually this game's:
-## the cvars an operator turns between rounds, the two console commands, and the rule that
-## keeps enough people in a round for one to happen.
-##
-## [b]No `class_name`, and that is a requirement rather than a style.[/b]
-## [method DotModuleHost.load_module] takes a PATH and constructs the module itself — it
-## must, because that is the shape that lets an operator name one in a config file — and a
-## module delivered inside a dot-cloud pack cannot have a `class_name` at all: a mounted
-## pack's globals are not registered in the host.
-##
-## [codeblock]
-## server.modules.load_module("res://game/sc_module.gd")
-## [/codeblock]
+## No `class_name`, a requirement: [method DotModuleHost.load_module] constructs it from a PATH, and a module in a dot-cloud pack cannot register globals in the host. [DotGameModule] holds the netcode, bridge, seal, identity, roster and tick; this adds the operator cvars, two console commands and the rule that keeps enough people in a round. Usage: `server.modules.load_module("res://game/sc_module.gd")`.
 
-# [b]No `const CHANNEL` here, and its absence is the point.[/b] [DotGameModule] already
-# declares one and GDScript refuses to let a subclass redeclare it — which is the right
-# refusal: a module logs through [method DotModule.log_info], which stamps the module's own
-# name, so a second channel would split one module's records across two places an operator
-# has to know to turn up separately.
+# No `const CHANNEL`: [DotGameModule] declares one and GDScript refuses a redeclaration, rightly, since a module logs through [method DotModule.log_info] under its own name and a second channel would split its records.
 
-## Where the services keep punishments. Empty is [DotGameServices]'s own default,
-## `user://smash-copter_punishments.json` — the store a real server enforces.
+## Where the services keep punishments. Empty is [DotGameServices]'s default, `user://smash-copter_punishments.json`, the store a real server enforces.
 ##
-## [b]Static, because nothing holds this module before it exists[/b]: dot-server constructs
-## it from a path inside `load_module`, so there is no instance for a host to set a field on
-## first. `examples/dedicated.tscn` points it at a directory of its own; before it could,
-## every run appended the live tools' audit warnings to the real store, 106 of them by the
-## time anybody counted.
+## Static, because dot-server constructs the module from a path so no instance exists to set a field on; `examples/dedicated.tscn` points it at its own directory so runs do not append to the real store.
 static var punishments_file: String = ""
 
 
@@ -64,25 +39,14 @@ func _game_missing_hint() -> String:
 
 ## The netcode's numbers, which are the game's and not the addon's.
 ##
-## Tick rate from the world, so `sv_tickrate` reaches it: the server sets the engine's
-## physics rate from that cvar at boot, the world is built after the server and reads it,
-## and this reads the world. A number written here instead would be a netcode running at a
-## rate the operator did not choose, silently.
+## Tick rate comes from the world so `sv_tickrate` reaches it (the world is built after the server and reads the engine rate); a number written here would run the netcode at a rate the operator did not choose.
 func _net_config() -> DotNetConfig:
 	var config := DotNetConfig.new()
 	config.tick_rate = (game as ScGame).tick_rate
 	config.snapshot_rate = ScGame.NET_SNAPSHOT_RATE
 	config.world_extent = ScGame.NET_WORLD_EXTENT
 	config.enable_prediction = true
-	# [b]On, and the two callables that make it real are wired by the bridge.[/b] It was off
-	# for as long as they were not: a flag reported as enabled with nothing behind it is
-	# worse than one that is off, because the first reader to trust it loses an afternoon.
-	# See [method ScNetBridge._wire_lag_compensation].
-	#
-	# The showdown is a fight at range with rifles, which is the ordinary reason to want it.
-	# The less obvious one is that this game's hitboxes stand on a floor that was in a
-	# different place a hundred milliseconds ago — so rewinding a player rewinds where the
-	# platform had carried them to, which nothing else could reconstruct.
+		# On, with both callables wired by the bridge ([method ScNetBridge._wire_lag_compensation]); a flag reported enabled with nothing behind it misleads. Hitboxes stand on a floor that was elsewhere 100 ms ago, so rewinding a player rewinds where the platform had carried them.
 	config.enable_lag_compensation = true
 	# A dozen platforms, up to a hundred and ten props, a couple of choppers and everybody
 	# playing — all of it always relevant, because the map is open air and a player can see
@@ -97,11 +61,7 @@ func _make_bridge() -> Node:
 
 ## Chat, voice and moderation, over [DotGameServices].
 ##
-## [b]The bridge is handed over as the link, and that is the whole of the wiring.[/b] A chat
-## line goes out through `send_chat` and a voice frame through `send_voice`, both on this
-## game's own wire. [DotGameModule] does the rest: it assigns the bridge's `voice_relay_fn`,
-## checks `check_admission` before seating anybody, and tells the roster to follow this layer
-## so a leaver is forgotten by the rate limiter and the voice router together.
+## The bridge is handed over as the link: chat goes through `send_chat`, voice through `send_voice`, and [DotGameModule] assigns `voice_relay_fn`, checks `check_admission` before seating and tells the roster to follow this layer so a leaver is forgotten by the limiter and voice router together.
 func _make_services() -> Node:
 	var services := ScServices.new()
 	services.bridge = bridge
@@ -109,15 +69,9 @@ func _make_services() -> Node:
 	return services
 
 
-## Profiles, avatars and admission: dot-platform's [DotPlatformIdentity] over this game's
-## one-slot schema. [DotGameModule] builds it before the services and loads dot-platform's
-## own module beside it.
+## Profiles, avatars and admission: dot-platform's [DotPlatformIdentity] over this game's one-slot schema.
 ##
-## [b]Authentication is not here and was never this game's.[/b] Whether a player is proven
-## to be somebody is the host's `dot_auth_server`, the same for every game it runs; what
-## this layer does is everything after — a scoped profile, the name on it, and a face.
-## With authentication off everybody is a guest with a profile of their own, which is what
-## a LAN server is.
+## [DotGameModule] builds it before the services. Authentication is the host's `dot_auth_server`, not this game's; this layer is the scoped profile, name and face after it. With authentication off everybody is a guest.
 func _make_identity() -> Node:
 	var identity_layer := DotPlatformIdentity.new()
 	identity_layer.avatar_schema = ScAvatars.schema()
@@ -176,19 +130,10 @@ func _game_load() -> DotResult:
 		"Automatic stand-ins: 1 keeps as many as bot_quota and bot_quota_mode say, 0 none at all."
 	)
 
-	# [b]How many is dot-server's [DotBotQuota], so `bot_quota` and `bot_quota_mode` mean the
-	# same thing on every server in the family.[/b] The default is this game's own minimum
-	# (`minimum_players`, from the config file) in fill mode, which is the rule it ran before
-	# the policy was shared: stand-ins top the round up to that many players, a person who
-	# joins takes a stand-in's place, and the stand-in comes back when they leave. `sc_bots`
-	# stays the switch it always was, so a server config that sets it means what it meant.
+		# The count is dot-server's [DotBotQuota], so `bot_quota` and `bot_quota_mode` mean the same on every server. The default is `minimum_players` in fill mode: stand-ins top the round up, a joiner takes one's place. `sc_bots` stays the switch.
 	_quota = DotBotQuota.install(self, world.config.minimum_players)
 
-	# [b]Started here and not in the world's own `_ready`.[/b] `start()` lays the field out
-	# and puts everybody on it, and a world that did that before the bridge existed would
-	# have built a dozen platforms with nothing listening to `world_rebuilt` — a field the
-	# server knows about and no client is ever told about. They would be invisible floors:
-	# a player stands on nothing and the server says they are fine.
+		# Started here, not in the world's `_ready`: `start()` lays the field out, and before the bridge existed nothing would hear `world_rebuilt`, leaving invisible floors the server knows and no client does.
 	world.start()
 
 	log_info("the field is up", world.describe())
@@ -218,15 +163,9 @@ func _bind_family_cvars(world: ScGame) -> void:
 	var _ambient := world.ambient_rules.bind_cvars(add_cvar, flags, DotConVar.FLAG_ARCHIVE | DotConVar.FLAG_NOTIFY)
 
 
-## Who somebody is reaches the world: a face as they are seated, and the real name and
-## face once dot-platform has them.
+## Who somebody is reaches the world: a face as they are seated, and the real name and face once dot-platform has them.
 ##
-## [b]Three events and one path.[/b] Admission finishes AFTER a player is seated — dot-server
-## has no stage between authentication and content to hold them in — so the name and face
-## a player is seated with are a guest's whenever the profile store is slower than the
-## join; `player_admitted` is the moment the real ones exist. A wardrobe change and an
-## operator's `platform_name` are the same thing later. All three end in
-## [method ScNetBridge.refresh_player], a JOIN everybody already knows how to apply.
+## Admission finishes AFTER seating, so the seated name and face are a guest's whenever the profile store is slow; `player_admitted`, a wardrobe change and an operator's `platform_name` all end in [method ScNetBridge.refresh_player], a JOIN everybody can apply.
 func _wire_identity() -> void:
 	var link := bridge as ScNetBridge
 
@@ -241,11 +180,7 @@ func _wire_identity() -> void:
 
 ## What a session looks like: what dot-platform resolved for them, or the stock person.
 ##
-## [b]Through the platform module's `player_for`, and never the hub by a key made here.[/b]
-## The hub keys a player by their scoped profile key, which only admission knows; a lookup
-## by `u<session>` finds nobody, every time, and falls through to stock — which reads as
-## "this player has no avatar" rather than as a wrong key. Duck-typed, because a server
-## without dot-platform is a configuration.
+## Through the platform module's `player_for`, never the hub by a key made here: the hub keys by scoped profile key, so `u<session>` finds nobody and silently reads as "no avatar". Duck-typed, since a server without dot-platform is a configuration.
 func _avatar_for(session_id: int) -> DotAvatar:
 	var session := server.session_by_userid(session_id) if server != null else null
 	var platform: Object = server.modules.get_module("platform") \
@@ -276,17 +211,7 @@ func _on_profile(event: DotEvent) -> void:
 
 ## The numbers an operator is actually going to want to change, as cvars.
 ##
-## [b]Live, and each one writes through to the configuration the world already reads.[/b]
-## The alternative is what most of this family's games still do — a JSON file and a restart
-## — and the reason to do better here is the shape of this game: the whole thing is a
-## balance between how fast the cannon fires, how stiff the platforms are and how long a
-## round lasts, and an operator finds their server's numbers by moving one of them between
-## rounds with people watching.
-##
-## [b]What is NOT here is anything the world has already built.[/b] `sc_columns` changes how
-## many platforms the NEXT round is laid out with; it does not put a platform in the air
-## now. A cvar that pretended otherwise would be one an admin sets in the middle of a round
-## and then reports as broken.
+## Live, each writing through to the configuration the world reads, so an operator can tune the cannon, stiffness and round length between rounds with people watching. Nothing already built is here: `sc_columns` shapes the NEXT round, and a cvar pretending otherwise would be reported broken.
 func _add_tunables(world: ScGame) -> void:
 	var config := world.config
 
@@ -296,12 +221,7 @@ func _add_tunables(world: ScGame) -> void:
 	_tunable("sc_showdown_seconds", config.showdown_seconds,
 		"Seconds the fight in the corners lasts",
 		func(value: float) -> void: config.showdown_seconds = value)
-	# [b]How the stand-ins aim and shoot is dot-bot's[/b]: `bot_difficulty` (easy, medium, hard,
-	# nightmare; medium by default) and every `bot_*` setting it bundles, the names every game in
-	# the family uses. On the world as metadata, where its bots read it; never the registry,
-	# since two servers in one process must not share it. `sc_bot_spread` (the old fixed aim
-	# offset, per bot per round) stays as a deprecated name for `bot_aim_error`, so a server
-	# config that set it still sharpens or loosens the stand-ins.
+		# How stand-ins aim and shoot is dot-bot's (`bot_difficulty` and the `bot_*` bundle). Set on the world as metadata, never the registry, since two servers in one process must not share it. `sc_bot_spread` stays a deprecated name for `bot_aim_error`.
 	var bot_settings := DotBotSettings.of(world)
 	var _bot_cvars := bot_settings.bind_cvars(add_cvar, DotConVar.FLAG_NOTIFY, add_command)
 	_tunable("sc_bot_spread", bot_settings.profile.aim_error,
@@ -465,12 +385,9 @@ func _on_config_field(key: String, _value: Variant, source: String) -> void:
 	console.set_cvar(hand, str(text))
 
 
+## Registers one live numeric cvar that writes through to the world's configuration.
 ##
-## [b]The default is the value the world was built with, and that is the whole point.[/b] A
-## cvar declared with a literal default is a second copy of a number that
-## `defaults < JSON < environment < argv` has already decided — so an operator who set
-## `SC_SURVIVAL_SECONDS=240` would see `sc_survival_seconds` report 120 and, worse, would
-## reset their own setting the moment anything wrote the value back.
+## The default is the value the world was built with: a literal default would be a second copy of what `defaults < JSON < environment < argv` decided, and would reset an operator's `SC_SURVIVAL_SECONDS=240` when written back.
 func _tunable(
 	cvar_name: String, current: float, description: String, apply: Callable
 ) -> void:
@@ -486,11 +403,7 @@ func _tunable(
 	)
 
 
-## [b]Nothing to undo.[/b] The commands are the module's own and [DotModule] removes them;
-## the netcode, the bridge and the roster are [DotGameModule]'s and it tears them down in
-## the reverse order it built them. The world is NOT this module's to free: it was in the
-## tree before the module loaded, and a server can unload and reload a game module without
-## the map going away, which is what `module reload` is for.
+## Nothing to undo: [DotModule] removes the commands and [DotGameModule] tears down netcode, bridge and roster in reverse. The world is not this module's to free, since `module reload` must not make the map go away.
 func _game_unload() -> void:
 	if workbench != null:
 		workbench.queue_free()
@@ -517,14 +430,7 @@ func _game_hibernation(hibernating: bool) -> void:
 
 ## Keeps enough people in the round for there to be one.
 ##
-## [b]Two sides with somebody on each, or nothing happens at all.[/b] An elimination round
-## ends the moment a side has nobody alive, and a side with nobody AT ALL satisfies that on
-## the first tick — so a server with one person on it would start a round, end it, start
-## another and end that, several times a second, for as long as nobody else joined. Every
-## one of those rounds is decided correctly, which is why nothing errors.
-##
-## A stand-in is removed the moment a person takes their place. They are here to make the
-## game exist, not to take the fun half from the people who came to play it.
+## Two sides with somebody on each, or an elimination round ends the instant a side has nobody and restarts several times a second, each correctly decided so nothing errors. A stand-in leaves the moment a person takes their place.
 func _game_tick(_tick: int, delta: float) -> void:
 	if vote != null:
 		vote.advance(delta)
@@ -544,10 +450,7 @@ func _keep_the_round_full() -> void:
 	if world == null or bridge == null or _quota == null:
 		return
 
-	# People only. A stand-in is not one, and neither is a bot somebody put in by hand through
-	# the bridge (a test, an admin): those are never in `_bot_ids` either, so they are left
-	# alone and outside the count. A leaver is gone from `players` the moment the bridge
-	# removes them, so nobody half-disconnected is counted.
+		# People only: a stand-in is not one, nor is a bot added by hand (a test, an admin); those are not in `_bot_ids`. A leaver is gone from `players` as soon as the bridge removes them.
 	var humans := 0
 
 	for id: StringName in world.players:
@@ -597,11 +500,7 @@ static func _bot_name(world: ScGame) -> String:
 
 ## Joins the bridge's chat seam to the services layer's router.
 ##
-## [b]Here rather than in either of them, because this is the only object that holds
-## both.[/b] The bridge knows what arrived on the wire and nothing about what a line means;
-## the services layer knows the rules and nothing about the wire. That separation is why a
-## client cannot send a line with somebody else's name on it: what crosses is a channel id
-## and a string, and everything else is decided on this side.
+## Here because this is the only object holding both: the bridge knows the wire, the services layer the rules, so a client cannot send a line under somebody else's name.
 func _wire_chat() -> void:
 	if bridge == null or services == null:
 		return
@@ -610,19 +509,9 @@ func _wire_chat() -> void:
 	services.connect("command_entered", _on_chat_command)
 
 
-## A round's layout is what a server listing prints as the map.
+## The layouts and the players' vote for the next one (dot-vote: `!vote`, `!rtv`, `!nominate`); a layout is a round's map.
 ##
-## The layout is this game's map: the field the round is played on, picked per round. Said
-## on every round rather than once, because dot-server forgets the map whenever a game
-## unloads and a layout changes between rounds.
-## The players' vote for the next layout, over dot-vote: `!vote`, `!rtv`, `!nominate`.
-##
-## [b]Opened [member ScVote.open_after_sec] into every layout and applied when the round
-## ends[/b], because a round here is a layout (one is drawn per round); see
-## [code]game/sc_vote.gd[/code]. A server owner turns it off or reshapes it in
-## `user://cfg/smash_vote.json` or `game.yml`'s `metadata: layout_vote:`, keyed as dot-vote's
-## [DotVoteRules]. A vote that cannot be built is a WARN and the weighted draw alone, never a
-## server that will not start.
+## The vote opens [member ScVote.open_after_sec] into each layout and applies when the round ends (`game/sc_vote.gd`); an owner tunes it in `user://cfg/smash_vote.json` or `game.yml`'s `metadata: layout_vote:`. A vote that cannot be built is a WARN and the weighted draw alone.
 func _build_maps(world: ScGame) -> void:
 	maps = ScMapSession.new()
 	maps.name = "Maps"
@@ -795,9 +684,7 @@ func _wire_map(world: ScGame) -> void:
 
 ## And the one game event the bridge cannot see for itself.
 ##
-## `_arm` happens inside the world and the bridge is not listening to the world's weapons,
-## because a weapon is not a replicated entity here — it is a fact about a player that a
-## watcher's HUD wants to name. One signal is cheaper than a behaviour.
+## `_arm` happens inside the world and a weapon is not a replicated entity, so one signal is cheaper than a behaviour.
 func _wire_armed(world: ScGame) -> void:
 	if bridge == null:
 		return
@@ -819,9 +706,7 @@ func _wire_armed(world: ScGame) -> void:
 
 ## An achievement is told to the one person who earned it.
 ##
-## [b]As a notice, which a client already draws in its chat box[/b], rather than a new event
-## kind: an unlock is text for one player, which is exactly what a notice is — and a stand-in
-## never earns one, because [ScProgress] does not count them.
+## As a notice, which a client already draws in chat, rather than a new event kind; stand-ins never earn one ([ScProgress] does not count them).
 func _wire_progress(world: ScGame) -> void:
 	if bridge == null:
 		return

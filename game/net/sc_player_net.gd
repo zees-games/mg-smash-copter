@@ -48,7 +48,6 @@ var net_health: float = 100.0
 ## Whether they are in a chopper.
 var net_riding: bool = false
 
-# --- The weapons, which only exist in the second half of a round ------------
 #
 # [b]Seven fields, and the pack's own `all_specs()` names all of them.[/b] GDScript has no
 # dynamic properties, so a spec table that says what to send needs a variable per entry
@@ -69,7 +68,6 @@ var net_fire_kind: int = 0
 var net_reloading: bool = false
 var net_switching: bool = false
 
-# --- An administrator's marks, from the live tools ---------------------------
 
 ## `ScPlayer.blinded`. Owner only: see [method _register_net_vars].
 var net_blind: bool = false

@@ -3,31 +3,7 @@ extends "sc_platforms_base.gd"
 
 ## The field of platforms, and the one model that decides how all of them move.
 ##
-## [b]A platform is a slab balanced on a single pillar, and everything this game is about
-## comes out of that.[/b] Walk to the edge of one and it leans toward you; run to the edge
-## and it leans faster; put a boulder on the far corner and it leans away. Past sixteen
-## degrees it comes off the pillar and takes whoever is on it down forty metres.
-##
-## [b]It is not a rigid body, and that is the decision this file exists to defend.[/b] A
-## slab genuinely balanced on a thin cylinder in Godot's solver is a body in permanent
-## marginal contact: it jitters at rest, it is decided by contact-point ordering, and it
-## is not reproducible across two machines — which in a game where the platform under your
-## feet is the whole of the first objective means a client and a server that disagree
-## about whether you are standing on anything. dot-props has the same finding from the
-## other end and refuses to predict a crate for it.
-##
-## So a platform is an [AnimatableBody3D] driven by a torsion spring this file integrates:
-## a lean, a lean velocity, a sink and a sink velocity, four floats that are a pure
-## function of the loads on it. It is deterministic, it costs nothing, it replicates in
-## four numbers, and a client can be told exactly what the server decided rather than
-## asked to agree with it.
-##
-## [codeblock]
-## platforms.begin_loads()
-## for player in players: platforms.add_load(index, offset, mass, speed)
-## platforms.step(delta)                       # integrate, collapse, fall
-## var lift := platforms.lift_at(index, x, z)  # what the surface did under a player
-## [/codeblock]
+## A slab on one pillar that leans toward load and past sixteen degrees falls. Not a rigid body: a slab on a thin cylinder jitters in Godot's solver and is not reproducible across machines, so it is an [AnimatableBody3D] driven by a torsion spring integrated here, four floats that replicate cheaply and let a client be told rather than asked to agree. Per tick: `begin_loads`, `add_load` per player, `step`, then `lift_at` for what the surface did under a rider.
 
 
 ## Kenney's survival kit (CC0, licence beside the file): one fence section is 0.5 m wide.
@@ -62,17 +38,7 @@ func build(layout: ScLayouts.Layout, physics: DotPhysicsLayout = null) -> void:
 
 ## Lays out an explicit list of cells: `(column, row, is_bridge)`.
 ##
-## [b]A list rather than a layout id, and that is what makes the client's field
-## STRUCTURALLY the same as the server's rather than probably the same.[/b] Every platform
-## is addressed on the wire by its index in this array, so the two ends have to agree about
-## the order — and if the client derived it from a catalogue of its own, a build that was
-## one layout behind would put its platform seven somewhere else and every snapshot after
-## that would move the wrong floor. Thirty-odd bytes once a round buys the whole class of
-## bug.
-##
-## [b]Cleared first, because building is also REBUILDING.[/b] Called twice without it the
-## previous round's platforms stand inside this round's, and a player walks on a floor they
-## cannot see and falls through the one they can.
+## A list, not a layout id: platforms are addressed on the wire by index, so a client deriving the order from its own catalogue would move the wrong floor. Cleared first, because building is also rebuilding and last round's platforms would stand inside this round's.
 func build_cells(
 	cells: Array[Vector3i],
 	p_pitch_scale: float,
@@ -116,18 +82,7 @@ func build_cells(
 
 ## Sets every bridge down on the two platforms it joins.
 ##
-## [b]A bridge was a spring of its own until 2026-09-24, pivoting on a pillar it does not
-## have.[/b] The Spine's blurb calls the walkways "the steady ground", and the model made
-## them the least steady thing on the map: a bridge is longer than a platform is wide, so a
-## runner at its end had a longer lever than one at a platform's edge — 9.7 degrees against
-## 7.9 on The Spine, measured — and two runners at one end took a bridge down while the
-## platform next to it held at 15.7. It leaned in mid-air about its own middle, so where it
-## met a platform's lip there was a step whenever the two leaned differently.
-##
-## Now it is a plank on two lips. Its pitch is the line between the two lips' heights, its
-## roll is theirs, a load on it is carried by the two platforms in proportion to where it
-## stands, and it goes when either of them does. A bridge with a platform missing at one
-## end is still built as a spring, which no layout here does (see `_has_bridge`).
+## A plank on two lips: pitch and roll follow the lips' heights, load is shared by position, and it goes when either platform does. As its own spring it pivoted on a pillar it does not have, so a runner at its end had a longer lever than at a platform edge and it leaned in mid-air. `_has_bridge` covers a platform missing at one end.
 func _rest_bridges() -> void:
 	var at: Dictionary = {}
 
@@ -191,15 +146,7 @@ func cells() -> Array[Vector3i]:
 
 ## Everything a previous [method build] put here.
 ##
-## [b]Taken out of the tree at once and freed at the end of the frame, which is not the
-## same as either half alone.[/b] `remove_child` is what stops two fields existing at the
-## same height for the rest of the frame — two floors, one of which a body spawned in that
-## frame can land on. The deferred free is what stops a node being destroyed in the middle
-## of somebody else's iteration: a round ends inside the netcode's own loop over replicated
-## entities, because the first behaviour through a tick is what runs the whole world, so an
-## immediate `free()` here pulls identities out from under `DotNetManager.server_tick`
-## while it is walking them. It reports that as "Nonexistent function can_simulate in base
-## previously freed", once per entity, per tick, for ever.
+## Removed from the tree at once (two fields at one height for the frame would let a spawned body land on the old one) and freed deferred, because a round ends inside the netcode's loop over entities and an immediate `free()` pulls them out from under `DotNetManager.server_tick`.
 func clear() -> void:
 	for child in get_children():
 		remove_child(child)
@@ -280,10 +227,7 @@ func _build_deck(
 	var body := AnimatableBody3D.new()
 	body.name = "Deck_%d_%d%s" % [column, row, "_bridge" if is_bridge else ""]
 	body.position = deck.centre
-	# [b]On, and it is what carries a crate.[/b] Without it Godot teleports the body and
-	# every rigid body resting on it is left behind in mid-air for a frame and then falls
-	# through. A player is carried by [method lift_at] instead, because a swept capsule is
-	# not a physics body and never was.
+		# On: it is what carries a crate, since otherwise resting bodies are left in mid-air. Players are carried by [method lift_at]; a swept capsule is not a physics body.
 	body.sync_to_physics = true
 
 	var collider := CollisionShape3D.new()
@@ -325,14 +269,9 @@ func _build_deck(
 	_by_body[body.get_instance_id()] = decks.size() - 1
 
 
-## Kenney's survival-kit fence round a tower's edge, so the high ground reads as a lookout
-## and a runner sees where the deck stops from the ramp below.
+## Kenney's survival-kit fence round a tower's edge, so the high ground reads as a lookout.
 ##
-## [b]Mesh only and a child of the deck body[/b], so it leans and falls with the piece and
-## adds no collider to catch a sliding crate. The model is loaded by path through
-## [method ScPaths.rebase] and repainted from the atlas by hand, because an imported GLB
-## names its texture by an absolute path a delivered pack does not have (see
-## `ScPropBody._paint`, the same repair).
+## Mesh only and a child of the deck body, so it leans and falls with the piece and adds no collider. Loaded by path via [method ScPaths.rebase] and repainted by hand, because an imported GLB names its texture by an absolute path a delivered pack lacks (see `ScPropBody._paint`).
 func _build_rail(body: AnimatableBody3D, size: Vector3) -> void:
 	var scene := load(ScPaths.rebase(RAIL_MODEL)) as PackedScene
 
@@ -378,9 +317,7 @@ func _build_rail(body: AnimatableBody3D, size: Vector3) -> void:
 
 ## Takes the rail off the stretch of [param deck]'s [param side] where a ramp arrives.
 ##
-## The rail is mesh only, but a fence across a ramp mouth reads as "no way up". Every piece
-## overlapping the bridge's width ([param half_width] each side of [param x]) is left out; both ends
-## build from the same cells, so both open the same gap.
+## A fence across a ramp mouth reads as "no way up". Pieces overlapping the bridge's width ([param half_width] each side of [param x]) are left out; both ends build from the same cells.
 func _open_rail(deck: Deck, side: int, x: float, half_width: float) -> void:
 	if not deck.is_tower or deck.body == null:
 		return
@@ -428,24 +365,10 @@ func rail_pieces(index: int, side: int) -> int:
 
 ## A coloured band around a platform's edge, so a player can see where it stops.
 ##
-## [b]Found by looking at what a player actually sees, and it is the one readability
-## problem this map has.[/b] Every platform is at the same height, so from eye level the
-## neighbouring ones are edge-on — and with a gap of under a metre between them the whole
-## field reads as one continuous floor stretching to the horizon. A player walking toward
-## what looks like more floor falls down a gap they had no way to see. The grid does not
-## help: it is the same grid on both platforms and it runs straight across the join.
-##
-## A band in the cannon's colour does, because it is the one colour nothing else a player
-## stands on wears, and because an EDGE seen edge-on is still a line. It carries no
-## collider: it is drawn a hair proud of the surface so it cannot become a lip that catches
-## a sliding crate.
+## Every platform is at one height, so from eye level neighbours are edge-on and the field reads as one continuous floor. The cannon's colour is worn by nothing else a player stands on. No collider, and a hair proud of the surface so a sliding crate cannot catch on it.
 func _build_rim(body: AnimatableBody3D, size: Vector3) -> void:
 	var band := 0.55
-	# [b]A hair ABOVE zero, because the pivot is the SURFACE.[/b] Every offset in this file
-	# is measured on the plane a player stands on and the slab hangs below it, so a rim
-	# placed relative to the slab's middle is a rim inside the slab — which is what the first
-	# one was, and the screenshot that was supposed to prove it looked identical to the one
-	# before it.
+		# A hair ABOVE zero, because the pivot is the SURFACE: offsets are measured on the plane a player stands on and the slab hangs below it.
 	var lift := 0.005
 	var material := ScTextures.surface(ScTextures.Role.CANNON)
 
@@ -474,9 +397,7 @@ func _build_rim(body: AnimatableBody3D, size: Vector3) -> void:
 
 ## The single column, which is the whole reason the platform above it is unstable.
 ##
-## [b]A bridge gets none.[/b] It spans a gap and is held at both ends by the platforms it
-## joins — which is why a bridge is the steady place to stand and also the place everybody
-## else is heading for.
+## A bridge gets none: it is held at both ends by the platforms it joins.
 func _build_pillar(at: Vector3) -> StaticBody3D:
 	var height := at.y - config.platform_thickness
 
@@ -513,10 +434,7 @@ func _build_pillar(at: Vector3) -> StaticBody3D:
 
 ## Puts a body on a named collision layer, and says so when it cannot.
 ##
-## [b]Checked rather than discarded, because five games in this family assigned a layout
-## and applied it to nothing.[/b] Everything stayed on layer one masking layer one, which
-## works until two things that should pass through each other do not. A refused classify
-## swallowed into `var _put :=` is the exact shape of that bug.
+## Checked rather than discarded: five games assigned a layout and applied it to nothing, and a refused classify swallowed into `var _put :=` is that bug.
 func _classify(body: Node, layer_id: StringName) -> void:
 	if _physics == null:
 		return
@@ -529,13 +447,10 @@ func _classify(body: Node, layer_id: StringName) -> void:
 		})
 
 
-# --- Asking about a platform ------------------------------------------------
 
 ## Which platform's footprint this point is over, or -1.
 ##
-## Square footprints and a linear scan. A dozen platforms is a dozen comparisons and this
-## runs a few hundred times a tick; a spatial index here would be a structure to keep in
-## step with a field that is rebuilt every round.
+## Square footprints and a linear scan: a dozen comparisons, and an index would have to track a field rebuilt every round.
 func index_at(x: float, z: float) -> int:
 	for i in range(decks.size()):
 		var deck := decks[i]
@@ -569,11 +484,7 @@ func _footprint(deck: Deck) -> Vector2:
 
 ## The air between two platforms along the line from one's middle to the other's, in metres.
 ##
-## Returns (where that line leaves [param from], the air, where it lands on [param to]),
-## each measured from [param from]'s middle. [b]Along the line a runner takes, and not the
-## shortest distance between the two footprints[/b]: two chequerboard squares are 2.1 m
-## apart corner to corner and 2.8 m apart along the diagonal a player actually runs, and a
-## jump sized by the first is one that lands on the second's edge.
+## Returns (where that line leaves [param from], the air, where it lands on [param to]), each from [param from]'s middle. Along the runner's line, not the shortest distance: chequerboard squares are 2.1 m apart corner to corner but 2.8 m along the diagonal, and a jump sized by the first lands on an edge.
 func clear_air(from: int, to: int) -> Vector3:
 	var a := deck_at(from)
 	var b := deck_at(to)
@@ -595,8 +506,7 @@ func clear_air(from: int, to: int) -> Vector3:
 
 ## How close any platform still up comes to a vertical line through (x, z), in metres.
 ##
-## What the cannon's throat is measured with: a platform whose footprint is over the tube's
-## mouth is a platform every shot goes up into.
+## What the cannon's throat is measured with.
 func clearance_from(x: float, z: float) -> float:
 	var nearest := INF
 
@@ -621,9 +531,7 @@ static func _leaves_at(half: Vector2, direction: Vector2) -> float:
 
 ## Where the surface of platform [param index] is at a world XZ, in metres.
 ##
-## The plane through the pivot with the platform's own normal. Exact rather than
-## approximate, because it is what decides whether somebody is standing on it and what
-## the platform moved under them.
+## The plane through the pivot with the platform's normal; exact, because it decides who is standing on it and what the platform moved under them.
 func surface_y(index: int, x: float, z: float) -> float:
 	var deck := deck_at(index)
 	return _surface_y_of(deck, x, z) if deck != null else 0.0
@@ -641,8 +549,7 @@ func _surface_y_of(deck: Deck, x: float, z: float) -> float:
 
 ## Whether a point is standing on this platform: over its footprint and near its surface.
 ##
-## [param reach] is how far above the surface still counts, which is a capsule's worth for
-## a player and a prop's half height for a prop.
+## [param reach] is how far above the surface still counts: a capsule's worth for a player, a prop's half height for a prop.
 func is_on(index: int, at: Vector3, reach: float = 1.4) -> bool:
 	var deck := deck_at(index)
 
@@ -653,7 +560,6 @@ func is_on(index: int, at: Vector3, reach: float = 1.4) -> bool:
 	return at.y >= surface - 0.6 and at.y <= surface + reach
 
 
-# --- The model --------------------------------------------------------------
 
 ## Clears the loads gathered for the previous tick. Call before the first [method add_load].
 func begin_loads() -> void:
@@ -664,9 +570,7 @@ func begin_loads() -> void:
 
 ## Puts a weight on a platform at a world position.
 ##
-## [param motion] is how fast the load is moving over the deck, in metres per second. It is
-## the walk key: see [member ScConfig.platform_motion_gain]. A prop passes zero and is
-## simply a weight; a player sprinting across the edge is worth three of themselves.
+## [param motion] is how fast the load moves over the deck, in m/s (the walk key; see [member ScConfig.platform_motion_gain]). A prop passes zero.
 func add_load(index: int, at: Vector3, kilos: float, motion: float = 0.0) -> void:
 	var deck := deck_at(index)
 
@@ -695,12 +599,7 @@ func add_load(index: int, at: Vector3, kilos: float, motion: float = 0.0) -> voi
 
 ## One tick of every platform. The only thing that moves one.
 ##
-## [b]Semi-implicit, and explicit Euler is wrong here in a way that takes a while to
-## see.[/b] Integrating the position from the old velocity adds energy at every step, so a
-## spring that should settle grows instead — a platform that should have stopped wobbling
-## keeps going and eventually throws itself off its own pillar with nobody standing on it.
-## zee-dot-weapons paid for exactly this in its recoil spring; the fix is one line, which
-## is to advance the velocity first and the angle from the NEW velocity.
+## Semi-implicit: advance the velocity first and the angle from the NEW velocity. Explicit Euler adds energy every step, so a settling spring grows until it throws the platform off its pillar.
 func step(delta: float) -> void:
 	if not authoritative or delta <= 0.0:
 		return
@@ -777,10 +676,7 @@ func _step_standing(index: int, deck: Deck, delta: float) -> void:
 	deck.lean_velocity += acceleration * delta
 	deck.lean += deck.lean_velocity * delta
 
-	# The sink is the same spring on one axis, and it is what a player feels as the
-	# platform taking their weight. It is cosmetic in that nothing is decided by it — but
-	# a platform that never moves vertically reads as scenery, and this map needs every
-	# platform to read as something balanced.
+		# The sink is the same spring on one axis, felt as the platform taking weight. Cosmetic, but a platform that never moves vertically reads as scenery.
 	var rest := -deck.load_mass / maxf(config.platform_inertia, 1.0)
 	var sink_acceleration := (rest - deck.sink) * stiffness * 2.4
 	sink_acceleration -= deck.sink_velocity * config.platform_damping * 2.0
@@ -826,16 +722,9 @@ func _step_falling(index: int, deck: Deck, delta: float) -> void:
 
 ## Writes a deck's four numbers onto the body a player actually collides with.
 ##
-## [b]The basis is built from the normal rather than from two Euler angles.[/b] Composing
-## rotations about X and Z gives a different surface depending on which order they are
-## applied in, and the order that happens to be right at five degrees is visibly wrong at
-## fifteen — which is exactly the range this game lives in. A plane has one normal and one
-## basis that carries UP onto it.
+## The basis is built from the normal, not two Euler angles: composing X and Z rotations depends on order, and the order that is right at five degrees is visibly wrong at fifteen.
 func _draw(deck: Deck) -> void:
-	# [b]In the tree as well as valid.[/b] A field cleared between two ticks leaves its
-	# bodies out of the tree and queued for freeing for the rest of the frame, and writing a
-	# transform onto one of those is an engine error with a backtrace attached. See
-	# [method ScPropNet._drawable].
+		# In the tree as well as valid: a field cleared between ticks leaves bodies out of the tree awaiting free, and writing a transform on one is an engine error. See [method ScPropNet._drawable].
 	if deck.body == null or not is_instance_valid(deck.body) or not deck.body.is_inside_tree():
 		return
 
@@ -843,11 +732,7 @@ func _draw(deck: Deck) -> void:
 	var axis := Vector3.UP.cross(normal)
 	var basis := Basis.IDENTITY
 
-	# [b]The near-parallel case first, and the general formula produces NaN in it.[/b] Two
-	# vectors with a zero cross product have no rotation axis, so the axis-angle spelling
-	# divides by zero and fills the basis with NaN — and a NaN transform draws nothing and
-	# collides with nothing, silently. zee-dot-weapons found the same trap in a weapon's
-	# orientation, where it presented as a gun that had failed to load.
+		# The near-parallel case first: a zero cross product has no rotation axis, so the axis-angle form divides by zero and fills the basis with NaN, which draws and collides with nothing.
 	if axis.length() > 0.0001:
 		basis = Basis(axis.normalized(), Vector3.UP.angle_to(normal))
 
@@ -858,10 +743,7 @@ func _draw(deck: Deck) -> void:
 
 ## Metres the surface moved under a point since the last [method step].
 ##
-## [b]The same offset on both sides of the subtraction, which is the whole trick.[/b] What
-## is wanted is what the PLATFORM did, not what the player did: measuring the surface under
-## where they are now against the surface under where they were last tick would fold their
-## own walking into the answer and carry them twice.
+## The same offset on both sides of the subtraction: what is wanted is what the PLATFORM did, and measuring at the old position would fold the player's own walking in and carry them twice.
 func lift_at(index: int, x: float, z: float) -> float:
 	var deck := deck_at(index)
 
@@ -882,13 +764,10 @@ func lift_at(index: int, x: float, z: float) -> float:
 	return is_now - was
 
 
-# --- Being hit --------------------------------------------------------------
 
 ## Something landed on a platform. Returns what it did.
 ##
-## [param kilos] and [param speed] are the falling body's mass and how fast it arrived;
-## everything below is decided from their product, because that is the momentum the
-## platform has to absorb and it is the one number that separates a crate from a monolith.
+## [param kilos] and [param speed] are the body's mass and arrival speed; everything is decided from their product, the momentum the platform absorbs.
 func report_impact(index: int, kilos: float, speed: float, at: Vector3) -> Impact:
 	var deck := deck_at(index)
 
@@ -902,10 +781,7 @@ func report_impact(index: int, kilos: float, speed: float, at: Vector3) -> Impac
 
 	var offset := Vector2(at.x - deck.centre.x, at.z - deck.centre.z)
 
-	# Dead centre is the one case with no lever arm and it still has to do something, or a
-	# monolith dropped exactly on the pillar would be absorbed by a platform that cannot
-	# tell it happened. A minimum arm of a quarter of the platform is a hit that lands
-	# "somewhere", which is the honest answer when the geometry has none.
+		# Dead centre has no lever arm, so a minimum arm of a quarter of the platform keeps a monolith on the pillar from being absorbed unnoticed.
 	if offset.length() < deck.half * 0.25:
 		var direction := offset.normalized() if offset.length() > 0.01 else Vector2(1.0, 0.0)
 		offset = direction * deck.half * 0.25
@@ -961,8 +837,7 @@ func report_impact(index: int, kilos: float, speed: float, at: Vector3) -> Impac
 
 ## Leans every platform at once, which is what an earthquake is.
 ##
-## [param strength] is in radians per second of lean velocity, in a direction drawn from
-## [param stream] so that two peers running the same seed shake the same way.
+## [param strength] is in radians per second of lean velocity, in a direction drawn from [param stream] so peers on one seed shake the same way.
 func shake_all(stream: DotRandomStream, strength: float) -> void:
 	for deck in decks:
 		if not deck.is_standing():
@@ -989,11 +864,7 @@ func _collapse(index: int, deck: Deck, why: StringName) -> void:
 	deck.sink_velocity = minf(deck.sink_velocity, -0.4)
 	deck.health = 0.0
 
-	# [b]The collider goes now, not when the slab has finished falling.[/b] A platform on
-	# its way down is not somewhere to stand: a player left riding it would be carried
-	# forty metres by a floor that is already gone from every other point of view, and
-	# would land alive on the map's own kill plane. What they get instead is the floor
-	# disappearing from under them, which is what a collapse is.
+		# The collider goes now, not when the slab has finished falling: a rider would be carried forty metres by a floor already gone for everyone else and land alive on the kill plane.
 	var collider := deck.body.get_node_or_null(^"Collision") as CollisionShape3D if deck.body != null else null
 
 	if collider != null:
@@ -1008,13 +879,10 @@ func _collapse(index: int, deck: Deck, why: StringName) -> void:
 	})
 
 
-# --- Mirroring --------------------------------------------------------------
 
 ## Adopts a platform's state from the wire. Client side; see [ScPlatformNet].
 ##
-## [b]The state is adopted and the collider follows it.[/b] A client that was told a
-## platform is falling has to take the floor away at the same moment the server did, or a
-## player who is being told they are falling is standing on something.
+## The collider follows the state, so the floor goes at the moment the server took it away.
 func adopt(index: int, lean: Vector2, sink: float, state: int) -> void:
 	var deck := deck_at(index)
 
@@ -1035,11 +903,7 @@ func adopt(index: int, lean: Vector2, sink: float, state: int) -> void:
 		if collider != null:
 			collider.disabled = state != State.STANDING
 
-		# [b]Out of the reverse index the moment it stops STANDING, not when it is gone.[/b]
-		# That index is what a motor's `ground_id` is resolved through, so a platform left in
-		# it while it falls is one a client still believes somebody is standing on — and the
-		# server took it out the instant it came off its pillar. The two ends disagreeing
-		# about what is underfoot is the one thing this whole model exists to prevent.
+				# Out of the reverse index the moment it stops STANDING: that index resolves a motor's `ground_id`, and the server drops it as soon as the platform leaves its pillar, so the two ends must agree about what is underfoot.
 		if state != State.STANDING and deck.body != null and is_instance_valid(deck.body):
 			_by_body.erase(deck.body.get_instance_id())
 
@@ -1050,7 +914,6 @@ func adopt(index: int, lean: Vector2, sink: float, state: int) -> void:
 	_draw(deck)
 
 
-# --- Reporting --------------------------------------------------------------
 
 func describe() -> Dictionary:
 	var standing := 0

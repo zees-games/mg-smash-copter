@@ -38,7 +38,6 @@ const CHANNEL := "sc.audio"
 ## be a path the stand-in always answers for.
 static var SOUND_DIR := ScPaths.rebase("res://audio")
 
-# --- The ids -----------------------------------------------------------------
 
 ## The cannon firing. From the middle of the map, heard everywhere.
 const CANNON_FIRE := &"cannon_fire"
@@ -111,7 +110,6 @@ var muzzle := Vector3.INF
 var _creaking: Dictionary = {}
 
 
-# --- The document -------------------------------------------------------------
 
 ## Every id, in the order a reader would look for them.
 static func ids() -> Array[StringName]:
@@ -330,7 +328,6 @@ static func _flat(id: StringName, bus: StringName, concurrent: int, priority: in
 	return def
 
 
-# --- Building ---------------------------------------------------------------
 
 func setup() -> DotResult:
 	manager = DotAudioManager.new()
@@ -409,7 +406,6 @@ func listen_from(at: Vector3) -> void:
 		manager.listener_position = at
 
 
-# --- What the client hears about ---------------------------------------------
 
 ## A prop turned up. The cannon's bang, if it turned up at the cannon's mouth.
 func on_prop_appeared(at: Vector3) -> bool:
