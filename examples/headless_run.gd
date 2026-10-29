@@ -1,4 +1,4 @@
-extends "headless_run_base.gd"
+extends "headless_run_part3.gd"
 
 
 ## Proves the platforms, the cannon, the round and the chopper all actually work.
@@ -100,104 +100,6 @@ func _run() -> void:
 
 # --- Sections ---------------------------------------------------------------
 
-func _test_config() -> void:
-	_section("the configuration refuses what it cannot play")
-
-	var config := ScConfig.new()
-	_check(config.validate().ok, "the defaults are playable")
-
-	# Armed: each of these is a real contradiction the game cannot run, and every one of
-	# them used to be checked nowhere.
-	var teams := ScConfig.new()
-	teams.team_count = 9
-	_check(not teams.validate().ok, "nine sides is refused")
-
-	var overlapping := ScConfig.new()
-	overlapping.column_pitch = overlapping.platform_size - 1.0
-	_check(not overlapping.validate().ok, "platforms that would overlap are refused")
-
-	var plinth := ScConfig.new()
-	plinth.pillar_radius = plinth.platform_size * 0.5
-	_check(not plinth.validate().ok, "a pillar as wide as its platform is refused")
-
-	var weightless := ScConfig.new()
-	weightless.cannon_tier_weights = PackedFloat32Array([0.0, 0.0, 0.0, 0.0])
-	_check(not weightless.validate().ok, "a cannon that could never choose anything is refused")
-
-	var sinking := ScConfig.new()
-	sinking.chopper_lift = 1.0
-	_check(not sinking.validate().ok, "a chopper that cannot leave the pad is refused")
-
-	var short := ScConfig.new()
-	short.cannon_tier_unlock = PackedFloat32Array([0.0, 1.0])
-	_check(not short.validate().ok, "a tier table with the wrong number of entries is refused")
-
-	_check(
-		is_equal_approx(
-			config.round_seconds(),
-			config.survival_seconds + config.showdown_warmup_seconds + config.showdown_seconds
-		),
-		"a round is both halves and the pause between them"
-	)
-
-	_finished()
-
-
-func _test_layouts() -> void:
-	_section("every layout describes a field somebody could play on")
-
-	var config := ScConfig.new()
-	var layouts := ScLayouts.all(config)
-
-	_check(layouts.size() >= 6, "there are several layouts", "%d" % layouts.size())
-
-	var ids: Dictionary = {}
-	var all_have_platforms := true
-	var all_bridges_land := true
-
-	for layout in layouts:
-		ids[layout.id] = true
-		var cells := layout.cells(config)
-		var platforms: Dictionary = {}
-		var bridges: Array[Vector3i] = []
-
-		for cell: Vector3i in cells:
-			if cell.z == 1:
-				bridges.append(cell)
-			else:
-				platforms["%d,%d" % [cell.x, cell.y]] = true
-
-		if platforms.is_empty():
-			all_have_platforms = false
-
-		# [b]A bridge with nothing at either end of it is a diving board.[/b] The layout
-		# refuses to place one, and this is what says so — it is the only rule in that file
-		# whose absence would be invisible until somebody walked off the end.
-		for bridge in bridges:
-			if not platforms.has("%d,%d" % [bridge.x, bridge.y]):
-				all_bridges_land = false
-
-			if not platforms.has("%d,%d" % [bridge.x, bridge.y + 1]):
-				all_bridges_land = false
-
-	_check(all_have_platforms, "no layout is empty")
-	_check(all_bridges_land, "every bridge has a platform at both ends")
-	_check(ids.size() == layouts.size(), "no two layouts share an id")
-
-	# Seeded, so two servers lay out the same round. The whole reason a seed exists.
-	var one := DotRandomStream.new(4242, &"layout")
-	var two := DotRandomStream.new(4242, &"layout")
-	var picks_agree := true
-
-	for _i in range(24):
-		if ScLayouts.pick(config, one).id != ScLayouts.pick(config, two).id:
-			picks_agree = false
-
-	_check(picks_agree, "two streams on one seed pick the same layouts")
-
-	_finished()
-
-
 func _test_world_builds() -> void:
 	_section("the world comes up")
 
@@ -292,546 +194,8 @@ func _test_world_builds() -> void:
 	_finished()
 
 
-## dot-props' toys on the field: a beach ball on every platform, standing on its deck two
-## seconds on; a walk into one sends it on; a shot pushes it and the combat's trace sees through
-## it. In a world of its own: every other world this suite builds stands on the same spot.
-func _test_the_toys() -> void:
-	_section("a beach ball on every platform")
-	var view := SubViewport.new()
-	view.own_world_3d = true
-	view.render_target_update_mode = SubViewport.UPDATE_DISABLED
-	add_child(view)
-	var config := ScConfig.new()
-	config.warmup_seconds = 0.0
-	config.intermission_seconds = 0.0
-	config.minimum_players = 0
-	config.vary_layout = false
-	var game := ScGame.new()
-	game.name = "ToyWorld"
-	game.config = config
-	game.tick_rate = TICK_RATE
-	game.authoritative = true
-	game.register_service = false
-	view.add_child(game)
-	game.set_physics_process(false)
-	await _physics_frame()
-	await _physics_frame()
-	_check(is_equal_approx(game.match_node.rules.intermission_sec, 0.0) and config.killcam_seconds > 0.0,
-		"the killcam adds nothing to an intermission of 0")
-	config.intermission_seconds = 8.0
-	game.apply_intermission()
-	_check(is_equal_approx(game.match_node.rules.intermission_sec, 8.0 + config.killcam_seconds),
-		"and is added to the pause otherwise", str(game.match_node.rules.intermission_sec))
-	config.intermission_seconds = 0.0
-	game.apply_intermission()
-	var platforms := 0
-	for i in range(game.platforms.count()):
-		platforms += 0 if game.platforms.deck_at(i).is_bridge else 1
-	var box := game.toys
-	_check(box != null and box.count() == platforms and platforms > 0 and box.missing.is_empty(),
-		"one for each of the %d platforms" % platforms, str(box.describe()) if box != null else "none")
-	for _i in range(TICK_RATE * 2):
-		game.simulate(TICK)
-		await _physics_frame()
-	var off: Array = []
-	for toy in box.toys:
-		if toy.body.global_position.distance_to(toy.rest.origin) > 0.6:
-			off.append("%d at %s" % [toy.index, toy.body.global_position.snapped(Vector3.ONE * 0.1)])
-	_check(off.is_empty(), "two seconds on, every ball is still on its platform", "; ".join(off))
-	var ball := box.toy(0)
-	var b0 := ball.body.global_position
-	var shot := DotShot.make(&"test", 0, 0, 0)
-	shot.origin = b0 + Vector3(0.0, 0.0, 5.0)
-	shot.direction = Vector3(0.0, 0.0, -1.0)
-	shot.damage = 25.0
-	shot.max_range = 40.0
-	game._shoot_toys(shot)
-	for _i in range(10):
-		await _physics_frame()
-	_check(ball.body.global_position.distance_to(b0) > 0.3, "a shot sends one rolling", "%.2f m" % ball.body.global_position.distance_to(b0))
-	remove_child(view)
-	view.queue_free()
-	_finished()
-
-
-func _test_a_platform_leans() -> void:
-	_section("a platform leans toward whoever is standing on it")
-
-	var game := await _world()
-	var platforms := game.platforms
-	var deck := platforms.deck_at(0)
-
-	_check(is_zero_approx(deck.tilt()), "it starts level")
-
-	# Eighty kilograms on the +X edge, standing still.
-	var at := deck.centre + Vector3(deck.half * 0.8, 0.0, 0.0)
-
-	for _i in range(40):
-		platforms.begin_loads()
-		platforms.add_load(0, at, 80.0, 0.0)
-		platforms.step(TICK)
-
-	_check(deck.lean.x > 0.0, "it leaned toward the load", "%.4f rad" % deck.lean.x)
-	_check(is_zero_approx(deck.lean.y) or absf(deck.lean.y) < 0.0001,
-		"and not sideways", "%.5f" % deck.lean.y)
-
-	# The surface actually moved under that point, which is the thing a player feels.
-	var under := platforms.surface_y(0, at.x, at.z)
-	_check(under < deck.centre.y, "the surface under the load is lower than the pivot",
-		"%.3f vs %.3f" % [under, deck.centre.y])
-
-	var high := platforms.surface_y(0, deck.centre.x - deck.half * 0.8, deck.centre.z)
-	_check(high > under, "and the far side is higher", "%.3f vs %.3f" % [high, under])
-
-	# Let go, and it comes back. A spring that did not would be a ramp.
-	var leaned := deck.lean.x
-
-	for _i in range(240):
-		platforms.begin_loads()
-		platforms.step(TICK)
-
-	_check(absf(deck.lean.x) < leaned * 0.5, "it settles back when the load goes",
-		"%.4f from %.4f" % [deck.lean.x, leaned])
-	_check(deck.is_standing(), "and it is still standing")
-
-	await _dispose(game)
-	_finished()
-
-
-func _test_walking_is_gentler() -> void:
-	_section("walking leans a platform less than running does")
-
-	var game := await _world()
-	var platforms := game.platforms
-	var config := game.config
-
-	var walking := platforms.deck_at(0)
-	var running := platforms.deck_at(1)
-	var at_walk := walking.centre + Vector3(walking.half * 0.7, 0.0, 0.0)
-	var at_run := running.centre + Vector3(running.half * 0.7, 0.0, 0.0)
-
-	for _i in range(60):
-		platforms.begin_loads()
-		platforms.add_load(0, at_walk, config.player_mass, config.run_speed * config.walk_speed_scale)
-		platforms.add_load(1, at_run, config.player_mass, config.run_speed)
-		platforms.step(TICK)
-
-	_check(running.lean.x > walking.lean.x,
-		"the running player leaned theirs further",
-		"run %.4f vs walk %.4f" % [running.lean.x, walking.lean.x])
-
-	# [b]Armed.[/b] With `platform_motion_gain` at zero the two are identical, which is what
-	# this check exists to notice: a gain that was read by nothing would pass every other
-	# assertion in this file.
-	_check(running.lean.x > walking.lean.x * 1.2,
-		"and by a margin a player could feel",
-		"%.2fx" % (running.lean.x / maxf(walking.lean.x, 0.00001)))
-
-	await _dispose(game)
-	_finished()
-
-
-func _test_a_platform_collapses() -> void:
-	_section("a platform comes off its pillar")
-
-	var game := await _world()
-	var platforms := game.platforms
-	var config := game.config
-
-	var fell: Array[int] = []
-	platforms.collapsed.connect(func(index: int, _why: StringName) -> void: fell.append(index))
-
-	var deck := platforms.deck_at(0)
-	var at := deck.centre + Vector3(deck.half, 0.0, 0.0)
-
-	# A crowd on one edge. Enough to go over, given long enough.
-	for _i in range(600):
-		if not deck.is_standing():
-			break
-
-		platforms.begin_loads()
-		platforms.add_load(0, at, 800.0, config.run_speed)
-		platforms.step(TICK)
-
-	_check(not deck.is_standing(), "enough weight on one edge takes it over",
-		"%.3f rad" % deck.tilt())
-	# An Array rather than a captured counter: a GDScript lambda captures locals BY VALUE, so
-	# an `int` incremented in the handler stays zero outside it and the check reports a
-	# failure for a signal that fired perfectly.
-	_check(fell.has(0), "and it said so")
-
-	# The collider goes NOW, not when the slab has finished falling. A player left riding it
-	# would be carried forty metres by a floor that is gone from every other point of view.
-	var collider := deck.body.get_node_or_null(^"Collision") as CollisionShape3D
-	_check(collider != null and collider.disabled, "the floor is taken away at once")
-	_check(platforms.index_of_body(deck.body.get_instance_id()) == -1,
-		"and nothing can be standing on it")
-
-	# A single big enough impact is the other way, and it does not care about health.
-	var second := platforms.deck_at(1)
-	var outcome := platforms.report_impact(
-		1, config.platform_shatter_impulse * 2.0, 1.0, second.centre + Vector3(1.0, 0.0, 0.0)
-	)
-	_check(outcome == ScPlatforms.Impact.SHATTERED, "one big enough hit shatters a platform")
-	_check(not second.is_standing(), "which takes it off its pillar in the same tick")
-
-	# And a small one does not.
-	var third := platforms.deck_at(2)
-	var gentle := platforms.report_impact(2, 30.0, 6.0, third.centre + Vector3(1.0, 0.0, 0.0))
-	_check(gentle == ScPlatforms.Impact.WOBBLE, "a crate landing only wobbles it")
-	_check(third.is_standing(), "and leaves it standing")
-	_check(third.lean_velocity.length() > 0.0, "though it is moving now",
-		"%.4f rad/s" % third.lean_velocity.length())
-
-	await _dispose(game)
-	_finished()
-
-
-func _test_the_carry() -> void:
-	_section("a leaning platform carries what is standing on it")
-
-	var game := await _world()
-	var platforms := game.platforms
-	var deck := platforms.deck_at(0)
-	var at := deck.centre + Vector3(deck.half * 0.7, 0.0, 0.0)
-
-	# Lean it, then measure what the surface did under one fixed point in one step.
-	for _i in range(30):
-		platforms.begin_loads()
-		platforms.add_load(0, at, 400.0, 0.0)
-		platforms.step(TICK)
-
-	var before := platforms.surface_y(0, at.x, at.z)
-
-	platforms.begin_loads()
-	platforms.add_load(0, at, 400.0, 0.0)
-	platforms.step(TICK)
-
-	var after := platforms.surface_y(0, at.x, at.z)
-	var lift := platforms.lift_at(0, at.x, at.z)
-
-	_check(not is_zero_approx(lift), "the surface moved", "%.5f m" % lift)
-	_check(is_equal_approx(lift, after - before),
-		"and the lift is exactly how far it moved", "%.6f vs %.6f" % [lift, after - before])
-
-	# [b]The same offset on both sides of the subtraction is the whole trick.[/b] What is
-	# wanted is what the PLATFORM did; a lift measured against where the player was last tick
-	# would fold their own walking in and carry them twice.
-	var far_out := platforms.lift_at(0, deck.centre.x - deck.half * 0.7, deck.centre.z)
-	_check(signf(far_out) != signf(lift) or is_zero_approx(far_out),
-		"the far side went the other way", "%.5f vs %.5f" % [far_out, lift])
-
-	# A point over nothing is not carried by anything.
-	_check(is_zero_approx(platforms.lift_at(-1, 0.0, 0.0)), "nothing carries a point over nothing")
-
-	await _dispose(game)
-	_finished()
-
-
-func _test_the_cannon() -> void:
-	_section("the cannon aims")
-
-	var game := await _world()
-	var cannon := game.cannon
-	var plain := ScSpecials.Active.new()
-
-	var sent := cannon.fire(0.0, plain)
-	_check(sent > 0, "it fires", "%d props" % sent)
-	_check(game.props.world_count() > 0, "and the props are in the world")
-
-	# Everything in the first seconds is tier one: the unlock table is what makes the opening
-	# of a round survivable, and a tier that arrived early would be invisible to any check
-	# that only counted props.
-	var early_tiers_ok := true
-
-	for prop in game.props.all_props():
-		if ScContent.tier_of(prop.def) != 1:
-			early_tiers_ok = false
-
-	_check(early_tiers_ok, "and all of them are the small ones at zero seconds")
-
-	# The arc is solved rather than tuned. This is the check that says so: a body launched at
-	# a target reaches it, within the scatter it was given.
-	var target := Vector3(18.0, game.config.deck_height, 6.0)
-	var from := game.arena.muzzle()
-	var velocity := ScCannon.solve_arc(from, target, 25.0, game.config.gravity)
-
-	_check(velocity.y > 0.0, "a solved arc goes up first", "%.1f m/s" % velocity.y)
-
-	# Integrate it by hand, which is the only honest way to check a ballistic solution.
-	var where := from
-	var moving := velocity
-	var closest := INF
-
-	for _i in range(600):
-		moving.y -= game.config.gravity * TICK
-		where += moving * TICK
-		closest = minf(closest, Vector2(where.x - target.x, where.z - target.z).length())
-
-		if where.y < target.y and moving.y < 0.0:
-			break
-
-	_check(closest < 2.0, "and it lands on what it was aimed at", "%.2f m away" % closest)
-	_check(where.y <= target.y + 1.0, "at about the right height", "%.1f m" % where.y)
-
-	# The rate closes as the round goes on, which is what makes the last thirty seconds
-	# different from the first thirty.
-	var opening := cannon.interval_at(0.0, plain)
-	var closing := cannon.interval_at(game.config.survival_seconds, plain)
-	_check(closing < opening, "it speeds up over a round", "%.2f s to %.2f s" % [opening, closing])
-
-	var early_volley := cannon.volley_at(0.0, plain)
-	var late_volley := cannon.volley_at(game.config.survival_seconds, plain)
-	_check(late_volley > early_volley, "and throws more at once",
-		"%d to %d" % [early_volley, late_volley])
-
-	# A prop is on a clock from the moment it leaves, or the map is a scrapyard by the end.
-	#
-	# [b]Named rather than counted, because advancing the cannon also FIRES it.[/b] A check
-	# on `world_count()` measures the old props leaving and the new ones arriving at once,
-	# and passes or fails on which of the two happened to win.
-	var was_up: Array[int] = []
-
-	for prop in game.props.all_props():
-		was_up.append(prop.instance_id)
-
-	cannon.advance(game.config.prop_life_seconds + 1.0, 0.0, plain)
-
-	var survivors := 0
-
-	for prop in game.props.all_props():
-		if was_up.has(prop.instance_id):
-			survivors += 1
-
-	_check(was_up.size() > 0 and survivors == 0, "and takes its props back eventually",
-		"%d of %d left" % [survivors, was_up.size()])
-
-	await _dispose(game)
-	_finished()
-
-
-func _test_an_impact() -> void:
-	_section("something landing leans the platform it landed on")
-
-	var game := await _world()
-	var platforms := game.platforms
-	var deck := platforms.deck_at(0)
-
-	var struck: Array[int] = []
-	platforms.struck.connect(
-		func(index: int, _at: Vector3, _impulse: float, _outcome: int) -> void:
-			struck.append(index)
-	)
-
-	var at := deck.centre + Vector3(deck.half * 0.6, 0.0, 0.0)
-	var outcome := platforms.report_impact(0, 110.0, 14.0, at)
-
-	_check(outcome == ScPlatforms.Impact.WOBBLE, "a boulder wobbles it")
-	_check(struck.has(0), "and it said so")
-	_check(deck.lean_velocity.x > 0.0, "it was pushed toward where it landed",
-		"%.4f rad/s" % deck.lean_velocity.x)
-	_check(deck.sink_velocity < 0.0, "and pressed down", "%.4f m/s" % deck.sink_velocity)
-	_check(deck.health < 1.0, "and it took damage", "%.3f left" % deck.health)
-
-	# [b]Dead centre is the one case with no lever arm, and it still has to do
-	# something.[/b] A monolith dropped exactly on the pillar would otherwise be absorbed by
-	# a platform that cannot tell it happened.
-	var centred := platforms.deck_at(1)
-	var _hit := platforms.report_impact(1, 110.0, 14.0, centred.centre)
-	_check(centred.lean_velocity.length() > 0.0, "a hit dead on the pillar still leans it",
-		"%.4f rad/s" % centred.lean_velocity.length())
-
-	# Impacts add up. A platform that has been hit twice is one more hit from gone.
-	var health_after_one := deck.health
-	var _again := platforms.report_impact(0, 110.0, 14.0, at)
-	_check(deck.health < health_after_one, "two hits are worse than one",
-		"%.3f then %.3f" % [health_after_one, deck.health])
-
-	# And nothing at all happens to a platform that has already gone.
-	var _gone := platforms.collapse(2)
-	var missed := platforms.report_impact(2, 900.0, 40.0, platforms.deck_at(2).centre)
-	_check(missed == ScPlatforms.Impact.NONE, "a platform that has gone cannot be hit again")
-
-	await _dispose(game)
-	_finished()
-
-
-## [b]A stand-in in the showdown turns and fires like a person[/b]: through dot-bot's
-## [DotBotAim] on the game's `bot_difficulty`, driven by the game's own [method ScGame._drive_bots].
-##
-## Until fpt-bots-mg-smash-copter-1 a stand-in's view was set straight onto the nearest enemy
-## every tick, off by a fixed offset per round, with the trigger held from the first tick. So
-## the turn is held to `bot_turn_rate` (the old snap turned a 150 degree corner in one tick),
-## the first shot to `bot_reaction` after it first saw the enemy, and it still hits.
-func _test_a_stand_in_aims() -> void:
-	_section("a stand-in turns, waits and then hits, at bot_difficulty")
-
-	var game := await _world(func(c: ScConfig) -> void:
-		c.survival_seconds = 2.0
-		c.showdown_warmup_seconds = 0.5
-		c.showdown_seconds = 60.0
-		c.warmup_seconds = 0.0
-		c.cannon_enabled = false
-	)
-
-	var shooter := game.add_player(&"shooter", "Shooter", 1)
-	var target := game.add_player(&"target", "Target", 2)
-	game.start()
-
-	await _step(game, int(3.0 * TICK_RATE))
-
-	_check(game.phase == ScGame.Phase.SHOWDOWN and shooter.weapons != null,
-		"the showdown is running and the stand-in is armed", ScGame.Phase.keys()[game.phase])
-
-	# The target eight metres off, and the stand-in facing 150 degrees away from it: outside
-	# every preset's view cone but nightmare's, so it has to turn before it can see.
-	var stand := shooter.controller.state.position
-	var toward := game.arena.showdown_centre() - stand
-	toward.y = 0.0
-	toward = toward.normalized()
-	var facing := rad_to_deg(atan2(-toward.x, -toward.z))
-	shooter.place_at(stand, facing + 150.0)
-	target.place_at(stand + toward * 8.0, rad_to_deg(atan2(toward.x, toward.z)))
-	await _step(game, 2)
-
-	shooter.is_bot = true
-	var profile := DotBotSettings.of(game).profile
-	var before := target.health.health
-	var fastest := 0.0
-	var hit_after := -1.0
-
-	var aim: DotBotAim = null
-	var waited := NAN
-
-	# Stopped at the first hit: a kill ends the round, and the next one is a new aim.
-	for i in range(int(4.0 * TICK_RATE)):
-		var yaw_before := shooter.controller.state.yaw
-		await _step(game, 1)
-		fastest = maxf(fastest, absf(wrapf(shooter.controller.state.yaw - yaw_before, -180.0, 180.0)) * TICK_RATE)
-		aim = game._bot_aim_of(shooter)
-		waited = aim.first_shot_at - aim.engaged_at
-
-		if target.health.health < before:
-			hit_after = float(i + 1) / TICK_RATE
-			break
-
-	_check(fastest <= profile.turn_rate * 1.02, "it turns no faster than bot_turn_rate",
-		"%.0f of %.0f deg/s" % [fastest, profile.turn_rate])
-	_check(fastest > 30.0, "and it does turn", "%.0f deg/s" % fastest)
-	_check(not is_nan(waited) and waited >= profile.reaction * 0.85,
-		"its first shot waits bot_reaction after it first sees the target",
-		"%.2f s against %.2f" % [waited, profile.reaction])
-	_check(hit_after > 0.0, "and then it hits", "after %.2f s" % hit_after)
-
-	await _dispose(game)
-	_finished()
-
-
-func _test_sides_agree() -> void:
-	_section("dot-match puts everybody where the game did")
-
-	var game := await _world()
-
-	# The offline client's own line-up: every stand-in on team 2 before anybody is on 1.
-	# dot-match's default refuses a join that puts a side two ahead, and its elimination
-	# rule counts survivors off its own teams — so a refused stand-in is one it never sees.
-	for i in range(3):
-		game.add_player(StringName("bot%d" % i), "Stand-in", 2)
-	game.add_player(&"local", "You", 1)
-
-	var disagree: Array[String] = []
-	for id: StringName in game.players:
-		if game.match_node.teams.team_of(String(id)) != game.team_of(id):
-			disagree.append(String(id))
-
-	_check(disagree.is_empty(), "every stand-in is on a side dot-match can count",
-		"it disagrees about %s" % ", ".join(disagree))
-
-	await _dispose(game)
-	_finished()
-
-
-func _test_falling_off() -> void:
-	_section("running out of map is fatal")
-
-	var game := await _world()
-
-	var player := game.add_player(&"faller", "Faller", 1)
-	game.add_player(&"other", "Other", 2)
-
-	var deaths: Array[StringName] = []
-	game.player_died.connect(
-		func(id: StringName, _by: StringName, why: StringName) -> void:
-			deaths.append(why)
-	)
-
-	_check(player.is_alive(), "they start up")
-	_check(player.entity_id != 0, "with an entity id")
-	_check(DotEntity.is_kind(player.entity_id, DotEntity.KIND_PLAYER),
-		"and the id says what kind of thing they are")
-
-	# Put them under the floor and step once. A height comparison cannot be stepped over,
-	# which is the whole reason this is not a trigger volume: at terminal velocity a falling
-	# body crosses a thin trigger between two ticks without ever being inside it.
-	player.place_at(Vector3(0.0, game.config.kill_height - 5.0, 0.0), 0.0)
-	game.simulate(TICK)
-
-	_check(not player.is_alive(), "below the floor is dead")
-	_check(deaths.has(ScGame.DIED_FELL), "and it is recorded as a fall",
-		", ".join(Array(deaths).map(func(v: Variant) -> String: return String(v))))
-
-	# How the body falls: the server picked it, it travels on DEATH, and a client builds it from
-	# the figure it draws. A death with no figure drawn here is nothing to build, which _fall
-	# must survive.
-	_check(player.death != null and DotPlayerDeathReactions.stock().has(player.death.reaction),
-		"the server picked how the body falls", str(player.death.describe()) if player.death != null else "none")
-	var carried: Dictionary = ScEvents.read_death(DotNetReader.new(ScEvents.write_death(5, 0, ScGame.DIED_FELL, player.death)))
-	_check(bool(carried["ok"]) and carried.has("death") and (carried["death"] as DotPlayerDeath).reaction == player.death.reaction,
-		"DEATH carries it")
-	var bare := ScEvents.read_death(DotNetReader.new(ScEvents.write_death(5, 0, ScGame.DIED_FELL)))
-	_check(bool(bare["ok"]) and not bare.has("death"), "and a DEATH without it still reads")
-	var client := ScClient.new()
-	client.game = game
-	client._build_ragdolls()
-	client.remove_child(client.ragdolls)
-	add_child(client.ragdolls)
-	client._fall(player)
-	_check(client.ragdolls.live().is_empty(), "no figure drawn, no body, and no error")
-	var other: ScPlayer = game.players[&"other"]
-	var _drawn := other.present_body(false, other.controller.state.position, Color.WHITE)
-	other.death = player.death
-	client._fall(other)
-	_check(client.ragdolls.live().size() == 1 and client.ragdolls.rules == game.ragdoll_rules,
-		"a drawn figure falls as a body, under the game's rules")
-	client.ragdolls.queue_free()
-	client.free()
-
-	# [b]dot-combat keeps a health record per entity and nothing else tells it to let
-	# go.[/b] game-buses-from-hell leaked one per player who ever joined, pointing at a node
-	# freed with them — invisible, because a stale entity is never asked about.
-	var id := player.entity_id
-	_check(game.combat.health_of(id) != null, "the combat manager knows them")
-	game.remove_player(&"faller")
-	_check(game.combat.health_of(id) == null, "and forgets them when they leave")
-	_check(game.entities.key_for_id(id) == &"", "the entity table closes them too")
-
-	await _dispose(game)
-	_finished()
-
-
-## [b]A platform that comes off its pillar takes everybody on it, wherever they stood.[/b]
-##
-## Until 2026-09-25 it took nobody. Measured on all eight layouts, a player on a platform
-## collapsed by lean, 400 ticks later: within about 1.5 m of the middle they had dropped
-## 0.57 m onto the PILLAR's top and were standing on it, and everywhere else they had fallen
-## forty metres onto the FLOOR and were standing on that — because the floor's top is the
-## kill height and the check was `y <= kill_height`, with the motor resting a capsule a skin
-## width above whatever it stands on. Every fall check in this file put a player five metres
-## under the floor with `place_at`, which a real fall never does. Alive at the end of the
-## clock is a seat in the showdown, so either was a free pass; the pillar one was a strategy.
-##
-## So nothing here is placed below anything: four people really fall, from a real collapse
-## and off a real edge, and the section waits for the drop.
+## A platform that comes off its pillar takes everybody on it, wherever they stood.
+## Players really fall from a real collapse and off a real edge (never `place_at` below the floor), and the section waits for the drop.
 func _test_a_collapse_takes_everybody() -> void:
 	_section("a platform off its pillar takes everybody on it, and the floor is fatal")
 
@@ -874,13 +238,11 @@ func _test_a_collapse_takes_everybody() -> void:
 	var deck := platforms.deck_at(index)
 	var safe := platforms.deck_at(spare)
 
-	# On the axis, inside the pillar's radius, just outside it, and — on a different, standing
-	# platform — a step past its edge into the air.
+	# On the axis, inside the pillar's radius, just outside it, and a step past a standing platform's edge.
 	middle.place_at(deck.centre + Vector3(0.0, 1.2, 0.0), 0.0)
 	near.place_at(deck.centre + Vector3(0.8, 1.2, 0.3), 0.0)
 	out.place_at(deck.centre + Vector3(0.0, 1.2, -3.0), 0.0)
-	# Over air on whichever side of it has none beneath for a few metres: a neighbour along
-	# a row is under a metre away, and a step off that side would be a step onto it.
+	# Over air on the side with nothing beneath for a few metres: a neighbour is under a metre away.
 	var off := Vector3.INF
 	for d: Vector3 in [Vector3.RIGHT, Vector3.LEFT, Vector3.BACK, Vector3.FORWARD]:
 		var clear := true
@@ -906,8 +268,7 @@ func _test_a_collapse_takes_everybody() -> void:
 	var went := platforms.collapse(index, ScPlatforms.WHY_LEAN)
 	_check(went, "which comes off its pillar by lean")
 
-	# Six seconds and a quarter: a forty-metre drop is under three, and the rest is anybody
-	# who landed on something standing there.
+	# Six seconds and a quarter: a forty-metre drop is under three; the rest is who landed on something.
 	await _step(game, 400)
 
 	var how := func(who: ScPlayer) -> String:
@@ -942,9 +303,7 @@ func _test_a_collapse_takes_everybody() -> void:
 		"%s, %s" % [how.call(keeper), how.call(other)]
 	)
 
-	# [b]The pillar is still there, and still stops what is thrown at it.[/b] The marker is the
-	# point of leaving it (`pillar_falls_with_platform`), and a prop or a chopper passing
-	# through one would read as a broken map. It is a person it does not hold.
+	# The pillar stays (`pillar_falls_with_platform`) and still stops thrown props; it does not hold a person.
 	_check(
 		deck.pillar != null and is_instance_valid(deck.pillar) and deck.pillar.is_inside_tree(),
 		"the bare pillar is left standing, as the marker it is"
@@ -960,146 +319,8 @@ func _test_a_collapse_takes_everybody() -> void:
 	_finished()
 
 
-func _test_the_round() -> void:
-	_section("a round is two games with a teleport in the middle")
-
-	var game := await _world(func(c: ScConfig) -> void:
-		c.survival_seconds = 4.0
-		c.showdown_warmup_seconds = 1.0
-		c.showdown_seconds = 20.0
-		c.warmup_seconds = 0.0
-		c.cannon_enabled = false
-		c.clear_platforms_for_showdown = false
-	)
-
-	game.add_player(&"a", "A", 1)
-	game.add_player(&"b", "B", 2)
-	game.start()
-
-	await _step(game, 4)
-	_check(game.phase == ScGame.Phase.SURVIVAL, "it starts on the platforms",
-		ScGame.Phase.keys()[game.phase])
-
-	var somewhere: Vector3 = (game.players[&"a"] as ScPlayer).controller.state.position
-	_check(somewhere.y > game.config.deck_height * 0.5, "with everybody up in the air",
-		"%.1f m" % somewhere.y)
-
-	# Past the survival clock.
-	await _step(game, int(4.2 * TICK_RATE))
-	_check(game.phase == ScGame.Phase.HANDOVER, "the clock sends them to the corners",
-		ScGame.Phase.keys()[game.phase])
-
-	var corner: ScPlayer = game.players[&"a"]
-	var expected := game.arena.corner_point(0, game.config.team_count)
-	var moved := Vector2(
-		corner.controller.state.position.x - expected.x,
-		corner.controller.state.position.z - expected.z
-	).length()
-
-	_check(moved < game.config.corner_size, "they are actually in their corner",
-		"%.1f m from the middle of it" % moved)
-	_check(corner.weapons != null, "and they are holding something")
-	_check(corner.health.invulnerable, "and cannot be shot yet")
-
-	# [b]Facing inward, and a teleport that gets the position right and the yaw wrong is
-	# invisible to every count and obvious to every player.[/b] The corner is on +X for team
-	# one, so facing the middle is facing -X, which in this motor's frame is a yaw of -90.
-	var facing := Basis.from_euler(Vector3(0.0, deg_to_rad(corner.controller.state.yaw), 0.0))
-	var middle := game.arena.showdown_centre()
-	var toward_middle := Vector3(
-		middle.x - expected.x, 0.0, middle.z - expected.z
-	).normalized()
-	_check((-facing.z).dot(toward_middle) > 0.7, "looking at the middle",
-		"%.2f" % (-facing.z).dot(toward_middle))
-
-	await _step(game, int(1.2 * TICK_RATE))
-	_check(game.phase == ScGame.Phase.SHOWDOWN, "and then the weapons go hot",
-		ScGame.Phase.keys()[game.phase])
-	_check(not corner.health.invulnerable, "with nobody protected any more")
-
-	# The round ends when a side has nobody left, which is dot-match's elimination rule
-	# reading this game's own `alive_fn`. Unwired it falls back to a clock, and the tell is
-	# visible in the first round played.
-	var ended: Array[int] = []
-	game.round_over.connect(func(_number: int, winner: int) -> void: ended.append(winner))
-
-	game.players[&"b"].health.health = 0.0
-	game.players[&"b"].health.alive = false
-
-	await _step(game, 8)
-
-	_check(not ended.is_empty(), "the round ends when a side is wiped out")
-	_check(ended.is_empty() or ended[0] == 1, "and the other side won",
-		"winner=%d" % (ended[0] if not ended.is_empty() else -1))
-
-	await _dispose(game)
-	_finished()
-
-
-func _test_specials() -> void:
-	_section("specials multiply and stack")
-
-	var plain := ScSpecials.Active.new()
-	_check(plain.is_plain(), "nothing in force is nothing in force")
-	_check(is_equal_approx(plain.gravity_scale, 1.0), "and multiplies nothing")
-
-	var feather := ScSpecials.by_id(&"feather")
-	var barrage := ScSpecials.by_id(&"barrage")
-	_check(feather != null and barrage != null, "the catalogue has the ones it says it has")
-
-	var both := ScSpecials.Active.new()
-	both.fold(feather)
-	both.fold(barrage)
-
-	_check(both.ids.size() == 2, "two at once is two at once")
-	_check(both.gravity_scale < 1.0, "low gravity is still low gravity",
-		"%.2f" % both.gravity_scale)
-	_check(both.cannon_interval_scale < 0.5, "and the barrage is still a barrage",
-		"%.2f" % both.cannon_interval_scale)
-
-	# An allow-list of ids that names nothing is an operator's typo, and a server whose
-	# specials silently never happen is worse than one that ignores the setting.
-	var mistyped := ScConfig.new()
-	mistyped.special_ids = PackedStringArray(["not_a_special"])
-	_check(ScSpecials.available(mistyped).size() == ScSpecials.all().size(),
-		"a special list naming nothing falls back to everything")
-
-	var narrowed := ScConfig.new()
-	narrowed.special_ids = PackedStringArray(["feather", "slick"])
-	_check(ScSpecials.available(narrowed).size() == 2, "and a real list narrows it")
-
-	# It reaches the world: low gravity is one call on the physics space and one on every
-	# player's tunables, and a special that changed neither would be a document nothing reads.
-	var game := await _world(func(c: ScConfig) -> void:
-		c.specials_enabled = false
-	)
-	var player := game.add_player(&"light", "Light", 1)
-	var before := player.controller.tunables.gravity
-
-	player.retune(both)
-	_check(player.controller.tunables.gravity < before, "a player's own gravity comes down",
-		"%.1f from %.1f" % [player.controller.tunables.gravity, before])
-	_check(player.controller.tunables.max_speed > 0.0, "and they can still move")
-
-	await _dispose(game)
-	_finished()
-
-
-## [b]The half of this game that is a gunfight, asserted for the first time.[/b]
-##
-## Everything else here checks that a weapon EXISTS: that a survivor is holding one, that
-## the fire counter goes up, that hitboxes are registered, that a health record is kept. The
-## round test kills its loser by assigning `health = 0.0`. So every check in this repository
-## passed on a showdown in which no shot had ever reduced anybody's health, and there was no
-## way to tell from the inside.
-##
-## What made it visible was running bots against each other for twenty rounds: every round
-## ended with exactly two alive and a draw, which is one survivor per side, every time. A
-## number that is the same every round is a number nothing is deciding.
-##
-## So this is the whole chain in one check — a command's button, the arsenal's tick, the
-## shot it emits, the trace against the world, the hitbox it finds, the damage rules, and
-## the health record — and it is the only check here that fails if any link in it breaks.
+## The gunfight chain in one check: button, arsenal tick, shot, trace, hitbox, damage rules, health record.
+## Every other check can pass with health set by hand; only this one fails if a link breaks.
 func _test_a_shot_lands() -> void:
 	_section("a shot finds a player")
 
@@ -1331,112 +552,6 @@ func _test_the_chopper() -> void:
 	_finished()
 
 
-## A player standing on a chopper goes where it goes.
-func _test_riding_the_chopper() -> void:
-	_section("a player standing on a chopper is carried by it")
-
-	var game := await _world(func(c: ScConfig) -> void:
-		c.cannon_enabled = false
-		c.specials_enabled = false
-		c.chopper_enabled = true
-		c.layout_ids = PackedStringArray(["airfield"])
-	)
-
-	_check(game.layout != null and game.layout.with_chopper and not game._copter_ids.is_empty(),
-		"the airfield parks a chopper")
-
-	var copter := game.vehicles.get_vehicle(game._copter_ids[0]) if not game._copter_ids.is_empty() else null
-
-	if copter == null:
-		_check(false, "and it can be stood on")
-		_check(false, "and it takes its rider with it")
-		_check(false, "and the rider is still on it")
-		_check(false, "and getting off leaves them where they stepped")
-		await _dispose(game)
-		_finished()
-		return
-
-	var body := copter.body()
-	_check(body.has_meta(ScPlayer.META_CARRIER), "it is marked as something that carries")
-
-	# Held where it is and moved by hand, so the check is the carry and not the flying.
-	body.freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
-	body.freeze = true
-	body.global_position = Vector3(0.0, game.config.deck_height + 30.0, 0.0)
-	body.global_rotation = Vector3.ZERO
-
-	var rider := game.add_player(&"rider", "Rider", 1)
-	game.add_player(&"other", "Other", 2)
-	rider.place_at(body.global_position + Vector3(0.0, 2.2, 0.0), 0.0)
-	await _step(game, 30)
-
-	var on_it := rider.controller.state.ground_id == body.get_instance_id()
-	_check(on_it, "and it can be stood on",
-		"standing on %s" % str(rider.controller.state.ground_id))
-
-	var start_x := rider.controller.state.position.x
-	var start_y := rider.controller.state.position.y
-
-	for _i in range(40):
-		body.global_position += Vector3(0.3, 0.05, 0.0)
-		game.simulate(TICK)
-		await _physics_frame()
-
-	var carried_x := rider.controller.state.position.x - start_x
-	var carried_y := rider.controller.state.position.y - start_y
-	_check(carried_x > 10.0 and carried_y > 1.0, "and it takes its rider with it",
-		"%.1f m along, %.1f m up of 12 and 2" % [carried_x, carried_y])
-	_check(rider.controller.state.ground_id == body.get_instance_id(),
-		"and the rider is still on it")
-
-	# Off it: sideways, onto nothing, and then it is no longer theirs to move.
-	rider.place_at(body.global_position + Vector3(30.0, 2.2, 0.0), 0.0)
-	var left_at := rider.controller.state.position.x
-	body.global_position += Vector3(5.0, 0.0, 0.0)
-	await _step(game, 5)
-	_check(absf(rider.controller.state.position.x - left_at) < 1.0,
-		"and getting off leaves them where they stepped",
-		"%.2f m" % (rider.controller.state.position.x - left_at))
-
-	await _dispose(game)
-	_finished()
-
-
-## dot-core's audit over every layout's field: drawn geometry nothing collides with is walked
-## through. Strict, so a new mesh must have a shape or say (`dot_no_collision`) why not.
-func _test_collision_audit() -> void:
-	_section("nothing drawn in a layout is walked through")
-
-	var game := await _world(func(c: ScConfig) -> void:
-		c.cannon_enabled = false
-		c.specials_enabled = false
-	)
-	var unshaped := PackedStringArray()
-
-	for layout in ScLayouts.all(game.config):
-		game.platforms.build(layout, game.physics)
-		await _physics_frame()
-		var res := DotCollisionAudit.audit(game, true)
-
-		if res.ok:
-			var report: DotCollisionAudit = res.value
-			print("  ..    %s collision audit: %d of %d" % [String(layout.id), report.count(), report.examined])
-
-			if report.count() > 0:
-				unshaped.append("%s (%d)" % [layout.id, report.count()])
-
-				for line in report.describe_lines().slice(1, 12):
-					print("    %s" % line)
-		else:
-			unshaped.append("%s (audit failed: %s)" % [layout.id, res.error.message])
-
-	_check(unshaped.is_empty(), "every layout's drawn geometry is solid or opted out", ", ".join(unshaped))
-	# Gone before the next section: its decks sit in the shared physics space, and a later
-	# section's runners would stand on them.
-	await _dispose(game)
-	_finished()
-
-
 ## Every piece the new layouts are made of stands, and comes off its pillar like any other.
 func _test_the_pieces() -> void:
 	_section("ramps, towers and stepped islands stand at their heights and fall like platforms")
@@ -1493,8 +608,7 @@ func _test_the_pieces() -> void:
 		_check(towers > 0 or id == &"terraces", "%s has its towers" % label)
 		_check(ramps > 0 or id == &"terraces", "%s has ramps" % label)
 
-		# Every piece has a pillar that reaches the floor from its own height, and each is
-		# standing at first.
+		# Every piece has a pillar that reaches the floor from its own height, standing at first.
 		var pillars_ok := true
 
 		for i in range(platforms.count()):
@@ -1523,8 +637,7 @@ func _test_the_pieces() -> void:
 		_check(bool(back["ok"]) and came == cells,
 			"%s: every piece's kind and level crosses the wire" % label)
 
-		# Each kind of piece comes off its pillar when it is leant on, and takes the bridges
-		# resting on it along. Tried on a fresh build for each, on the highest piece.
+		# Each kind of piece comes off its pillar when leant on and takes its bridges along (fresh build each).
 		var highest := 0
 
 		for i in range(platforms.count()):
@@ -1610,51 +723,6 @@ func _test_the_pieces() -> void:
 	_finished()
 
 
-## The layouts are dot-map's maps: listed, changeable by command, voted from the catalogue.
-func _test_the_map_catalogue() -> void:
-	_section("the layouts are listed, changed and voted as dot-map maps")
-
-	var config := ScConfig.new()
-	var catalogue := ScLayouts.catalogue(config)
-	var layouts := ScLayouts.allowed(config)
-
-	_check(catalogue.size() == layouts.size() and catalogue.problems().is_empty(),
-		"every layout is a valid map def", "%d of %d; %s" % [
-			catalogue.size(), layouts.size(), ", ".join(catalogue.problems())])
-	_check(catalogue.has(&"ring") and catalogue.has(&"terraces") and catalogue.has(&"watchtowers"),
-		"and the bigger maps are in it")
-
-	var session := ScMapSession.new()
-	session.catalogue = catalogue
-	var asked: Array[StringName] = []
-	session.apply_fn = func(id: StringName) -> DotResult:
-		asked.append(id)
-		return DotResult.success(id)
-	add_child(session)
-
-	var changed := await session.change_to(&"ring")
-	_check(changed.ok and asked == [&"ring"] and session.current != null and session.current.id == &"ring",
-		"a change through the session reaches the game and becomes current")
-
-	var refused := await session.change_to(&"nowhere")
-	_check(not refused.ok and asked.size() == 1, "and an unknown map is refused")
-
-	session.apply_fn = func(_id: StringName) -> DotResult:
-		return DotResult.fail(DotError.CODE_STATE, "no")
-	var failed := await session.change_to(&"terraces")
-	_check(not failed.ok and session.current.id == &"ring", "and a refusal leaves the map as it was")
-
-	remove_child(session)
-	session.free()
-
-	# And a server that has the module has the commands.
-	var game := await _world()
-	var ids := ScLayouts.catalogue(game.config)
-	_check(ids.size() >= 9, "the catalogue lists the whole set", "%d maps" % ids.size())
-	await _dispose(game)
-	_finished()
-
-
 ## [b]The one thing neither the suite nor the editor can see: what happens once this is a
 ## pack.[/b] Every finding in this section came from a delivered server rather than from
 ## here, and each is a check written afterwards so the next one is caught before the boot.
@@ -1668,9 +736,7 @@ func _test_reach() -> void:
 	var config := game.config
 	var platforms := game.platforms
 
-	# [b]The arithmetic first, so a wrong answer below is a wrong map and not wrong sums.[/b]
-	# Read off the controller's own tunables: flat, a running jump is the run speed times
-	# the whole airtime; above the apex it is no jump at all.
+	# The arithmetic first, read off the controller's tunables: flat, a jump is run speed times airtime.
 	var t := ScPlayer.tunables_for(config, null)
 	var flat := ScPlayer.jump_reach(config, 0.0)
 	var airtime := 2.0 * sqrt(2.0 * t.gravity * t.jump_height) / t.gravity
@@ -1698,8 +764,7 @@ func _test_reach() -> void:
 		for pair: Vector3i in ScLayouts.pairs(cells):
 			var declared := (layout.jumps & pair.z) != 0
 
-			# Both ways, because the dip is the LAUNCH platform's and two platforms need
-			# not lean alike.
+			# Both ways: the dip is the LAUNCH platform's.
 			for way: Vector2i in [Vector2i(pair.x, pair.y), Vector2i(pair.y, pair.x)]:
 				var air := platforms.clear_air(way.x, way.y)
 				var gap := air.y
@@ -1709,8 +774,7 @@ func _test_reach() -> void:
 				if declared:
 					meant += 1
 					var dip := _run_up_dip(platforms, config, way.x, way.y, air.x)
-					# A landing that is a level higher is that much more to rise: the stepped
-					# layouts put their platforms at different heights on purpose.
+					# A landing a level higher is that much more to rise (stepped layouts).
 					dip += maxf(
 						platforms.deck_at(way.y).centre.y - platforms.deck_at(way.x).centre.y, 0.0)
 					var reach := ScPlayer.jump_reach(config, dip)
@@ -1722,8 +786,7 @@ func _test_reach() -> void:
 						tightest_margin = reach - gap
 						tightest = "%s %.2f m of %.2f" % [label, gap, reach]
 				elif gap <= flat:
-					# The most generous jump there is: flat, at a run. Anything inside it is
-					# a crossing the layout never meant and a player will find.
+					# The most generous jump: flat, at a run; anything inside it is a crossing nobody meant.
 					too_near.append("%s %.2f m of air, inside %.2f m" % [label, gap, flat])
 
 		if layout.jumps != 0 and meant == 0:
@@ -1754,144 +817,8 @@ func _test_reach() -> void:
 	_finished()
 
 
-func _test_the_throat() -> void:
-	_section("nothing is built over the cannon's mouth, and every shot gets out")
-
-	var game := await _world(func(c: ScConfig) -> void:
-		c.specials_enabled = false
-	)
-	var config := game.config
-	var platforms := game.platforms
-	var muzzle := game.arena.muzzle()
-	var active := ScSpecials.Active.new()
-
-	var crowded := PackedStringArray()
-	var margins := PackedStringArray()
-	var stuck := PackedStringArray()
-	var fired := 0
-
-	for layout in ScLayouts.all(config):
-		platforms.build(layout, game.physics)
-		await _physics_frame()
-		await _physics_frame()
-
-		var clear := platforms.clearance_from(muzzle.x, muzzle.z)
-		margins.append("%s %.1f" % [layout.id, clear])
-
-		if clear < ScArena.THROAT_CLEARANCE:
-			crowded.append("%s %.2f m" % [layout.id, clear])
-
-		# [b]Fired, not only measured[/b], and with every tier unlocked: at the start of a
-		# round the cannon throws crates, and a crate gets through a slot a monolith does
-		# not. Eight shots a layout, each watched for half a second.
-		var blocked := 0
-
-		for _shot in range(8):
-			var prop: DotPropInstance = game.cannon.call("_launch_one", 1000.0, active)
-
-			if prop == null:
-				continue
-
-			fired += 1
-			var top := -INF
-
-			for _t in range(32):
-				game.simulate(TICK)
-				await _physics_frame()
-				var body := prop.body()
-
-				if body == null or not is_instance_valid(body):
-					break
-
-				top = maxf(top, body.global_position.y)
-
-			if top < config.deck_height + 2.0:
-				blocked += 1
-
-			var _gone := game.props.remove(prop.instance_id, DotPropSpawner.REASON_CLEANUP)
-
-		if blocked > 0:
-			stuck.append("%s %d of 8" % [layout.id, blocked])
-
-	_check(crowded.is_empty(), "no layout builds anything over the cannon's mouth",
-		"; ".join(crowded) if not crowded.is_empty() else ", ".join(margins))
-	_check(fired == 8 * ScLayouts.all(config).size() and stuck.is_empty(),
-		"and every shot on every layout climbs past the decks",
-		"%d fired; %s" % [fired, ", ".join(stuck) if not stuck.is_empty() else "none held"])
-
-	await _dispose(game)
-	_finished()
-
-
-## The ring's cover: one block per team, facing that team's pad, and it covers.
-func _test_the_ring_cover() -> void:
-	_section("the ring has cover, and it faces the pads")
-
-	for sides: int in [2, 3]:
-		var game := await _world(func(c: ScConfig) -> void:
-			c.team_count = sides
-			c.cannon_enabled = false
-			c.specials_enabled = false
-		)
-		await _physics_frame()
-
-		var middle := game.arena.showdown_centre()
-		var ring := game.config.corner_size * 0.85
-		var cover := game.arena.ring_cover()
-		var built := 0
-
-		for index in range(cover.size()):
-			if game.arena.has_node(NodePath("Showdown/RingCover%d" % index)):
-				built += 1
-
-		var on_ring := true
-
-		for block in cover:
-			var d := block.origin - middle
-			if absf(d.x) > ring - 1.5 or absf(d.z) > ring - 1.5:
-				on_ring = false
-
-		_check(cover.size() == sides and built == sides and on_ring,
-			"with %d sides, one block per side stands on the ring" % sides,
-			"%d described, %d built, on the ring %s" % [cover.size(), built, on_ring])
-
-		# From every pad: a person crouched right behind that pad's block is out of sight,
-		# and a person standing there is not, which is what chest high means.
-		var space := game.arena.get_world_3d().direct_space_state
-		var hidden := 0
-		var seen := 0
-
-		for index in range(sides):
-			var eye := game.arena.corner_point(index, sides) + Vector3.UP * 1.6
-			var block := cover[index]
-			var inward := (middle - block.origin)
-			inward.y = 0.0
-			inward = inward.normalized()
-			var behind := block.origin + inward * (ScArena.RING_COVER_SIZE.z * 0.5 + 0.4)
-			var crouched := Vector3(behind.x, middle.y + 0.7, behind.z)
-			var standing := Vector3(behind.x, middle.y + 1.6, behind.z)
-
-			var low := space.intersect_ray(PhysicsRayQueryParameters3D.create(eye, crouched))
-			var high := space.intersect_ray(PhysicsRayQueryParameters3D.create(eye, standing))
-
-			if not low.is_empty() and String((low["collider"] as Node).name).begins_with("RingCover"):
-				hidden += 1
-			if high.is_empty():
-				seen += 1
-
-		_check(hidden == sides and seen == sides,
-			"and from each pad it hides somebody crouched behind it, not somebody standing",
-			"%d of %d hidden, %d of %d seen over it" % [hidden, sides, seen, sides])
-
-		await _dispose(game)
-
-	_finished()
-
-
-## The flanks (2026-09-29): a perch between every two pads, joined to both by a catwalk
-## that never touches the ring. Built from [method ScArena.flank_walks], walked end to end
-## at a run by a bot from its own pad to the next side's, and — with two sides — the line
-## on the ring the blocks do not cover. `tools/shot.sh --view=flank` is the render.
+## The flanks: a perch between every two pads, joined by catwalks that never touch the ring.
+## Walked end to end at a run; `tools/shot.sh --view=flank` renders it.
 func _test_the_flanks() -> void:
 	_section("the flanks: a perch between every two pads, the long way round at a run")
 
@@ -2068,10 +995,8 @@ func _test_the_flanks() -> void:
 	_finished()
 
 
-## The dais (2026-10-01): a 4 m block 0.9 m high on the ring's middle. Run to from a pad
-## and jumped onto, at a run; somebody crouched against its far side is hidden from any pad
-## or perch; and from its top every pad and every perch is in sight.
-## `tools/shot.sh --view=dais` is the render.
+## The dais: a 4 m block on the ring's middle, jumped onto, hiding a crouched player from pads and perches.
+## `tools/shot.sh --view=dais` renders it.
 func _test_the_dais() -> void:
 	_section("the ring's dais: one jump up, cover that turns, and the high ground")
 
@@ -2336,15 +1261,9 @@ func _test_the_showdown_walk() -> void:
 	_finished()
 
 
-## [b]A catwalk stops at the ring's edge and at its pad's, and at neither short of it.[/b]
-##
-## Until 2026-09-29 a catwalk was a rectangle measured along its middle as if it met both
-## edges square on, which with three sides ran it up to 3.2 m on into the ring, coplanar
-## with it, carrying its kerbs in as stubs on the ring's floor (`tools/shot.sh
-## --view=junction --sc-team-count=3`). Read off the BUILT colliders rather than off
-## `ScArena.catwalk()`, and the edges found by marching rather than by its arithmetic, so a
-## description that agreed with itself and not with the world would fail here. Two and four
-## sides meet every edge square on; three meets two of them at an angle.
+## A catwalk stops at the ring's edge and its pad's, at neither short of it.
+## Read off the built colliders and marched edges, so a description agreeing only with itself fails.
+## Two and four sides meet square on; three meets two of them at an angle.
 func _test_catwalks_meet_their_edges() -> void:
 	_section("a catwalk meets the ring and its pad, and runs into neither")
 
@@ -2355,7 +1274,6 @@ func _test_catwalks_meet_their_edges() -> void:
 			c.specials_enabled = false
 		)
 		await _physics_frame()
-
 		var middle := game.arena.showdown_centre()
 		var ring := game.arena.ring_half()
 		var pad_half := game.config.corner_size * 0.5
@@ -2363,7 +1281,6 @@ func _test_catwalks_meet_their_edges() -> void:
 		var in_ring := PackedStringArray()
 		var in_pad := PackedStringArray()
 		var air := PackedStringArray()
-
 		for index in range(sides):
 			var body := game.arena.get_node(NodePath("Showdown/Catwalk%d" % index)) as StaticBody3D
 			var corner := game.arena.corner_point(index, sides)
@@ -2411,8 +1328,7 @@ func _test_catwalks_meet_their_edges() -> void:
 					in_pad.append("Catwalk%d at %.2f, %.2f" % [index, p.x - corner.x, p.z - corner.z])
 					break
 
-			# Across the whole width, 5 cm past each edge the ground is this catwalk. The
-			# edges are found by walking out along the line in centimetres.
+			# Across the whole width, 5 cm past each edge the ground is this catwalk (edges walked out in cm).
 			var out := Vector2(corner.x - middle.x, corner.z - middle.z).normalized()
 			var across := Vector2(out.y, -out.x)
 			var reach := Vector2(corner.x - middle.x, corner.z - middle.z).length()
@@ -2451,76 +1367,7 @@ func _test_catwalks_meet_their_edges() -> void:
 	_finished()
 
 
-func _test_the_zigzag() -> void:
-	_section("the chequerboard is crossed on the diagonals and only on them")
-
-	var game := await _world(func(c: ScConfig) -> void:
-		c.cannon_enabled = false
-		c.specials_enabled = false
-		c.layout_ids = PackedStringArray(["checker"])
-	)
-	var platforms := game.platforms
-
-	# Through the operator's own knob, so the render and a server running it are the same
-	# field this drives.
-	_check(game.layout != null and game.layout.id == &"checker",
-		"the round is laid out as the chequerboard",
-		String(game.layout.id) if game.layout != null else "none")
-
-	var runner := game.add_player(&"runner", "Runner", 1)
-	game.add_player(&"other", "Other", 2)
-
-	# Along the whole field: (0,0) (1,1) (2,0) (3,1) (4,0). Four jumps, each one a
-	# diagonal, each from the middle of a platform that is leaning under the person on it.
-	var route: Array[int] = []
-
-	for column in range(game.config.columns):
-		route.append(_deck_at_cell(platforms, column, column % 2))
-
-	_check(not route.has(-1), "the zigzag is all there", str(route))
-
-	var start := platforms.deck_at(route[0])
-	runner.place_at(start.centre + Vector3.UP * 0.2, 0.0)
-	await _step(game, 20)
-
-	var made := PackedStringArray()
-
-	for leg in range(route.size() - 1):
-		var from := route[leg]
-		var to := route[leg + 1]
-		await _walk_to(game, runner, platforms.deck_at(from).centre)
-		var landed := await _jump_across(game, runner, from, to)
-		made.append("%s%s" % [_cell_name(platforms, to), "" if landed else " MISSED"])
-
-		if not landed:
-			break
-
-	_check(made.size() == route.size() - 1 and not ", ".join(made).contains("MISSED"),
-		"a runner crosses the field on four diagonals", ", ".join(made))
-	_check(runner.is_alive() and runner.standing_on == route[route.size() - 1],
-		"and is standing on the far corner platform at the end",
-		"on %d, alive %s" % [runner.standing_on, runner.is_alive()])
-	_check(platforms.standing_count() == platforms.count(),
-		"with every platform they crossed still up",
-		"%d of %d" % [platforms.standing_count(), platforms.count()])
-
-	# [b]And the straight line is a fall, which is the other half of "every jump is a
-	# diagonal".[/b] From the far corner back along the row toward (2,0), jumping at the lip.
-	var along := _deck_at_cell(platforms, game.config.columns - 3, 0)
-	await _walk_to(game, runner, platforms.deck_at(route[route.size() - 1]).centre)
-	var crossed := await _jump_across(game, runner, route[route.size() - 1], along)
-	_check(not crossed and runner.controller.state.position.y < game.config.deck_height - 3.0,
-		"and running straight along a row is a fall",
-		"%.1f m" % runner.controller.state.position.y)
-
-	await _dispose(game)
-	_finished()
-
-
-## The Spine's blurb: "the walkways are the steady ground". Until 2026-09-24 a bridge was a
-## spring of its own pivoting on a pillar it does not have, and one runner at its end leaned
-## it 9.7 degrees against 7.9 for the same runner at a platform's edge; two took it down.
-## See [method ScPlatforms._rest_bridges].
+## The Spine: a bridge must not lean more than a platform edge (see [method ScPlatforms._rest_bridges]).
 func _test_the_spine() -> void:
 	_section("The Spine's walkways are the steady ground")
 
@@ -2739,11 +1586,8 @@ func _test_two_islands() -> void:
 	_finished()
 
 
-## Hollow Centre's blurb: "Nothing in the middle. The cannon has to reach for you and it
-## will." Until 2026-10-03 `Gaps.HOLLOW` took the middle three columns of five, so the field
-## was two strips of a platform, a bridge and a platform; with only the middle column gone
-## each half is a U round the hole. This runs a side round its U — a jump along a row, the
-## outer bridge, a jump along the other row — and then at the other U, which is a fall.
+## Hollow Centre: with only the middle column gone each half is a U round the hole.
+## Runs a side round its U, then at the other U, which is a fall.
 func _test_hollow_centre() -> void:
 	_section("Hollow Centre is two U's round the hole, and the hole is not crossed")
 
@@ -2878,12 +1722,8 @@ func _test_hollow_centre() -> void:
 	_finished()
 
 
-## Broadside's blurb: "Pushed apart, half the bridges, and a chopper over the middle of it."
-## Until 2026-09-30 the chopper was on the Airfield's pad, a third of the way out on a 45
-## degree line — (3,1) here, two jumps from the second side's start and four jumps and a
-## bridge from the first's. It is parked on the middle column now, and this runs both sides
-## to it at the layout's own 3.4 m jumps (which the reach section only measured) and puts
-## each of them in it.
+## Broadside: the chopper is parked on the middle column; runs both sides to it at the layout's own
+## 3.4 m jumps (the reach section only measured them) and puts each of them in it.
 func _test_broadside() -> void:
 	_section("Broadside's chopper is over the middle, and either side can run to it and take it")
 
@@ -3157,277 +1997,6 @@ func _test_the_airfield() -> void:
 	_finished()
 
 
-## Watchtowers' blurb: "The rows meet only at two towers. Climb the ramp, hold the high
-## ground, and mind the drop." The rail is opened where a ramp arrives (`ScPlatforms._open_rail`),
-## and this runs a side up one ramp, over the tower and down the other onto the far row.
-## The layout checks of [method _test_watchtowers]: the islands and the rails.
-func _watchtowers_layout(game: ScGame) -> void:
-	var platforms := game.platforms
-	var config := game.config
-
-	_check(game.layout != null and game.layout.id == &"watchtowers",
-		"the round is laid out as Watchtowers",
-		String(game.layout.id) if game.layout != null else "none")
-
-	# The rows meet only at the towers: one island with them, and the two rows apart without
-	# them and their ramps.
-	var cells := platforms.cells()
-	var rows_only: Array[Vector3i] = []
-
-	for cell in cells:
-		if ScLayouts.kind_of(cell) == ScLayouts.KIND_PLATFORM:
-			rows_only.append(cell)
-
-	var whole := ScLayouts.islands(cells, game.layout.jumps)
-	var apart := ScLayouts.islands(rows_only, game.layout.jumps)
-	var whole_count := {}
-	var apart_count := {}
-
-	for i in whole:
-		whole_count[i] = true
-
-	for i in apart:
-		apart_count[i] = true
-
-	_check(whole_count.size() == 1 and apart_count.size() == 2,
-		"the rows are one field through the towers, and two without them",
-		"%d island(s) with the towers, %d without" % [whole_count.size(), apart_count.size()])
-
-	# The rail is open where each ramp arrives and closed on the two sides that drop away,
-	# on this layout's two towers and on every tower of The Ring.
-	var shut := PackedStringArray()
-
-	for id: StringName in [&"watchtowers", &"ring"]:
-		if id != &"watchtowers":
-			platforms.build(ScLayouts.by_id(config, id), game.physics)
-			await _physics_frame()
-
-		for i in range(platforms.count()):
-			var deck := platforms.deck_at(i)
-
-			if not deck.is_tower:
-				continue
-
-			var ramps := {}
-
-			for j in range(platforms.count()):
-				var span := platforms.deck_at(j)
-
-				if span.is_bridge and span.supports.x == i:
-					ramps[ScPlatforms.RAIL_SIDE_PLUS_Z] = true
-
-				if span.is_bridge and span.supports.y == i:
-					ramps[ScPlatforms.RAIL_SIDE_MINUS_Z] = true
-
-			for side in range(4):
-				var left := platforms.rail_pieces(i, side)
-
-				if (left == 0) != ramps.has(side):
-					shut.append("%s %s side %d: %d pieces%s" % [id, _cell_name(platforms, i), side,
-						left, " over a ramp" if ramps.has(side) else ""])
-
-	_check(shut.is_empty(),
-		"every tower's rail is open where a ramp arrives, and only there",
-		", ".join(shut) if not shut.is_empty() else "watchtowers and ring")
-
-
-## Runs a side up one ramp and over the tower and down the other, returning what it measured.
-func _watchtowers_route(game: ScGame) -> Dictionary:
-	var platforms := game.platforms
-	var runner := game.add_player(&"runner", "Runner", 1)
-	game.start()
-	await _step(game, 20)
-
-	var start := _deck_at_cell(platforms, 1, 0)
-	var foot := _deck_at_cell(platforms, 0, 0)
-	var far := _deck_at_cell(platforms, 0, 2)
-	var tower := -1
-
-	for i in range(platforms.count()):
-		var deck := platforms.deck_at(i)
-
-		if deck.is_tower and deck.column == 0:
-			tower = i
-
-	var made := PackedStringArray()
-	var length := 0.0
-	var peak := -INF
-
-	if start < 0 or foot < 0 or far < 0 or tower < 0:
-		made.append("no route: (1,0) %d, (0,0) %d, tower %d, (0,2) %d MISSED" % [
-			start, foot, tower, far])
-	else:
-		var stops := [start, foot, tower, far]
-
-		for leg in range(stops.size() - 1):
-			var a := platforms.deck_at(stops[leg]).centre
-			var b := platforms.deck_at(stops[leg + 1]).centre
-			length += Vector2(b.x - a.x, b.z - a.z).length()
-
-		runner.place_at(platforms.deck_at(start).centre + Vector3.UP * 0.2, 0.0)
-		await _step(game, 20)
-		_track(runner)
-
-		await _walk_to(game, runner, platforms.deck_at(start).centre)
-		var landed := await _jump_across(game, runner, start, foot)
-		made.append("%s%s" % [_cell_name(platforms, foot), "" if landed else " MISSED"])
-
-		if landed:
-			# Up the ramp at a run: walked, never jumped.
-			await _run_to(game, runner, platforms.deck_at(tower).centre, 0.3)
-			await _walk_to(game, runner, platforms.deck_at(tower).centre)
-			peak = runner.controller.state.position.y
-			var up := runner.is_alive() and runner.standing_on == tower
-			made.append("the tower%s" % ("" if up else " MISSED"))
-
-			if up:
-				await _run_to(game, runner, platforms.deck_at(far).centre, 0.3)
-				await _walk_to(game, runner, platforms.deck_at(far).centre)
-				var down := runner.is_alive() and runner.standing_on == far
-				made.append("%s%s" % [_cell_name(platforms, far), "" if down else " MISSED"])
-
-	return {
-		"runner": runner, "far": far, "tower": tower, "made": made, "length": length, "peak": peak,
-	}
-
-
-## Back up the ramp and off the tower's open side, away from the field: a fall.
-func _watchtowers_drop(game: ScGame, runner: ScPlayer, tower: int, far: int) -> void:
-	var platforms := game.platforms
-	var config := game.config
-	var fell := false
-
-	if tower >= 0 and far >= 0 and runner.standing_on == far:
-		await _run_to(game, runner, platforms.deck_at(tower).centre, 0.3)
-		await _walk_to(game, runner, platforms.deck_at(tower).centre)
-		var outside := platforms.deck_at(tower).centre + Vector3(-12.0, 0.0, 0.0)
-		await _run_to(game, runner, outside, 0.3)
-		await _step(game, 60)
-		fell = runner.controller.state.position.y < config.deck_height - 3.0 \
-			or not runner.is_alive()
-
-	_check(fell, "and running off the tower's outer side is a fall",
-		"%.1f m" % runner.controller.state.position.y)
-
-
-func _test_watchtowers() -> void:
-	_section("Watchtowers: the rows meet only at a tower, up one ramp and down the other")
-
-	var game := await _world(func(c: ScConfig) -> void:
-		c.cannon_enabled = false
-		c.specials_enabled = false
-		c.survival_seconds = 600.0
-		c.layout_ids = PackedStringArray(["watchtowers"])
-	)
-	var platforms := game.platforms
-	var config := game.config
-
-	await _watchtowers_layout(game)
-
-	platforms.build(game.layout, game.physics)
-	await _physics_frame()
-
-	var route := await _watchtowers_route(game)
-	var runner: ScPlayer = route.runner
-	var far: int = route.far
-	var tower: int = route.tower
-	var made: PackedStringArray = route.made
-	var length: float = route.length
-	var peak: float = route.peak
-
-	var covered := _covered
-	var top := _top_speed
-	_track(null)
-	var max_speed := ScPlayer.tunables_for(config, null).max_speed
-	var rise := 3.0 * ScLayouts.LEVEL_RISE
-
-	_check(made.size() == 3 and not ", ".join(made).contains("MISSED"),
-		"a runner jumps to the foot of a ramp, climbs to the tower and runs down to the far row",
-		", ".join(made))
-	_check(peak >= config.deck_height + rise - 0.1,
-		"and stands on the high ground, %.1f m over both rows" % rise,
-		"%.2f m against decks at %.1f" % [peak, config.deck_height])
-	_check(length > 0.0 and covered >= length * 0.95 and top >= max_speed * 0.95,
-		"and covers the route at a run",
-		"%.1f m covered of a %.1f m route, top speed %.2f of %.2f m/s" % [
-			covered, length, top, max_speed])
-	_check(far >= 0 and runner.is_alive() and runner.standing_on == far
-			and platforms.standing_count() == platforms.count(),
-		"and ends on the far row, with all of it still up",
-		"on %d, alive %s, %d of %d up" % [runner.standing_on, runner.is_alive(),
-			platforms.standing_count(), platforms.count()])
-
-	await _watchtowers_drop(game, runner, tower, far)
-	await _dispose(game)
-	_finished()
-
-
-## [b]The slide angle is the design, and slopes being walkable must not have moved it.[/b]
-## dot-player-controller made a slope under `max_slope_angle` walkable on 2026-09-24; this
-## game's is 14 degrees against a collapse at 16, so a player is meant to hold a platform
-## leaning 13.5 (and walk up it), and to be thrown off one leaning 15.
-func _test_a_slope_holds() -> void:
-	_section("a leaning platform holds a player below the slide angle, and not above it")
-
-	var drift := {}
-
-	for degrees: float in [13.5, 15.0]:
-		for uphill: bool in [false, true]:
-			var game := await _world(func(c: ScConfig) -> void:
-				c.cannon_enabled = false
-				c.specials_enabled = false
-				c.layout_ids = PackedStringArray(["full"])
-			)
-			var platforms := game.platforms
-			# Held at an angle rather than leant on: the model would move it under them.
-			platforms.authoritative = false
-			var lean := Vector2(deg_to_rad(degrees), 0.0)
-			var deck := platforms.deck_at(0)
-			platforms.adopt(0, lean, 0.0, ScPlatforms.State.STANDING)
-
-			var player := game.add_player(&"stander", "Stander", 1)
-			var start := deck.centre + Vector3(2.0, 0.0, 0.0)
-			start.y = platforms.surface_y(0, start.x, start.z) + 0.05
-			player.place_at(start, 90.0)
-
-			# Settled first, as somebody already standing there when it tipped.
-			for _i in range(40):
-				platforms.adopt(0, lean, 0.0, ScPlatforms.State.STANDING)
-				game.simulate(TICK)
-				await _physics_frame()
-
-			var x := player.controller.state.position.x
-
-			for _i in range(TICK_RATE):
-				platforms.adopt(0, lean, 0.0, ScPlatforms.State.STANDING)
-				var command := DotFpsCommand.new()
-				command.yaw = 90.0  # toward -X, up the lean
-				command.move = Vector2(0.0, 1.0) if uphill else Vector2.ZERO
-				command.set_button(DotFpsCommand.BUTTON_WALK, uphill)
-				player.controller.apply_command(command)
-				game.simulate(TICK)
-				await _physics_frame()
-
-			drift["%.1f %s" % [degrees, "up" if uphill else "idle"]] = \
-				player.controller.state.position.x - x
-			await _dispose(game)
-
-	# +X is downhill.
-	_check(absf(drift["13.5 idle"]) < 0.1, "a player stands still on a platform at 13.5 degrees",
-		"%.2f m" % drift["13.5 idle"])
-	_check(drift["13.5 up"] < -1.5, "and walks up it",
-		"%.2f m in a second" % drift["13.5 up"])
-	# Only standing still is asserted at 15. Pressing uphill there is dot-player-controller's
-	# steep-surface air control, which holds a body against a slope the way it holds a surfer
-	# on a ramp — so a player who keeps pushing climbs a platform past its slide angle. It is
-	# in the detail and in the Queue rather than asserted, because it is the addon's.
-	_check(drift["15.0 idle"] > 0.5,
-		"and at 15 a player standing still slides down it",
-		"%.2f m in a second; pushing uphill instead, %.2f m" % [
-			drift["15.0 idle"], drift["15.0 up"]])
-	_finished()
-
-
 func _test_delivery() -> void:
 	_section("a delivered pack's own paths still resolve")
 
@@ -3534,12 +2103,8 @@ func _test_delivery() -> void:
 func _test_zee_art_root() -> void:
 	_section("the client points zee's art at this game, and gives it back")
 
-	# zee-dot-weapons names its art `res://assets/…`, which in a delivered pack is the host's
-	# root and holds nothing: every gun and the arms load invisible. The client sets
-	# `ZeeModelCache`'s asset root to `ScPaths.root()` when it boots and puts `res://` back when
-	# it goes. Built in, both are `res://`, so the root is first set to somewhere else and the
-	# client has to move it. Armed: without the `_ready` line the first check fails, without
-	# `_exit_tree` the second.
+	# zee's art is `res://assets/…`, the host's root in a delivered pack: the client sets the cache root to
+	# `ScPaths.root()` at boot and back on exit. Armed: without the `_ready` line the first check fails.
 	const ELSEWHERE := "res://elsewhere/"
 	const ART := "res://assets/blaster-kit/blaster-a.glb"
 
@@ -3641,126 +2206,8 @@ func _test_zee_art_root() -> void:
 	_finished()
 
 
-## Every script this game owns. Not `addons/`, which is somebody else's rules.
-func _scripts_here() -> PackedStringArray:
-	var found := PackedStringArray()
-
-	for directory: String in ["res://game", "res://game/net", "res://props", "res://examples", "res://tools"]:
-		for file: String in DirAccess.get_files_at(directory):
-			if file.ends_with(".gd"):
-				found.append(directory.path_join(file))
-
-	return found
-
-
-func _prop_scenes() -> PackedStringArray:
-	var found := PackedStringArray()
-
-	for file: String in DirAccess.get_files_at("res://props"):
-		if file.ends_with(".tscn"):
-			found.append("res://props".path_join(file))
-
-	return found
-
-
-# --- The harness ------------------------------------------------------------
-
-## A watched melee swing is the kit's swing on the right arm, not a pistol's kick: the arm
-## leaves the hold pose for the clip's length and comes back to it.
-func _test_a_swing_is_drawn() -> void:
-	_section("a watched melee swing is drawn as a swing")
-	var figure := ScFigure.new()
-	add_child(figure)
-	figure.build(1.8, str(ScFigure.ATLASES[0]), Color.WHITE)
-	figure.hold(&"knife", false)
-	# The person's arms are bones: how far both upper arms are turned from where they were.
-	var bones: Skeleton3D = figure.person.skeleton() if figure.person != null else null
-	var arms: Array[int] = []
-	if bones != null:
-		arms = [bones.find_bone("UpperArm.L"), bones.find_bone("UpperArm.R")]
-	figure.pose(Vector3.ZERO, 0.0, 0.0)
-	await get_tree().process_frame
-	figure.pose(Vector3.ZERO, 0.0, 0.0)
-	var held_at: Array[Quaternion] = []
-	for b in arms:
-		held_at.append(bones.get_bone_pose_rotation(b))
-	var turned := func() -> float:
-		var most := 0.0
-		for i in arms.size():
-			most = maxf(most, bones.get_bone_pose_rotation(arms[i]).angle_to(held_at[i]))
-		return most
-
-	figure.fired(1, ZeeWeaponNet.KIND_SWING)
-	var furthest := 0.0
-	for i in 40:
-		await get_tree().process_frame
-		figure.pose(Vector3.ZERO, 0.0, 0.0)
-		furthest = maxf(furthest, turned.call() if bones != null else 0.0)
-	_check(furthest > 0.5, "the arm swings away from the hold", "%.2f rad at most" % furthest)
-
-	for i in 60:
-		await get_tree().process_frame
-		figure.pose(Vector3.ZERO, 0.0, 0.0)
-	_check(bones != null and turned.call() < 0.3 and not bool(figure.describe()["swinging"]),
-		"and comes back to it when the swing is over")
-	figure.queue_free()
-	_finished()
-
-
-## The family's rule since the first play test: H opens help in every game, nothing else in
-## the table is on H, and the Escape menu has Help & commands and Leave.
-func _test_help_and_menu() -> void:
-	_section("H opens help, and the Escape menu has Help and Leave")
-	var settings := ScSettings.new()
-	add_child(settings)
-	var built: DotResult = settings.setup(DotSettingsStoreMemory.new())
-	var keys: DotMenuBindings = settings.bindings
-	_check(built.ok and keys != null and keys.key_for(DotMenuBindings.HELP_ACTION) == "H", "help is on H")
-	_check(keys.defaults_on("H").size() == 1, "and nothing else in the table defaults to H",
-		str(keys.defaults_on("H").map(func(r: Dictionary) -> String: return str(r["label"]))))
-	var h := InputEventKey.new()
-	h.physical_keycode = KEY_H
-	h.keycode = KEY_H
-	h.pressed = true
-	_check(settings.menu.handle_event(h) and settings.menu.help.is_open(), "H opens the help screen")
-	_check(settings.menu.help.about != "" and settings.menu.help.heading() == "How to play Smash Copter",
-		"which says what the game is before the keys")
-	settings.menu.help.close()
-	settings.open()
-	var help_button := settings.menu.screen.find_child("Action_help", true, false) as Button
-	var leave_button := settings.menu.screen.find_child("Action_leave", true, false) as Button
-	_check(help_button != null and leave_button != null and leave_button.visible,
-		"the Escape menu has Help & commands and Leave")
-	_check(keys.row_for_setting(&"bind_weapon_previous").get("action", &"") == &"dot_menu_weapon_previous"
-		and keys.row_for_setting(&"bind_weapon_next").get("action", &"") == &"dot_menu_weapon_next"
-		and keys.row_for_setting(&"bind_weapon_previous").get("default", "") == "Wheel up"
-		and keys.row_for_setting(&"bind_weapon_next").get("default", "") == "Wheel down",
-		"the wheel is previous and next weapon")
-	var wheel_on_jump := keys.rows.filter(func(r: Dictionary) -> bool:
-		return r["action"] == &"dot_fps_jump" and str(r["default"]).begins_with("Wheel"))
-	_check(wheel_on_jump.is_empty(), "and the wheel is not on jump")
-	settings.close()
-	settings.queue_free()
-	await get_tree().process_frame
-	_finished()
-
-
-## The pack carries its art (a delivered game has only what is vendored in assets/), so every
-## model the weapons table names must be here. Sync it with zee-dot-weapons' tools/sync-art.sh.
-func _test_the_weapon_art_is_vendored() -> void:
-	_section("every model the weapon art table names is vendored in this game")
-	var models := ZeeWeaponArtTable.validate_models()
-	_check(models.ok, "no weapon model is missing", "" if models.ok else models.error.message)
-	_finished()
-
-
-## What an administrator's blind and beacon DRAW, which neither the net suite nor the
-## dedicated one can reach: they assert the flags, and this asserts what a client does with
-## them. Whether it looks right is `tools/shot.sh --view=beacon` and `--view=blind`.
-##
-## A headless viewport is 64 x 64, so "covers the viewport" is a weak claim here — but a
-## blind the size of nothing, or of a HUD inset by a margin, is still caught, and the check
-## was armed with the overlay anchored top-left at no size.
+## What an administrator's blind and beacon draw, which the net and dedicated suites cannot reach.
+## A headless viewport is 64 x 64, so the check is armed with an overlay anchored top-left at no size.
 func _test_blind_and_beacon_drawn() -> void:
 	_section("an admin's blind and beacon, drawn")
 
@@ -3844,8 +2291,7 @@ func _test_blind_and_beacon_drawn() -> void:
 	)
 	me.health.health = me.health.max_health
 
-	# A pack naming these classes does not parse on a shell whose dot-ui predates them, so
-	# the requires.json dot-ci derives must ask for dot-ui 4, and nothing may lower it.
+	# A shell whose dot-ui predates these classes cannot parse the pack: requires.json must ask for dot-ui 4.
 	var asks := DotAddonApi.derive()
 	_check(
 		int(asks.get("dot_ui", 0)) >= 13 and FileAccess.file_exists("res://" + DotAddonApi.FLOOR_FILE),
@@ -3858,11 +2304,8 @@ func _test_blind_and_beacon_drawn() -> void:
 		hud.present_blind(1.0 / 60.0)
 	_check(not hud.blind_overlay.visible, "and lifts when the flag does")
 
-	# The beacon, as the client presents it: once a frame at sixty frames a second for 2.9
-	# seconds — short of three, because sixty sixtieths summed in floats land ON a period
-	# boundary and the fourth ping would be a question about rounding. The promise is a
-	# ripple a SECOND: a marker that pinged on every frame would be 174 pings, and a check
-	# that asked only "does it ping" would still pass.
+	# The beacon at sixty frames a second for 2.9 s (short of three: float sums land on a period boundary).
+	# The promise is a ripple a SECOND; a ping on every frame would be 174.
 	them.beacon = true
 	var pings := 0
 	for _i in range(174):
@@ -3898,66 +2341,8 @@ func _test_blind_and_beacon_drawn() -> void:
 	_finished()
 
 
-func _test_free_roam() -> void:
-	_section("whoever is out may free-roam by default, unless an operator says otherwise")
-	_check(ScConfig.new().spectate_camera == 0, "the config lets anybody be watched, so a free camera is not ruled out")
-	var game := await _world(func(c: ScConfig) -> void:
-		c.team_count = 3
-		c.cannon_enabled = false
-		c.specials_enabled = false
-		c.clear_platforms_for_showdown = false
-	)
-	var a := game.add_player(&"u1", "Ada", 1)
-	var _mate := game.add_player(&"u1m", "Ada's mate", 1)
-	var b := game.add_player(&"u2", "Bo", 2)
-	var _c := game.add_player(&"u3", "Cy", 3)
-	game.start()
-	await _step(game, 4)
-	var id := a.player_id
-	_check(game.spectate_rules.roaming_permitted() and game.spectate.manager.rules == game.spectate_rules,
-		"the game's rules allow roaming and are the manager's own")
-	var went := a.controller.state.position
-	a.place_at(Vector3(went.x, game.config.kill_height - 5.0, went.z), 0.0)
-	await _step(game, int(ScSpectate.DEATH_CAM_SECONDS * TICK_RATE) + 2)
-	_check(b != null and game.spectate.is_spectating(id), "out by a real fall, and watching")
-	_check(game.spectate.can_roam(id), "somebody who is out may roam")
-	_check(game.spectate.toggle_roam(id).ok and game.spectate.is_roaming(id), "the key enters the free camera")
-	_check(game.spectate.line_for(id).contains("free camera"), "and the line says so")
-	var cam := DotSpectatorFreeCam.new()
-	cam.rules = game.spectate_rules
-	cam.seed_from(Transform3D(Basis.IDENTITY, Vector3(0, 2, 0)))
-	var pose := cam.step(Vector3(0, 0, 1), false, false, 0.5)
-	_check(pose.origin.distance_to(Vector3(0, 2, 0)) > 0.5, "and flying moves it", str(pose.origin))
-	_check(game.spectate.manager.move_free(String(id), pose.origin, pose.basis).ok
-		and game.spectate.camera_for(id).origin.is_equal_approx(pose.origin), "the manager keeps where it is")
-	_check(game.spectate.toggle_roam(id).ok and not game.spectate.is_roaming(id), "the key again goes back to a player")
-
-	var _off := game.spectate_rules.set_cvar("mp_freeroam", "0")
-	var refused := game.spectate.toggle_roam(id)
-	_check(not refused.ok and refused.error.code == DotError.CODE_FORBIDDEN and not game.spectate.is_roaming(id),
-		"mp_freeroam 0 refuses it")
-	var _on := game.spectate_rules.set_cvar("mp_freeroam", "1")
-	var _own := game.spectate_rules.set_cvar("mp_forcecamera", "1")
-	_check(not game.spectate.toggle_roam(id).ok and not game.spectate.is_roaming(id), "mp_forcecamera 1 refuses it")
-
-	var restricted := await _world(func(c: ScConfig) -> void:
-		c.spectate_camera = 1)
-	_check(restricted.spectate_rules.force_camera == 1 and not restricted.spectate_rules.roaming_permitted(),
-		"a config that restricts the camera turns roaming off")
-	var keys := ScBindings.make()
-	_check(keys.defaults_on("G").size() == 1 and str(keys.row_for_action(ScBindings.ROAM).get("default", "")) == "G",
-		"the free camera is on G, and nothing else defaults to G")
-	await _dispose(restricted)
-	await _dispose(game)
-	_finished()
-
-
 ## Where somebody who is out looks, on the world that decides it.
-##
-## Five players on three sides, so a round survives two sides losing people: `a` and `mate`
-## on one, `b` and `d` on another, `c` alone on a third. Every step is the server's own
-## decision — the death camera, the hand-over, the policy, the fallback — and a round
-## starting is what ends all of it.
+## Five players on three sides, so a round survives two sides losing people.
 func _test_somebody_out_watches() -> void:
 	_section("somebody who is out watches, and the server decides whom")
 
@@ -4085,13 +2470,8 @@ func _test_somebody_out_watches() -> void:
 	_finished()
 
 
-## What this game makes a noise about, both ways round, and the noises that are decisions.
-##
-## [b]The two directions that fail silently.[/b] An id with no recipe is a sound that stays
-## silent for ever with nothing logged above DEBUG, and a recipe naming an id the catalogue
-## does not have is a decision that reaches nothing. What no check here can reach is whether
-## a speaker moves: a headless run has no device, so dot-audio builds the sink that records
-## instead of playing — which is exactly why these are checks of the real manager.
+## What this game makes a noise about, both ways round.
+## An id with no recipe stays silent with nothing logged above DEBUG; a recipe naming an unknown id reaches nothing.
 func _test_the_game_makes_a_noise() -> void:
 	_section("the game makes a noise, and every id has one")
 
@@ -4218,10 +2598,7 @@ func _test_the_game_makes_a_noise() -> void:
 
 
 ## The numbers a round produces, the achievements over them, and who is never counted.
-##
-## Three sides: `a` and `a2` on one, `b` on another, a stand-in alone on a third — so that
-## `b` going over with their platform leaves the round running, and the stand-in is in
-## every event a person is in and is never counted for any of them.
+## Three sides, so `b` going over with their platform leaves the round running.
 func _test_what_a_player_keeps() -> void:
 	_section("what a player keeps from a round")
 
@@ -4372,222 +2749,3 @@ func _test_what_a_player_keeps() -> void:
 	await _dispose(game)
 	_finished()
 
-
-## A world, built and stepped by hand.
-##
-## [b]`register_service` is off on every world after the first, and two of these in one
-## process is the ordinary case here.[/b] A registry name is global, so the last one to
-## register wins — and dot-core's own random manager has the same problem, which is why
-## [ScGame] turns that off too.
-## The family's rule since the first play test: M opens the layout list, and solo a choice
-## changes it now. The server's half (the owner's flag, the vote) is in `dedicated` and dot-vote.
-## Offline the world samples the local player's movement itself, so the client's buttons
-## have to go onto that sample. They were stamped on the controller's command and then sampled
-## over, and offline no trigger ever reached the world's gun (game-zombie-zone's play test).
-func _test_offline_trigger() -> void:
-	_section("offline, the client's trigger reaches the world's gun")
-	var game := await _world()
-	var me := game.add_player(&"local", "You", 0, true)
-	await _step(game, 2)
-	var client := ScClient.new()
-	client.game = game
-	client._adopt(me)
-	client._firing = true
-	me.simulate(1, 1.0 / float(TICK_RATE))
-	var pressed := game.weapon_command_for(me).is_pressed(DotWeaponCommand.BUTTON_ATTACK)
-	_check(me.sampler != null and pressed, "the world's weapon command has the trigger the client holds")
-	client.free()
-	_finished()
-
-
-## The play test's weapons, at the handover: offline the hands were never armed at all (the
-## client heard the handover only from a bridge it does not have), and connected the drawn rig
-## was given the whole pack, so a slot held whatever was given last; nothing counted the
-## magazine; nothing said a shot had landed. Armed: without the offline handover the first check
-## fails, with `give_everything` back the second, without `correct_drawn` the fourth, without
-## the HIT path the last.
-## The HUD's weapon sprite over the counter, in each icon style.
-func _check_weapon_icons(hud: Node, def: DotWeaponDef, counter: DotAmmoCounter) -> void:
-	var icon_script: Script = load("res://game/sc_weapon_icons.gd")
-	var icons: DotWeaponIconStyle = icon_script.get("shared")
-	var icon_rect: TextureRect = hud.get("weapon_icon")
-	var unmapped := PackedStringArray()
-	for weapon in icon_script.get("TAGS"):
-		if not icons.icon_set().has_icon(weapon):
-			unmapped.append(String(weapon))
-	_check(unmapped.is_empty() and icon_rect != null and icon_rect.visible and icon_rect.texture != null and icon_rect.texture == icons.texture(def.id),
-		"the HUD draws the held gun's sprite over the counter, and every mapped weapon has one", ", ".join(unmapped))
-	var _silhouette := icons.set_style(&"silhouette")
-	hud.call("_process", 0.0)
-	_check(icon_rect != null and not icon_rect.visible, "cl_weapon_icons silhouette hides the sprite")
-	var _pixel := icons.set_style(&"pixel")
-	hud.call("_process", 0.0)
-	_check(icon_rect != null and icon_rect.visible and icon_rect.get_global_rect().end.y <= counter.get_global_rect().position.y + 4.0,
-		"the sprite sits above the ammunition plate, not on it")
-
-
-func _test_the_drawn_gun() -> void:
-	_section("at the handover the hands draw the server's guns, counted on the HUD, with a marker for a hit")
-	var client: Node = ScClient.new()
-	client.force_offline = true
-	client.offline_bots = 1
-	client.config_file = "user://cfg/headless-none.json"
-	add_child(client)
-	var platform: DotGameClient = client.get("platform")
-	for i in 240:
-		await get_tree().process_frame
-		if platform != null and platform.is_shown():
-			break
-	for i in 8:
-		await get_tree().process_frame
-	var world: ScGame = client.get("game")
-	var me: ScPlayer = client.get("player")
-	world._begin_handover()
-	for i in 4:
-		await get_tree().physics_frame
-
-	var drawn: ZeeWeaponRig = client.get("weapons")
-	_check(drawn != null and me.weapons != null and drawn != me.weapons, "offline, the handover arms the hands")
-	var held: Array[String] = []
-	var same := drawn != null and me.weapons != null
-	for slot in range(1, 6):
-		var mine := drawn.arsenal.slot_at(slot) if drawn != null else null
-		var theirs := me.weapons.arsenal.slot_at(slot) if me.weapons != null else null
-		var a := String(mine.def.id) if mine != null else "-"
-		var b := String(theirs.def.id) if theirs != null else "-"
-		held.append("%d:%s/%s" % [slot, a, b])
-		same = same and a == b
-	_check(same and drawn.arsenal.current_slot() == me.weapons.arsenal.current_slot(),
-		"the drawn gun holds exactly the server's weapons, slot for slot, the same one out", " ".join(held))
-
-	var hud: Node = client.get("hud")
-	hud.call("_process", 0.0)
-	var counter: DotAmmoCounter = hud.get("ammo")
-	var def := drawn.current_def() if drawn != null else null
-	var expected := "?"
-	if def != null and def.ammo_type != &"":
-		expected = "%d | %d" % [drawn.arsenal.current().magazine, drawn.arsenal.ammo().count(def.ammo_type)] \
-			if def.magazine > 0 else "%d" % drawn.arsenal.ammo().count(def.ammo_type)
-	_check(counter != null and counter.visible and def != null and counter.weapon_name == def.display_name
-		and (def.ammo_type == &"" or counter.count_text() == expected),
-		"the HUD has DotAmmoCounter, counting the drawn gun",
-		"%s %s, want %s" % [counter.weapon_name if counter else "-", counter.count_text() if counter else "-", expected])
-
-	_check_weapon_icons(hud, def, counter)
-
-	var corrected := true
-	var detail := "melee in hand"
-	if def != null and def.magazine > 0:
-		var world_count := me.weapons.arsenal.current().magazine
-		drawn.arsenal.current().magazine = maxi(world_count - 1, 0)
-		client.set("_drawn_quiet", 0.0)
-		for i in 10:
-			await get_tree().physics_frame
-		var early := drawn.arsenal.current().magazine
-		for i in 60:
-			await get_tree().physics_frame
-		corrected = early == maxi(world_count - 1, 0) and drawn.arsenal.current().magazine == world_count
-		detail = "after 10 ticks %d, after 70 %d, server %d" % [early, drawn.arsenal.current().magazine, world_count]
-	_check(corrected, "the drawn gun takes the server's count once quiet, and not before", detail)
-
-	var marker: DotHitMarker = hud.get("hit_marker")
-	world.hit_landed.emit(&"local", Vector3(0.0, 1.0, -4.0), true, false)
-	_check(marker != null and marker.alpha() > 0.9 and marker.kill, "a hit the world confirms flashes the marker, a kill's")
-
-	remove_child(client)
-	client.free()
-	await get_tree().process_frame
-	_finished()
-
-
-func _test_the_map_menu() -> void:
-	_section("M opens the layout list, and solo a choice changes it")
-	var game := await _world()
-	var _a := game.add_player(&"u1", "Ada")
-	var _b := game.add_player(&"u2", "Bo")
-	game.start()
-	await _step(game, 4)
-	var settings := ScSettings.new()
-	add_child(settings)
-	var _built: DotResult = settings.setup(DotSettingsStoreMemory.new())
-	var keys: DotMenuBindings = settings.bindings
-	_check(keys.key_for(DotMenuBindings.MAPS_ACTION) == "M" and keys.defaults_on("M").size() == 1,
-		"the map menu is on M, and nothing else in the table defaults to M",
-		str(keys.defaults_on("M").map(func(r: Dictionary) -> String: return str(r["label"]))))
-	var rows: Array = game.layout_rows()
-	_check(rows.size() > 1 and rows.filter(func(r: Dictionary) -> bool: return bool(r["current"])).size() == 1,
-		"there is more than one to choose, the one playing marked", "%d" % rows.size())
-	var _maps := settings.use_maps(game.layout_rows, game.change_layout_now)
-	var m := InputEventKey.new()
-	m.physical_keycode = KEY_M
-	m.keycode = KEY_M
-	m.pressed = true
-	_check(settings.menu.handle_event(m) and settings.menu.picker.is_open(), "M opens the picker")
-	var wanted: StringName = &""
-	var key := KEY_NONE
-	for row in range(1, DotMenuPicker.PAGE_SIZE + 1):
-		var it: Variant = settings.menu.picker.at_row(row)
-		if it is Dictionary and not bool((it as Dictionary)["current"]):
-			wanted = StringName(str((it as Dictionary)["id"]))
-			key = KEY_0 + row
-			break
-	var digit := InputEventKey.new()
-	digit.physical_keycode = key
-	digit.keycode = key
-	digit.pressed = true
-	var _k := settings.menu.handle_event(digit)
-	for _i in 4:
-		await get_tree().physics_frame
-	_check(wanted != &"" and game.layout.id == wanted, "choosing one changes to it now", "%s, now %s" % [wanted, game.layout.id])
-	_check(not settings.menu.picker.is_open(), "and the picker is closed")
-	settings.queue_free()
-	await get_tree().process_frame
-	_finished()
-
-
-## Every bare `"res://…"` string in a SHIPPED script that names one of this game's own
-## directories, as `file:line`. See the form-three check that calls it.
-##
-## The same rule `dot-server-deploy/tools/check.sh` counts, asked here because that tool is
-## not what somebody adding a file runs: comments are prose and skipped, a literal already
-## inside `<Game>Paths.rebase("…")` is the fixed form and skipped, and a path whose first
-## segment this game does not ship — `res://addons/…`, `res://audio/…` in a game with no
-## audio — names the HOST's file and is right as it stands.
-func _bare_own_paths() -> PackedStringArray:
-	var skip := ["addons", "examples", "tools", "screenshots"]
-	var owned := PackedStringArray()
-
-	for directory: String in DirAccess.get_directories_at("res://"):
-		if not directory.begins_with(".") and not skip.has(directory):
-			owned.append(directory)
-
-	var wrapped := RegEx.create_from_string("[A-Za-z0-9_]*Paths\\.rebase\\(\"res://[^\"]*\"\\)")
-	var bare := RegEx.create_from_string("\"res://([^/\"]+)")
-	var hits := PackedStringArray()
-	var pending: Array[String] = []
-
-	for directory: String in owned:
-		pending.append("res://".path_join(directory))
-
-	while not pending.is_empty():
-		var at: String = pending.pop_back()
-
-		for sub: String in DirAccess.get_directories_at(at):
-			pending.append(at.path_join(sub))
-
-		for file: String in DirAccess.get_files_at(at):
-			if not file.ends_with(".gd"):
-				continue
-
-			var path := at.path_join(file)
-			var lines := FileAccess.get_file_as_string(path).split("\n")
-
-			for i in lines.size():
-				if lines[i].strip_edges().begins_with("#"):
-					continue
-
-				for found in bare.search_all(wrapped.sub(lines[i], "", true)):
-					if owned.has(found.get_string(1)):
-						hits.append("%s:%d" % [path, i + 1])
-
-	return hits

@@ -6,9 +6,9 @@ examples/dedicated.gd::long_block	22
 examples/headless_net.gd::banner	14
 examples/headless_net.gd::history	2
 examples/headless_net.gd::long_block	28
-examples/headless_run.gd::banner	3
-examples/headless_run.gd::history	16
-examples/headless_run.gd::long_block	35
+examples/headless_run.gd::banner	2
+examples/headless_run.gd::history	5
+examples/headless_run.gd::long_block	13
 examples/headless_workshop.gd::long_block	1
 game/net/sc_copter_net.gd::long_block	3
 game/net/sc_event.gd::history	1
