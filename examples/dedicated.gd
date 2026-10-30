@@ -29,7 +29,7 @@ const ScProgress := preload("../game/sc_progress.gd")
 ## and those are what this is about.
 
 const SECTIONS := 17
-const CHECKS := 166
+const CHECKS := 167
 
 ## Everything this run writes, and it is deleted on the way in and on the way out.
 ##
@@ -286,6 +286,8 @@ func _test_the_module_loads() -> void:
 	)
 
 	var module := _module()
+	_check(game != null and game.progress != null and game.progress.durable_key_fn.is_valid(),
+		"progress is filed under dot-game's stable stats key")
 	_check(module != null, "and the host has it under its name")
 
 	if module == null:
@@ -1012,8 +1014,8 @@ func _test_who_they_are() -> void:
 		game.progress.record(&"u717", ScProgress.DEATHS)
 	_check(
 		game.progress != null and key != ""
-			and game.progress.filed_under(&"u717") == StringName(key)
-			and game.progress.stats.has_player(StringName(key))
+			and game.progress.filed_under(&"u717") == module.stats_feed.key_for(session)
+			and game.progress.stats.has_player(module.stats_feed.key_for(session))
 			and game.progress.session_values(&"u717").get_value(ScProgress.DEATHS, 0.0) == 1.0,
 		"and what they keep is filed under that key, found again by their seat",
 		str(game.progress.filed_under(&"u717")) if game.progress != null else "no progress"
