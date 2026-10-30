@@ -2,24 +2,9 @@ extends RefCounted
 
 const ScPaths := preload("sc_paths.gd")
 
-## The prototype textures every surface in this map is drawn with, and the grid that
-## stands in when they are missing.
-##
-## [b]A pattern of a known size is the only thing that tells a player a platform is
-## tilting.[/b] That is not decoration in this game, it is the first objective: a flat
-## colour under a five-degree lean and a flat colour under no lean are the same picture,
-## and a player standing on the second one has no reason to move. A one-metre grid seen
-## from eye height at the far end of a 10.5 m platform reads as ten squares that are not
-## square any more, which is a tilt somebody can act on.
-##
-## [b]A role, not a colour.[/b] The map passes "this is a deck" and "this is a pillar";
-## what those are drawn as is decided here once. The alternative is a colour per box,
-## which means replacing the look is editing every line that builds a box.
-##
-## The grid is [b]Kenney's Prototype Textures 1.0[/b], CC0 — public domain, no attribution
-## required, strictly more permissive than the MIT this repository ships under.
-## `textures/prototype/LICENSE.txt` is Kenney's own, copied unchanged. One file is vendored:
-## the light grid, tinted per role (see [constant ROLE_COLOURS]).
+## The prototype textures every surface in this map is drawn with, and the grid that stands in when they are missing.
+## A pattern of a known size is the only thing that tells a player a platform is tilting (a flat colour under a lean and under none is the same picture), and a role, not a colour, is what the map passes, so a re-skin is not an edit of every box.
+## The grid is Kenney's Prototype Textures 1.0, CC0, one light grid file vendored and tinted per role ([constant ROLE_COLOURS]); `textures/prototype/LICENSE.txt` is Kenney's own, unchanged.
 
 const CHANNEL := "sc.textures"
 
@@ -42,14 +27,8 @@ enum Role {
 }
 
 ## The file each role loads. Dropping a different PNG in is the whole of a re-skin.
-##
-## [b]Every role draws Kenney's light grid (`texture_02` of the Light folder), tinted by
-## [constant ROLE_COLOURS].[/b] The roles used to load six of Kenney's colour folders (an
-## orange, a violet, a red, a green, a charcoal), each drawn white; at full saturation under
-## a sun they made the field read as a neon test level, and a tint over one of them is a
-## double tint that produces mud. One light tile under a pastel per role is the family's
-## look (game-arena's built-in maps) and keeps the grid identical on every surface. Not
-## `texture_13`, which is the same grid with `WALL / 1 x 1 meter` painted in a corner.
+## Every role draws Kenney's light grid (`texture_02` of the Light folder) tinted by [constant ROLE_COLOURS]: coloured folders under a sun read as a neon test level and a tint over one is mud.
+## Not `texture_13`, the same grid with `WALL / 1 x 1 meter` painted in a corner.
 const ROLE_FILES := {
 	Role.DECK: "grid.png",
 	Role.PILLAR: "grid.png",
@@ -61,14 +40,7 @@ const ROLE_FILES := {
 }
 
 ## What each role is tinted, over the installed grid or the generated one.
-##
-## [b]Pastels, and the deck the lightest thing in the sky.[/b] The deck is what a player
-## reads a lean off, so it stays near white with the grid on it; the pillar under it is a
-## mid lavender, dark enough that a deck reads against it and light enough that the field
-## is not a row of black posts; the cannon and anything to take cover behind are the one
-## saturated colour (butter yellow); the corner arenas lavender, the hazard rim a coral,
-## spawn pads mint. The floor is a muted sky blue, far away and plainly not somewhere to
-## land, without the four hundred metres of red or charcoal it has been before.
+## Pastels, the deck the lightest thing in the sky because a player reads a lean off it; the pillar is a mid lavender that a deck reads against; the cannon and cover are the one saturated colour; the floor is a muted sky blue, plainly not somewhere to land.
 const ROLE_COLOURS := {
 	Role.DECK: Color(0.97, 0.97, 1.00),
 	Role.PILLAR: Color(0.70, 0.64, 0.92),
@@ -80,36 +52,22 @@ const ROLE_COLOURS := {
 }
 
 ## How many squares are across one tile of the installed set.
-##
-## [b]Eight, measured rather than assumed, and the wrong answer was plausible.[/b]
-## game-g2gfast measured `ramp.png` and found lines on rows 0, 128, 256, 384, 512, 640,
-## 768, 896 and 1023 of 1024 — but they alternate STRONG and FAINT, ninety-seven luma
-## steps every 256 pixels and ten every 128, so a threshold picked to ignore compression
-## noise finds four and draws every surface at half scale.
+## Eight, measured rather than assumed: the lines alternate STRONG and FAINT (97 luma steps every 256 pixels, ten every 128), so a threshold that ignores compression noise finds four and draws every surface at half scale.
 const INSTALLED_SQUARES_PER_TILE := 8
 
 ## How many squares are across one tile of the generated grid.
 const GENERATED_SQUARES_PER_TILE := 4
 
 ## How big one square is in the world, in metres.
-##
-## [b]One metre, and it is the unit this whole map is judged in.[/b] A platform is 10.5
-## squares across, the gap between two is one square, and a player who has to decide
-## whether a jump is on is counting them.
+## One metre, the unit this map is judged in: a platform is 10.5 squares across, the gap is one, and a player deciding whether a jump is on counts them.
 const METRES_PER_SQUARE := 1.0
 
 ## Pixels per square in the generated tile.
 const GENERATED_PIXELS_PER_SQUARE := 128
 
 ## How much darker an alternate square is in the composited checker.
-##
-## [b]Ink is the only thing that survives a mipmap, and Kenney's tile has almost
-## none.[/b] Measured by game-g2gfast: their tile is a flat field with a one-pixel line on
-## a 128-pixel square, so 1.4% to 3.5% of the image is anything but the field colour —
-## and a tile that is 97% one colour IS that colour a few metres away. On a platform seen
-## from the far end of a 24 m gap, which is the angle this game is played at, the grid is
-## simply gone. Alternate squares darkened by six percent are not: a checker is half the
-## image, so it survives being averaged.
+## Ink is the only thing that survives a mipmap, and Kenney's tile has almost none (1.4% to 3.5% is not the field colour), so seen from the far end of a 24 m gap the grid is gone.
+## Alternate squares darkened by six percent survive being averaged, since a checker is half the image.
 const CHECKER := 0.93
 
 ## How much darker a grid line is in the generated tile.
@@ -150,12 +108,7 @@ static func surface(role: Role) -> StandardMaterial3D:
 
 	material.albedo_texture = texture
 
-	# [b]World-space triplanar, and without it none of the numbers above mean
-	# anything.[/b] A [BoxMesh] maps every face to the same 0..1 square, so a 10.5 m
-	# platform and a 1 m crate would show the same number of squares and the pattern would
-	# stop carrying scale — which is its entire job here. game-buses-from-hell shipped this
-	# flag set with no texture under it and had a comment claiming a readable scale beside
-	# a map that was one unbroken tone.
+	# World-space triplanar, without which none of the numbers above mean anything: a [BoxMesh] maps every face to the same 0..1 square, so a 10.5 m platform and a 1 m crate would show the same number of squares and the pattern would stop carrying scale.
 	material.uv1_triplanar = true
 	material.uv1_world_triplanar = true
 
@@ -182,10 +135,7 @@ static func installed(role: Role) -> Texture2D:
 
 	var path := "%s/%s" % [TEXTURE_DIR, ROLE_FILES.get(role, "grid.png")]
 
-	# [method ResourceLoader.exists] rather than [method FileAccess.file_exists]: an
-	# imported texture in an exported build is a `.ctex` beside a `.png` that is not
-	# shipped, so asking the filesystem for the source file answers "no" in exactly the
-	# build that matters.
+	# [method ResourceLoader.exists] rather than [method FileAccess.file_exists]: an imported texture in an exported build is a `.ctex` beside a `.png` that is not shipped, so the filesystem answers "no" in exactly the build that matters.
 	if not ResourceLoader.exists(path, "Texture2D"):
 		DotLog.debug(CHANNEL, "no texture installed for a role", {
 			"role": Role.keys()[role], "looked_at": path,
@@ -209,9 +159,7 @@ static func installed(role: Role) -> Texture2D:
 
 
 ## The installed tile with a checker composited onto it. See [constant CHECKER].
-##
-## Null when the pixels could not be read, which is not an error — the caller falls back
-## to the tile as it came.
+## Null when the pixels could not be read, which is not an error; the caller falls back to the tile as it came.
 static func _with_checker(source: Texture2D) -> ImageTexture:
 	var image := source.get_image()
 
@@ -252,11 +200,7 @@ static func _with_checker(source: Texture2D) -> ImageTexture:
 
 
 ## The generated one-metre grid: a line every square, a checker underneath.
-##
-## [b]What is drawn when no texture set is installed, and it is a supported state.[/b] The
-## map is playable and readable with an empty `textures/` directory, which is what lets
-## this repository be cloned without the art and what makes removing a file a choice
-## rather than a break.
+## What is drawn when no texture set is installed, a supported state: the map is playable with an empty `textures/` directory, so the repository clones without the art.
 static func grid_texture() -> ImageTexture:
 	if _grid != null:
 		return _grid
@@ -286,10 +230,7 @@ static func grid_texture() -> ImageTexture:
 
 
 ## Forgets every cached material and texture. For a test that changes the install.
-##
-## [b]Not called `reset_state`.[/b] `Resource` already has one and GDScript takes the
-## redefinition without a warning, so every call would silently bind to the engine's — a
-## trap this family has already paid for once, in `DotRandomTable`.
+## Not called `reset_state`: `Resource` already has one and GDScript takes the redefinition without a warning, so every call would silently bind to the engine's.
 static func forget_cache() -> void:
 	_materials.clear()
 	_installed.clear()

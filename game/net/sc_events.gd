@@ -3,13 +3,8 @@ extends RefCounted
 const ScGame := preload("../sc_game.gd")
 
 ## The wire format for everything that is not a snapshot or an input.
-##
-## Encoders and decoders in pairs; `headless_net` round-trips every one, because nothing else
-## checks that they are inverses.
-##
-## [b]The map is a description, not a file.[/b] A platform field is an id and six numbers the
-## client rebuilds identically, in the same order, so a snapshot can move platform seven without
-## saying what a platform is; a scene per layout would be content to publish and keep in step.
+## Encoders and decoders in pairs; `headless_net` round-trips every one, because nothing else checks that they are inverses.
+## The map is a description, not a file: a platform field is an id and six numbers the client rebuilds identically in the same order, so a snapshot can move platform seven without saying what a platform is.
 
 enum Kind {
 	## Who you are, how fast the server ticks, and how long each half of a round is.
@@ -77,11 +72,7 @@ enum Ask {
 }
 
 ## Every decoder returns an `ok` beside its fields, and every caller checks it.
-##
-## [b]A reader past its end returns plausible zeros rather than failing.[/b] dot-net shipped
-## with exhaustion that was not sticky, so a decoder that skipped this check got a
-## believable value for the field AFTER the overrun — and a truncated packet decodes as a
-## valid message about nothing.
+## A reader past its end returns plausible zeros (dot-net's exhaustion is not sticky), so a truncated packet would otherwise decode as a valid message about nothing.
 const NAME_BYTES := 64
 const ID_BYTES := 64
 const TEXT_BYTES := 256
@@ -92,9 +83,7 @@ const TEXT_BYTES := 256
 const AVATAR_BYTES := 1024
 
 ## Where a body may be, in metres, on the wire.
-##
-## [b]Read from [ScGame], not written here.[/b] A quantised position is decoded against this
-## range, so two files holding two numbers put the thing somewhere else.
+## Read from [ScGame], not written here: a quantised position is decoded against this range, so two files holding two numbers put the thing somewhere else.
 const WORLD_EXTENT := ScGame.NET_WORLD_EXTENT
 const POS_BITS := 24
 
@@ -167,12 +156,7 @@ static func read_hello(r: DotNetReader) -> Dictionary:
 
 
 ## The whole of this round's geometry.
-##
-## [b]Nine numbers, and the client builds the identical field from them.[/b] The layout id
-## chooses which cells carry a platform and where the bridges go; the rest is the scale the
-## server is playing at, which an operator may have changed with a cvar. A client that
-## guessed any of them would build a field whose platform seven is somewhere else — and
-## every snapshot after that would move the wrong floor.
+## Nine numbers, and the client builds the identical field from them: the layout id, and the scale an operator may have changed with a cvar. A client that guessed any would move the wrong floor on every snapshot.
 static func write_toys(map_id: StringName, net_ids: PackedInt64Array) -> PackedByteArray:
 	var w := _w()
 	w.write_string(String(map_id), ID_BYTES)
@@ -211,12 +195,7 @@ static func write_layout(
 	w.write_string(String(layout_id), ID_BYTES)
 	w.write_uint(clampi(columns, 1, 63), 6)
 	w.write_uint(clampi(rows, 1, 15), 4)
-	# [b]Half a millimetre on every length, and the first version was two centimetres.[/b]
-	# These are sent ONCE a round, so the bits are free — and what they buy is the client's
-	# platform seven being in the same place as the server's rather than near it. A 14-bit
-	# pitch over 128 m is 8 mm, which compounds across five columns into 2 cm of floor that
-	# is somewhere else, and the edge of a platform is exactly where a player is standing
-	# when that matters.
+	# Half a millimetre on every length: these are sent ONCE a round so the bits are free, and a 14-bit pitch over 128 m (8 mm) compounds across five columns into 2 cm of floor in the wrong place, exactly where a player stands.
 	w.write_float_range(column_pitch, 0.0, 128.0, 18)
 	w.write_float_range(row_pitch, 0.0, 256.0, 19)
 	w.write_float_range(platform_size, 0.0, 64.0, 17)
@@ -287,10 +266,7 @@ static func read_layout(r: DotNetReader) -> Dictionary:
 
 
 ## Which net id moves which platform.
-##
-## [b]An index rather than a position, because the client already knows where it is.[/b] It
-## built the same field from the same description; what it cannot work out is which of the
-## server's replicated entities is the platform it calls number seven.
+## An index rather than a position, because the client already built the same field; it cannot work out which replicated entity is the platform it calls number seven.
 static func write_platform(net_id: int, index: int) -> PackedByteArray:
 	var w := _w()
 	w.write_varint(net_id)
@@ -319,12 +295,8 @@ static func read_collapse(r: DotNetReader) -> Dictionary:
 
 
 ## A join, or a change to who somebody is: their name, their side, their avatar.
-##
-## [b]The avatar is the document, not the skin it picks[/b] — as JSON, capped at
-## [constant AVATAR_BYTES], and empty for the stock person. A skin index would be smaller,
-## and would make every client's reading of a document the server's, so a slot this game
-## adds later would need a new wire. [b]Appended, never inserted[/b]: a field before it
-## would move the team for every reader of the old layout.
+## The avatar is the document (JSON, capped at [constant AVATAR_BYTES], empty for the stock person), not a skin index, so a slot added later needs no new wire.
+## Appended, never inserted: a field before it would move the team for every reader of the old layout.
 static func write_join(
 	player_id: int, net_id: int, display_name: String, team: int,
 	avatar: DotAvatar = null
@@ -430,10 +402,7 @@ static func read_armed(r: DotNetReader) -> Dictionary:
 
 
 ## Something the world has put out: a prop, or a chopper.
-##
-## [param vehicle] says which catalogue [param kind_id] is in. A bit rather than a second
-## message kind, because everything else about the two is identical — a net id, a scene and
-## a place to put it — and two near-identical messages is two decoders to keep in step.
+## [param vehicle] says which catalogue [param kind_id] is in: a bit, not a second message kind, since the two are otherwise identical and would be two decoders to keep in step.
 static func write_prop(
 	net_id: int, kind_id: StringName, at: Vector3, vehicle: bool
 ) -> PackedByteArray:
@@ -489,11 +458,7 @@ static func read_seat(r: DotNetReader) -> Dictionary:
 
 
 ## The clock, and the three numbers a client cannot count for itself.
-##
-## [b]`standing` is why this message exists.[/b] A client runs no platform model — its
-## platforms are mirrors moved by snapshots — so counting the ones that are still up would
-## count whatever it last heard, and that number is the most important one on this game's
-## HUD: it is what tells a player whether there is anywhere left to stand.
+## `standing` is why this message exists: a client runs no platform model (its platforms are mirrors moved by snapshots), and this is the number that tells a player whether there is anywhere left to stand.
 static func write_clock(
 	round_number: int,
 	elapsed: float,
@@ -561,11 +526,7 @@ static func read_phase(r: DotNetReader) -> Dictionary:
 
 
 ## Something strange started or stopped, and what to shout about it.
-##
-## [b]The blurb travels rather than being looked up.[/b] A client with an older build of
-## this game has a catalogue that does not know the new special, and the honest thing for
-## it to do is print what the server said rather than nothing at all. Bounded like every
-## other string here, so a server cannot put a paragraph on somebody's screen.
+## The blurb travels rather than being looked up, so a client with an older catalogue prints what the server said; bounded like every other string so a server cannot put a paragraph on a screen.
 static func write_special(
 	special_id: StringName, starting: bool, blurb: String
 ) -> PackedByteArray:
@@ -603,13 +564,7 @@ static func read_blast(r: DotNetReader) -> Dictionary:
 
 
 ## A view dot-spectate decided, for the one player it belongs to.
-##
-## [b]The death position travels.[/b] `DotSpectatorView.to_wire` did not carry it until
-## 2026-09-25, and a mirror without it puts every death camera at the world origin, which
-## in this map is inside the cannon. This event stays the game's own: bit-packed and keyed
-## by session, where dot-spectate's is a dictionary keyed by string. Everything else a mirror needs to
-## draw the camera it already has: the players are in its world.
-##
+## The death position travels, or a mirror puts every death camera at the world origin, inside the cannon. Bit-packed and keyed by session, where dot-spectate's is a string-keyed dictionary; a mirror already has the players.
 ## Sessions rather than keys, as everywhere on this wire; zero is nobody.
 static func write_spectate(
 	viewer: int, mode: int, target: int, killer: int, death_at: Vector3
@@ -705,12 +660,8 @@ static func chat_kinds_fit() -> bool:
 
 
 ## One routed line, in [DotChatMessage]'s own wire shape.
-##
-## [b]Field by field rather than `var_to_bytes`, like every other message here.[/b] A
-## dictionary serialised whole is a dictionary whose contents are whatever the sender put
-## in it — including keys a client will happily read — and the widths below are the
-## validation. `x.p` is the one meta field this game carries: the speaker's session id, so
-## a client can colour a line by whose it is.
+## Field by field rather than `var_to_bytes`: a dictionary serialised whole carries whatever the sender put in it, and the widths below are the validation.
+## `x.p` is the one meta field carried: the speaker's session id, so a client can colour a line by whose it is.
 static func write_chat(wire: Dictionary) -> PackedByteArray:
 	var w := _w()
 	w.write_varint(int(wire.get("n", 0)))
@@ -762,11 +713,7 @@ static func read_chat(r: DotNetReader) -> Dictionary:
 
 
 ## What a client sends when somebody presses Enter: a channel and a line, and nothing else.
-##
-## [b]No speaker, no time, no colour.[/b] Everything about what a line MEANS is decided on
-## the server — who said it, whether they are gagged, whether they are talking too fast,
-## which channel they may use and who can hear it. A client that sent any of that would be
-## a client that could claim it.
+## No speaker, time or colour: what a line MEANS (who, gagged, rate, channel, audience) is decided on the server, and a client sending any of it could claim it.
 static func write_say(channel_id: StringName, text: String) -> PackedByteArray:
 	var w := _w()
 	w.write_string(String(channel_id), CHAT_CHANNEL_BYTES)

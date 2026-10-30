@@ -3,24 +3,9 @@ extends DotNetBehaviour
 const ScNetCommand := preload("sc_net_command.gd")
 const ScPlayer := preload("../sc_player.gd")
 
-## What a networked player replicates: the movement state, their health, and whether they
-## are flying.
-##
-## [b]The movement half is dot-player-controller's own table and is not written here.[/b]
-## [DotFpsNetSync.state_specs] is what the controller says its state is, in the
-## quantisation it says it wants; a game that listed the fields itself would be a second
-## copy to drift — and the type names in that table are STRINGS precisely so the addon can
-## describe a dot-net layout without naming dot-net.
-##
-## [b]The two game fields are not derivable from the movement.[/b] Health decides whether a
-## body is drawn at all, and riding decides whether the client predicts them; a client that
-## worked either out for itself would be running a second copy of the rules.
-##
-## [b]Which side somebody is on is deliberately NOT here.[/b] It changes once a round at
-## most, and a per-tick field for it would send the same three bits sixty-four times a
-## second for ever to carry a fact that arrives reliably in a JOIN and a TEAM. The rule this
-## game follows: a per-tick property for what changes per tick, an event for what changes on
-## a decision.
+## What a networked player replicates: the movement state, their health, and whether they are flying.
+## The movement half is dot-player-controller's own [DotFpsNetSync.state_specs] (type names are STRINGS so the addon describes a dot-net layout without naming dot-net); listing the fields here would be a second copy to drift.
+## Health and riding are not derivable from movement. Team is deliberately NOT here: it changes once a round at most and arrives reliably in JOIN and TEAM; per-tick property for what changes per tick, an event for a decision.
 
 ## Somebody this client is watching used their weapon, [param times] times since the last
 ## snapshot. What a game draws a muzzle flash from.
@@ -38,27 +23,14 @@ var net_flags: int = 0
 var net_modifiers: int = 0
 
 ## Hit points, and the one field with a hard cap on the wire.
-##
-## [b]Sent against 0..1000 rather than against the player's own maximum.[/b] A server that
-## raised `player_health` mid-round would otherwise change what every previously sent number
-## MEANT, which is the quantisation version of the map-size bug: the value does not get less
-## precise, it becomes a different value.
+## Sent against 0..1000 rather than the player's own maximum: raising `player_health` mid-round would otherwise change what every number sent earlier MEANT.
 var net_health: float = 100.0
 
 ## Whether they are in a chopper.
 var net_riding: bool = false
 
-#
-# [b]Seven fields, and the pack's own `all_specs()` names all of them.[/b] GDScript has no
-# dynamic properties, so a spec table that says what to send needs a variable per entry
-# declared by hand — and the one call a game should make is `ZeeWeaponNet.all_specs()`,
-# because concatenating dot-weapon's three with the pack's four by hand is the same work
-# and one more place to forget the second half. Forgetting it presents as weapons that are
-# silent for everybody except the person holding them, which is what game-playground
-# shipped.
-#
-# The magazine and the reserve are `owner_only`: exact ammunition is information an opponent
-# should not have, and dot-combat makes the same decision about the same two numbers.
+# Seven fields, and the pack's own `ZeeWeaponNet.all_specs()` names all of them; concatenating by hand is a second place to forget the pack's half, which presents as weapons silent for everybody but the holder.
+# The magazine and the reserve are `owner_only`: exact ammunition is information an opponent should not have, as dot-combat decides.
 
 var net_slot: int = 0
 var net_magazine: int = 0
@@ -125,20 +97,9 @@ func _register_net_vars() -> void:
 		if bool(spec["owner_only"]):
 			var _owner := declaration.to_owner_only()
 
-	# [b]Per-player state rather than an event, and that is what makes both of these survive
-	# what an event does not.[/b] A client that joins after the admin typed `beacon`, a
-	# snapshot lost on the way, a field re-laid at the top of a round: each is a baseline the
-	# next snapshot corrects, where an event sent once is simply missed. Two bits, and nothing
-	# at all on a tick where neither changed.
-	#
-	# The blind goes to its owner alone. Nobody else's screen changes, and an opponent who
-	# received it would know the moment somebody could not see — the same reason the magazine
-	# and the reserve above are the owner's.
-	#
-	# [b]No relevance change for a beacon, where game-arena makes one.[/b] Every player here
-	# is already always relevant (`ScNetBridge`: the map is open air), so a beacon reaches
-	# every client however far away they are without asking — and a beacon turned OFF that
-	# set `always_relevant` back to false would take the player out of everybody's snapshot.
+	# Per-player state rather than an event, so both survive what an event does not: a client joining after `beacon`, a lost snapshot, a field re-laid at round top are baselines the next snapshot corrects.
+	# The blind goes to its owner alone (an opponent receiving it would learn the moment somebody could not see).
+	# No relevance change for a beacon: every player here is already always relevant (`ScNetBridge`), and turning it OFF by setting `always_relevant` false would take the player out of everybody's snapshot.
 	var _blind := replicate(&"net_blind", DotNetVar.Type.BOOL).to_owner_only()
 	replicate(&"net_beacon", DotNetVar.Type.BOOL)
 	replicate(&"net_warp", DotNetVar.Type.UINT).bits(4)
@@ -155,11 +116,8 @@ func _net_apply_input(input: DotNetInput, _tick: int) -> void:
 			player.wanted_slot = command.slot
 
 
-## On the authority the whole game ticks as one — every player moves, then the platforms
-## are loaded and stepped, then what landed on what is decided — so the first behaviour
-## through drives the whole world and the rest find it done. On a predicting client there
-## is one predicted player, and simulating it is the whole of what a client may compute: the
-## props, the platforms and the choppers are all somebody else's answer.
+## On the authority the whole game ticks as one, so the first behaviour through drives the whole world and the rest find it done.
+## On a predicting client the one predicted player is the whole of what it may compute; props, platforms and choppers are the server's answer.
 func _net_simulate(tick: int, delta: float) -> void:
 	if player == null:
 		return
@@ -168,12 +126,8 @@ func _net_simulate(tick: int, delta: float) -> void:
 		if bridge != null:
 			bridge.ensure_game_ticked(tick)
 	elif player.riding:
-		# [b]A rider is not predicted, because a rider is not walking.[/b] The controller is
-		# the thing that would be predicting and while its owner is flying it has no answer
-		# to predict: the machine's position comes from the server, it is not reproducible
-		# across machines, and a controller simulating on top of it fights every snapshot at
-		# a metre a time. The command is still applied, because those same keys ARE the
-		# collective and the pedals and they have to reach the server.
+		# A rider is not predicted, because a rider is not walking: the machine's position comes from the server and is not reproducible, so a controller simulating on top of it fights every snapshot.
+		# The command is still applied, because those keys ARE the collective and the pedals and must reach the server.
 		player.controller.apply_command(last_move.duplicate_command())
 	else:
 		player.controller.apply_command(last_move.duplicate_command())
@@ -197,10 +151,8 @@ func pull() -> void:
 	net_beacon = player.beacon
 	net_warp = player.warps & 0xF
 
-	# [b]After the arsenal has simulated, which on this end it has: the whole world ticks
-	# before anything is pulled.[/b] A rig that does not exist yet — which is every player
-	# for the first two thirds of a round — leaves these at zero, and zero is a carrier
-	# holding nothing, which is true.
+	# After the arsenal has simulated, which on this end it has: the whole world ticks before anything is pulled.
+	# A rig that does not exist yet leaves these at zero, a carrier holding nothing, which is true.
 	if player.weapons != null:
 		ZeeWeaponNet.pull(player.weapons, self)
 
@@ -216,38 +168,15 @@ func _net_state_applied(tick: int) -> void:
 	DotFpsNetSync.push(self, player.controller.state)
 	_adopt()
 
-	# NOT the node, on a predicted entity: `receive_snapshot` calls this BEFORE the
-	# predictor reconciles, and reconcile's first act is to read the node as "what the
-	# client is showing". Moving it here makes the measured error the whole replay distance,
-	# and the correction rate then reads as if every snapshot snapped. Two games in this
-	# family shipped that line.
-	#
-	# ...unless they are riding, when there is nothing predicted to spoil: the server's
-	# answer IS what the client should be showing. Without this exception the local player's
-	# node — and the camera under it — stays where they got in, and the pilot watches the
-	# chopper fly away from inside their own head.
+	# NOT the node, on a predicted entity: `receive_snapshot` calls this BEFORE the predictor reconciles, which reads the node as "what the client is showing"; moving it here makes the measured error the whole replay distance.
+	# Unless they are riding: nothing is predicted to spoil, and the server's answer IS what should be shown, else the pilot watches the chopper fly away from inside their own head.
 	if identity == null or not identity.is_predicted() or player.riding:
 		player.global_position = player.controller.state.position
 
 
-## A teleport is not a movement, so the interpolator must not draw one.
-##
-## [b]The showdown moves every survivor sixty metres in one tick, and a watcher saw them fly
-## there.[/b] The interpolator blends between the two snapshots either side of the render
-## time, and when those are "on a platform" and "in a corner of the sky" the blend is a body
-## sweeping across the map for a snapshot interval — seven frames of it at four frames a
-## tick, measured by `headless_net`. Every round start is the same, since laying the field
-## out again puts everybody back on a deck with the same call.
-##
-## So the server counts the times it PUT this player somewhere (`ScPlayer.place_at`), the
-## count replicates, and a mirror that sees it change drops the interpolator's track for this
-## entity before the new snapshot is added to it. A track with one sample answers with that
-## sample, so the body appears in its corner, one render delay early, rather than crossing
-## the sky to get there. Here, before the push, because this hook runs inside the snapshot
-## read and the manager adds the snapshot's values to the track just after it.
-##
-## Not on the predicted entity: nothing interpolates that, and its own camera is moved by
-## the prediction's rewind.
+## A teleport is not a movement, so the interpolator must not draw one: the showdown moves every survivor sixty metres in one tick, and the blend would sweep a body across the map (as would every round start).
+## The server counts the times it PUT this player somewhere (`ScPlayer.place_at`); a mirror that sees the count change drops the interpolator's track before the new snapshot is added, so the body appears in place one render delay early. Here, before the push, because the manager adds the values just after this hook.
+## Not on the predicted entity: nothing interpolates it, and its camera is moved by the prediction's rewind.
 func _forget_the_path() -> void:
 	if identity == null or identity.is_authoritative or identity.is_predicted():
 		_seen_warp = net_warp
@@ -272,11 +201,7 @@ func _net_interpolated(_tick: int) -> void:
 
 
 ## The game half of a snapshot, on a mirror.
-##
-## [b]`set_riding` and not the flag, because getting out of a chopper is two things.[/b] The
-## controller's velocity has to be cleared and its mode put back to AIR, or a pilot put back
-## on their feet is thrown across the map carrying the machine's speed on their first step —
-## and in this game that means off the edge of it.
+## `set_riding` and not the flag, because getting out of a chopper also clears the controller's velocity and puts its mode back to AIR, or the pilot is thrown off the map carrying the machine's speed.
 func _adopt() -> void:
 	if player == null or identity == null or identity.is_authoritative:
 		return
@@ -295,19 +220,8 @@ func _adopt() -> void:
 
 
 ## What a watcher does with somebody else's weapon state.
-##
-## [b]A counter, never an event per shot.[/b] An RPC per shot needs a reliable channel for
-## something worthless if it arrives late, costs a packet per shot per watcher, and
-## desynchronises from the state it belongs with — so a watcher can see the muzzle flash of
-## a weapon the same snapshot says has been holstered. A four-bit counter inside the
-## snapshot cannot do any of those: a watcher who missed a snapshot sees it jump by two and
-## plays one flash instead of two, which is the correct amount of wrong.
-##
-## [b]No world model is handed to `ZeeWeaponNet.apply`[/b], because the hand it would hang
-## from belongs to the figure, which is built lazily, rebuilt on a side change and absent on
-## a server. The answer is written onto the player instead — the slot, the switch and the
-## uses since the figure last looked — and `ScPlayer.present_body` hands it to the figure on
-## the frame it is drawn. The same counter also says `weapon_used`, which is the report.
+## A counter, never an event per shot: an RPC per shot needs a reliable channel for something worthless late and desynchronises from the state it belongs with; a missed snapshot just plays one flash instead of two.
+## No world model is handed to `ZeeWeaponNet.apply`, because the hand belongs to the lazily built figure; the answer is written onto the player (slot, switch, uses) and `ScPlayer.present_body` hands it to the figure when drawn.
 func _apply_weapons() -> void:
 	var answer := ZeeWeaponNet.apply(self, null, _seen_fire_seq)
 	_seen_fire_seq = int(answer["seq"])

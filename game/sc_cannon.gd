@@ -7,18 +7,8 @@ const ScPlatforms := preload("sc_platforms.gd")
 const ScSpecials := preload("sc_specials.gd")
 
 ## The thing in the middle of the map, and everything it has thrown.
-##
-## [b]It aims.[/b] The obvious cannon fires straight up with a random lean and lets the
-## arithmetic decide where anything lands, and it is much worse to play against: half the
-## shots go nowhere and the other half are unreadable, so a player learns nothing from
-## watching one. This one picks a platform, solves the arc that reaches it, and scatters
-## the aim by a few metres — which means every shot is a warning a player can read off the
-## sky and act on, and missing is still possible.
-##
-## [b]It also owns everything it fired.[/b] A prop is on a clock from the moment it leaves
-## the tube, because the alternative is a map that is a scrapyard by the end of the round —
-## and taking one away the moment it stops moving would remove the cover a player just
-## earned by surviving it.
+## It aims: it picks a platform, solves the arc that reaches it and scatters the aim by a few metres, so every shot is a warning a player can read off the sky (a straight-up random lean is unreadable and half wasted).
+## It owns everything it fired: a prop is on a clock from the tube, else the map is a scrapyard by round end, yet one that stopped moving is kept so cover a player earned is not removed.
 
 const CHANNEL := "sc.cannon"
 
@@ -26,16 +16,11 @@ const CHANNEL := "sc.cannon"
 signal launched(prop_id: StringName, at: Vector3, velocity: Vector3, tier: int)
 
 ## Metres per second of sideways drift a shot is given at random, on top of its aim.
-##
-## Separate from [member ScConfig.cannon_spread], which scatters where it is AIMED. This
-## scatters how it flies, so two props aimed at the same square do not travel as a pair.
+## Separate from [member ScConfig.cannon_spread], which scatters where it is AIMED; this scatters how it flies, so two props aimed at one square do not travel as a pair.
 const DRIFT := 1.1
 
 ## How fast a prop is spinning when it leaves, in radians per second.
-##
-## [b]Not zero, and it is most of what makes the arc readable.[/b] A crate that rises and
-## falls without turning reads as a sprite; one that tumbles reads as an object with a
-## weight, which is the judgement a player has to make about it in about a second.
+## Not zero: a crate that rises and falls without turning reads as a sprite, one that tumbles reads as an object with weight, which a player must judge in about a second.
 const TUMBLE := 3.4
 
 @export var config: ScConfig = null
@@ -47,11 +32,7 @@ var platforms: ScPlatforms = null
 var arena: ScArena = null
 
 ## The stream every one of this cannon's decisions is drawn from.
-##
-## [b]A named stream rather than the global generator, and it is what makes a round
-## reproducible.[/b] Two servers on the same seed fire the same props at the same
-## platforms at the same moments, which is what lets a bug report about "the monolith at
-## ninety seconds" mean anything.
+## A named stream rather than the global generator, which makes a round reproducible: two servers on one seed fire the same props at the same platforms at the same moments.
 var stream: DotRandomStream = null
 
 ## Seconds until the next shot.
@@ -80,10 +61,7 @@ func _ready() -> void:
 
 
 ## Puts the cannon back to the state a round starts in.
-##
-## [b]Called on a round beginning, and the cooldown is not zero.[/b] A cannon that fired on
-## the first tick of a round would land its first prop before anybody had finished being
-## teleported onto a platform, which is a death with no decision in it.
+## Called on a round beginning, and the cooldown is not zero: a cannon firing on the first tick would land before anybody was teleported onto a platform, a death with no decision in it.
 func begin_round() -> void:
 	_cooldown = maxf(config.cannon_interval, 0.1)
 	_ages.clear()
@@ -111,11 +89,7 @@ func advance(delta: float, elapsed: float, active: ScSpecials.Active) -> void:
 
 
 ## How long the gap between shots is right now, in seconds.
-##
-## [b]It closes as the round goes on, and that is what makes surviving to the end
-## mean something.[/b] A round whose threat is constant has its last thirty seconds
-## identical to its first thirty; ramping the rate means the map a player has learned
-## stops being the map they are standing on.
+## It closes as the round goes on, so the last thirty seconds are not identical to the first and the map a player has learned stops being the one they stand on.
 func interval_at(elapsed: float, active: ScSpecials.Active) -> float:
 	var progress := clampf(elapsed / maxf(config.survival_seconds, 0.001), 0.0, 1.0)
 	var ramp := lerpf(1.0, config.cannon_interval_ramp, progress)
@@ -149,10 +123,8 @@ func fire(elapsed: float, active: ScSpecials.Active) -> int:
 
 func _launch_one(elapsed: float, active: ScSpecials.Active) -> DotPropInstance:
 	if props.world_count() >= config.prop_budget:
-		# Quietly, and on purpose. The budget is a ceiling on the physics rather than a
-		# rule of the game, and an operator who set it low should get a quieter cannon
-		# rather than a line of warnings once a second — so it is said once, on the edge,
-		# at INFO: the one person who can act on it is whoever tuned the budget.
+		# Quietly, on purpose: the budget is a ceiling on the physics, not a game rule, so a low one gives a quieter cannon rather than a warning a second.
+		# It is said once, on the edge, at INFO, for whoever tuned the budget.
 		if not _held_for_budget:
 			_held_for_budget = true
 			DotLog.info(CHANNEL, "the cannon is holding fire at the prop budget", {
@@ -183,11 +155,7 @@ func _launch_one(elapsed: float, active: ScSpecials.Active) -> DotPropInstance:
 
 
 ## Drops a prop from a point, with whatever the dropper was doing.
-##
-## What the chopper's trigger does. It goes through the cannon rather than round it so
-## that a dropped crate is on the same clock, counts against the same budget and is
-## replicated by the same path as a fired one — three things a second spawn site would
-## each have to remember.
+## What the chopper's trigger does. It goes through the cannon so a dropped crate is on the same clock, counts against the same budget and replicates by the same path as a fired one.
 func drop(at: Vector3, inherited: Vector3, tier: int) -> DotPropInstance:
 	if props == null or stream == null:
 		return null
@@ -243,14 +211,8 @@ func _put_up(
 	return prop
 
 
-## The velocity that takes a body from [param from] to [param to] over an arc of
-## [param apex] metres.
-##
-## [b]Solved rather than tuned, because the alternative is a table of angles.[/b] The
-## climb is decided by the apex alone, the fall is decided by the height difference, and
-## the sideways speed is whatever covers the distance in the time those two take. A cannon
-## whose arc was a constant would reach the near platforms and drop short of the far ones,
-## and the map's outer columns would be safe for the whole round.
+## The velocity that takes a body from [param from] to [param to] over an arc of [param apex] metres.
+## Solved rather than tuned: the apex decides the climb, the height difference decides the fall, and the sideways speed covers the distance in that time. A constant arc would leave the outer columns safe all round.
 static func solve_arc(from: Vector3, to: Vector3, apex: float, gravity: float) -> Vector3:
 	var g := maxf(gravity, 0.01)
 	var rise := maxf(apex, 0.5)
@@ -271,9 +233,7 @@ static func solve_arc(from: Vector3, to: Vector3, apex: float, gravity: float) -
 
 
 ## Which tier this shot is allowed to be.
-##
-## Two gates, and they answer different questions: the clock says which tiers exist yet,
-## and the configuration says which the server allows at all.
+## Two gates: the clock says which tiers exist yet, and the configuration says which the server allows at all.
 func _pick_tier(elapsed: float, active: ScSpecials.Active) -> int:
 	var ceiling := clampi(config.cannon_max_tier + active.cannon_tier_bonus, 1, ScContent.TIERS)
 	var weights := PackedFloat32Array()
@@ -367,10 +327,7 @@ func _gravity(active: ScSpecials.Active) -> float:
 
 
 ## Takes away anything that has been in the world too long.
-##
-## [b]Counted in simulated seconds, advanced by the host, never a wall clock.[/b] A wall
-## clock lets a server having a bad second clear the map early, and makes the same round
-## replayed twice look different.
+## Counted in simulated seconds advanced by the host, never a wall clock: a bad server second would clear the map early and the same round replayed would differ.
 func _age_props(delta: float) -> void:
 	if props == null:
 		return

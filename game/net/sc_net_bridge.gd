@@ -1,36 +1,9 @@
 extends "sc_net_bridge_apply.gd"
 
 
-## Joins an [ScGame] to a [DotNetManager]. The netcode seam, and the only file in this
-## project that names both.
-##
-## [codeblock]
-## # server
-## bridge.attach(game, net)          # dot-game's DotGameNetcode does this
-## bridge.open_link(server)          # and this
-## bridge.add_player(peer_id, userid, "Ada")
-## bridge.server_tick(tick)          # instead of the game's own loop
-##
-## # client
-## bridge.attach(game, net)
-## bridge.open_link(client_link)
-## bridge.ask_ready()
-## bridge.client_tick(tick, command, slot)
-## [/codeblock]
-##
-## [b]What is predicted, and in this game the answer is one thing.[/b] A player's own
-## movement is predicted, like every other first-person game in this family. The platforms,
-## the props and the choppers are all server-authoritative and NOT predicted — and the
-## platforms are the interesting case, because they are the FLOOR. dot-props refuses to
-## predict a crate because two solvers diverge; a floor that diverged would be a player
-## falling through a platform their own machine says is holding them up, which is the worst
-## possible version of that bug. So the server decides every lean and every client is told.
-##
-## [b]The ordering is the other half of the file.[/b] dot-net drives simulation per entity;
-## this game's tick is a whole-world property — every player moves, then the platforms are
-## loaded and stepped, then what landed on what is decided. [method ensure_game_ticked]
-## reconciles the two: the first behaviour through on a tick runs the whole world and the
-## rest find it done.
+## Joins an [ScGame] to a [DotNetManager]. The netcode seam, and the only file in this project that names both. Server: attach, open_link, add_player, server_tick; client: attach, open_link, ask_ready, client_tick.
+## Only a player's own movement is predicted; platforms, props and choppers are server-authoritative, since a diverged floor would drop a player through a platform their own machine says holds them up.
+## This game's tick is whole-world (players move, platforms load and step, landings decided), so [method ensure_game_ticked] runs it on the first behaviour through a tick and the rest find it done.
 
 func _exit_tree() -> void:
 	# The link and the runtime hold each other through broadcast.
@@ -128,22 +101,8 @@ func attach(p_game: Object, p_net: DotNetManager) -> DotResult:
 
 
 ## Hands dot-combat the two callables that make lag compensation real.
-##
-## [b]Two lines, and without them the setting is a lie.[/b] dot-combat names no dot-net type
-## — the whole point of the seam — so it takes a rewind and a restore as [Callable]s and,
-## unset, says so once at boot and then resolves every shot against the present anyway. A
-## game that left the flag on and the callables unset would report lag compensation as
-## enabled, do nothing, and cost the next reader an afternoon; this family calls that
-## "produced correctly and consumed by nothing" and it is its second most repeated bug.
-##
-## dot-net already records the history: `DotNetManager.server_tick` calls
-## `history.record(identities, tick)` once a snapshot. There is nothing to build.
-##
-## [b]The shooter is not excluded, and that is safe here rather than an oversight.[/b]
-## `DotNetHistory.rewind` can leave one entity alone so that rewinding does not move the
-## shooter's own muzzle — but `resolve_shot` fixes `shot.origin` before it rewinds anything,
-## so the muzzle has already been decided, and the resolver refuses self damage separately.
-## What excluding would buy is one fewer entity moved and put back.
+## dot-combat names no dot-net type, so it takes a rewind and a restore as [Callable]s; unset, it says so once and resolves every shot against the present while the flag claims lag compensation is on. dot-net already records the history.
+## The shooter is not excluded, and that is safe: `resolve_shot` fixes `shot.origin` before it rewinds anything and refuses self damage separately.
 func _wire_lag_compensation() -> void:
 	if game.combat == null or net == null:
 		return
@@ -165,30 +124,19 @@ func _wire_lag_compensation() -> void:
 
 
 ## Opens the link under [param parent], whose NAME is half the RPC routing.
-##
-## A [DotServer] on one end and a [DotClientLink] on the other, both called `Server`, with
-## this node under each: Godot routes an RPC by the receiver's node path, so a link opened
-## anywhere else is addressed by a path the other end does not have and every message lands
-## nowhere, with no error on either side.
+## A [DotServer] and a [DotClientLink] both call theirs `Server`, with this node under each: Godot routes an RPC by node path, so a link opened elsewhere lands every message nowhere, with no error.
 func open_link(parent: Node) -> void:
 	if parent == null or link != null:
 		return
 
 	link = ScNetLink.attached_to(parent, self, net != null and net.is_server)
-	# Not parent.add_child: the link sits under the server (RPCs route by path) but must die
-	# with this bridge. A bare add_child left a second link after a module reload and Godot
-	# renamed the live one `@Node@n`, so RPCs to clients were lost. DotGameLink frees it with
-	# the bridge without remove_child, which errors on a busy parent.
+	# Not parent.add_child: the link sits under the server (RPCs route by path) but must die with this bridge, or a module reload leaves a second link and Godot renames the live one `@Node@n`.
+	# DotGameLink frees it with the bridge without remove_child, which errors on a busy parent.
 	DotGameLink.attach(link, parent, self, ScNetLink.NODE_NAME)
 
 
 ## How every dot-net message reaches a peer.
-##
-## [b]Routed by DELIVERY, not by kind.[/b] Snapshots are unreliable and go on the snapshot
-## call; everything else is reliable, and which reliable call it is depends on which end is
-## sending — the server has events, the client has requests. Sending them all as events
-## works on a server and silently drops every client request, which is a client that
-## connects, draws, and can never ask for anything.
+## Routed by DELIVERY, not by kind: snapshots are unreliable and go on the snapshot call; everything else is reliable, and which call depends on the sender (the server has events, the client has requests). Events from a client are silently dropped.
 func _send(peer_id: int, payload: PackedByteArray, delivery: int) -> void:
 	if link == null:
 		return
@@ -245,10 +193,8 @@ func remove_player(session_id: int) -> void:
 	_peer_of_player.erase(session_id)
 	_ready_peers.erase(peer_id)
 
-	# Released BEFORE the game is told: `game.remove_player` emits `player_removed`, which
-	# `_on_player_removed` answers by releasing the entity and broadcasting the LEAVE.
-	# Releasing first empties `_behaviours`, so that handler finds nothing and this stays
-	# the one place a leaving player is announced.
+	# Released BEFORE the game is told: `game.remove_player` emits `player_removed`, whose handler releases the entity and broadcasts the LEAVE.
+	# Releasing first empties `_behaviours`, so the handler finds nothing and this stays the one place a leaving player is announced.
 	_release_entity(session_id)
 	game.remove_player(player_key(session_id))
 
@@ -334,11 +280,7 @@ func _on_request(message: DotNetMessage) -> void:
 
 
 ## Everything in the world, to one peer, once its own copy exists.
-##
-## [b]On READY and not on connect, and the difference is a whole join's worth of
-## messages.[/b] dot-server's signon finishes and THEN the client builds its scene; a server
-## that started talking at connect is one whose JOIN, LAYOUT and PLATFORM land on a node
-## that does not exist yet and are lost, one "Node not found" per call.
+## On READY and not on connect: dot-server's signon finishes and THEN the client builds its scene, so earlier JOIN, LAYOUT and PLATFORM land on a node that does not exist yet.
 func _admit(peer_id: int) -> void:
 	if peer_id <= 0:
 		return
@@ -558,15 +500,8 @@ func _apply_hello(reader: DotNetReader) -> void:
 
 	local_player_id = int(hello["player_id"])
 
-	# [b]The server's tick rate, before anything is derived from it.[/b] Another game in
-	# this family shipped with HELLO carrying this and nothing reading it: a browser client
-	# counted at the 60 its export declared against a server on 128, so the correction rate
-	# was 0.96 and every replicated time was out by 128/60. Produced correctly and consumed
-	# by nothing, and invisible to a one-process suite because one process has one engine
-	# rate and both ends agree whatever the wire says.
-	#
-	# Before `sync_from_server`, because the clock converts its error and its lead through
-	# `tick_rate` and would otherwise do that arithmetic at the old rate.
+	# The server's tick rate, before anything is derived from it: a client counting at its export's 60 against a server on 128 gets every replicated time out by 128/60, invisible to a one-process suite.
+	# Before `sync_from_server`, because the clock converts its error and lead through `tick_rate`.
 	_adopt_tick_rate(int(hello["tick_rate"]))
 
 	var rtt := float(rtt_source.call()) if rtt_source.is_valid() else 0.0
@@ -603,22 +538,9 @@ func _apply_join(reader: DotNetReader) -> void:
 		player.sampler = null
 		player.samples_input = false
 
-		# [b]This client's own player is owned by this client, and nobody else's is.[/b]
-		# Until 2026-09-25 every mirror was built with owner 0, this client's own included,
-		# so `is_owner` was false for the local player, `registry.predicted()` was empty and
-		# `client_tick` simulated nobody: the player moved only when a snapshot came back, a
-		# round trip behind the keys, and the camera — drawn from `render_state`, a blend
-		# against a previous tick the controller never recorded — lurched between where the
-		# player was last teleported and where the server had them. Every check passed
-		# anyway, because a client adopting the server's answer also agrees with the server.
-		#
-		# By session and not by a peer id on the wire: JOIN does not carry one, and what
-		# `is_owner` compares is the owner against THIS registry's local peer — so the local
-		# peer id is the only right value whatever the server calls the connection, and the
-		# wire (and therefore a published pack's server half) is unchanged. HELLO, which sets
-		# `local_player_id`, is sent before every JOIN in `_admit` on the same reliable
-		# channel; [method _apply_hello] still claims a player that got here first, because
-		# an order is a property of the server, not of this file.
+		# This client's own player is owned by this client, and nobody else's is. With owner 0 on every mirror `is_owner` was false for the local player, `registry.predicted()` was empty and nobody was simulated; checks still passed because a client adopting the server's answer agrees with it.
+		# By session, not a peer id on the wire (JOIN carries none): `is_owner` compares against THIS registry's local peer, so the wire is unchanged.
+		# HELLO precedes every JOIN in `_admit` on the same reliable channel; [method _apply_hello] still claims a player that got here first, because an order is the server's property.
 		var identity := _build_entity(player, _mirror_owner(session_id))
 		var registered := net.registry.register(
 			identity, int(join["net_id"]), net.clock.tick, net.config
@@ -638,14 +560,9 @@ func _apply_join(reader: DotNetReader) -> void:
 	roster_changed.emit(session_id)
 
 
-## Who owns a mirrored player on this client: this client, if it is this client's own
-## player, and the server's 0 otherwise.
-##
-## [b]Never the local peer for anybody else[/b], or this client would predict a person whose
-## keys it never had. And a client whose local peer is 0 claims nothing: 0 is the server's
-## owner id, and on such a registry dot-net's `is_owner` (owner == local peer) is already true
-## of every owner-0 mirror — which this function cannot undo, and which no client here runs
-## into, because `ScClient` takes its id from the multiplayer API and that never answers 0.
+## Who owns a mirrored player on this client: this client, if it is this client's own player, and the server's 0 otherwise.
+## Never the local peer for anybody else, or this client would predict a person whose keys it never had.
+## A client whose local peer is 0 claims nothing: 0 is the server's owner id and `is_owner` is already true of every owner-0 mirror there; `ScClient` takes its id from the multiplayer API, which never answers 0.
 func _mirror_owner(session_id: int) -> int:
 	if net == null or net.local_peer_id <= 0:
 		return 0
@@ -657,11 +574,7 @@ func _mirror_owner(session_id: int) -> int:
 
 
 ## The local player's mirror, claimed if it arrived before HELLO said whose it was.
-##
-## Not the order `_admit` sends in, and that is why it is belt and braces rather than a path
-## this game takes: a JOIN that reached this peer before its HELLO would otherwise leave the
-## local player unpredicted for the rest of the session, with every check still passing —
-## which is the bug [method _apply_join] documents.
+## Belt and braces, since `_admit` sends HELLO first: a JOIN before its HELLO would otherwise leave the local player unpredicted all session with every check passing ([method _apply_join]).
 func _claim_local_player() -> void:
 	var mine: ScPlayerNet = _behaviours.get(local_player_id)
 

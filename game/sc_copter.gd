@@ -1,33 +1,8 @@
 extends DotVehicleChassis
 
 ## The chopper: a fourth kind of vehicle, because neither of dot-vehicle's two is one.
-##
-## [b]This file exists because [DotVehicleHover] returns early when nothing is under
-## it.[/b] That is the hovercraft being right — a craft held up by ground effect has
-## nothing to push against over a canyon — and it is exactly the state a helicopter spends
-## its whole life in. [DotVehicleWheeled] needs wheels on a surface. So the addon's own
-## extension point is the answer: `DotVehicleDef.chassis_script_path` names a script by
-## PATH, dot-vehicle loads it, checks it extends this base and drives it like any other.
-## Nothing in dot-vehicle is forked and nothing in it knows what a helicopter is.
-##
-## [b]Four controls, and only three of them fit in a [DotVehicleCommand].[/b]
-##
-## [codeblock]
-## command.throttle  collective — jump climbs, crouch descends
-## command.steer     the pedals — A and D yaw
-## command.brake     the rotor brake, which is how you drop out of the sky
-## vehicle.meta.cyclic  W and S, as a Vector2 the game writes each tick
-## [/codeblock]
-##
-## The cyclic goes in the instance's `meta` rather than in the command because the command
-## is dot-vehicle's wire shape and widening it would be a breaking change across every
-## game that has one, for a field only an aircraft has. `meta` is the free-form dictionary
-## the addon ships for exactly this.
-##
-## [b]It is not predicted.[/b] A helicopter is a rigid body under six forces and Godot's
-## solver is not reproducible across machines, so the pilot's keys go round trip like a
-## bus driver's in game-buses-from-hell — and for the same reason that is bearable: 1.4
-## tonnes hanging under a rotor take about a round trip to respond to anything.
+## [DotVehicleHover] returns early with nothing under it (a helicopter's whole life) and [DotVehicleWheeled] needs wheels, so `DotVehicleDef.chassis_script_path` names this script by PATH; nothing in dot-vehicle is forked.
+## Controls: `command.throttle` collective, `steer` pedals, `brake` rotor brake; the cyclic (Vector2) rides in `vehicle.meta.cyclic`, as widening dot-vehicle's wire-shaped command would break every game. Not predicted: Godot's solver is not reproducible across machines.
 
 const CHANNEL := "sc.copter"
 
@@ -39,28 +14,18 @@ const META_CYCLIC := &"cyclic"
 const META_CEILING := &"ceiling"
 
 ## How hard it holds itself level, in radians per second squared per radian of tip.
-##
-## [b]High, and a helicopter that did not would be unflyable.[/b] The real machine is
-## balanced by a person making hundreds of corrections a minute; a player has a keyboard.
-## What this stands in for is the pilot, and without it the first gust puts the rotor disc
-## on its side and the whole thing into the floor.
+## High: a real machine is balanced by a person making hundreds of corrections a minute and a player has a keyboard, so this stands in for the pilot, else the first gust puts the rotor disc on its side.
 const LEVEL_GAIN := 26.0
 
 ## And how much of its own tipping speed it takes back out per second.
 const LEVEL_DAMPING := 7.5
 
 ## Radians the nose drops at full forward cyclic.
-##
-## [b]Cosmetic and load-bearing at once.[/b] A helicopter that translated without tipping
-## reads as a lift moving sideways; the tip is how anybody watching from a platform knows
-## which way it has committed — which, since it is about to drop something on them, is the
-## most useful thing on the screen.
+## Cosmetic and load-bearing: the tip is how anybody on a platform knows which way it has committed, and it is about to drop something on them.
 const CYCLIC_TIP := 0.34
 
 ## How much sideways drift is removed per second, as a fraction.
-##
-## Zero is a machine that never stops going the way it last went and cannot be parked;
-## one is a machine on rails. This is the number that makes it feel like it has mass.
+## Zero never stops going the way it last went and cannot be parked; one is on rails. This is what gives it mass.
 const LATERAL_DAMPING := 1.15
 
 ## The lift multiplier at full collective. Written by the game from the configuration.
@@ -91,15 +56,10 @@ func _setup() -> DotResult:
 
 	_top_speed = maxf(tunables.top_speed, 1.0)
 
-	# [b]Off, and a sleeping helicopter is a helicopter that has landed permanently.[/b]
-	# Godot puts a body to sleep when it has been nearly still for a moment, and a parked
-	# chopper on a pad is exactly that — so the first collective input would reach a body
-	# the solver had stopped integrating, and the machine would sit there.
+	# Off: Godot sleeps a nearly still body, which a parked chopper is, so the first collective input would reach a body the solver had stopped integrating.
 	body.can_sleep = false
 
-	# Angular damping of its own, on top of the levelling torque. The torque is a spring
-	# and a spring alone rings; this is what stops a chopper that was bumped rocking for
-	# the rest of the round.
+	# Angular damping of its own, on top of the levelling torque: a spring alone rings, and this stops a bumped chopper rocking for the rest of the round.
 	# The linear damping is the tunables' (`linear_damp`), written by dot-vehicle before this.
 	body.angular_damp = 2.4
 
@@ -124,10 +84,7 @@ func _drive(command: DotVehicleCommand, delta: float) -> void:
 
 
 ## The rotor. Collective up climbs, collective down drops it out of the sky.
-##
-## [b]At zero collective it hovers exactly, and that is what makes the control
-## readable.[/b] A machine whose neutral is a slow sink is one a player is fighting the
-## whole time they are trying to aim at something.
+## At zero collective it hovers exactly: a neutral that is a slow sink is fought the whole time a player is trying to aim.
 func _apply_lift(body: RigidBody3D, command: DotVehicleCommand, weight: float) -> void:
 	var collective := clampf(command.throttle, -1.0, 1.0)
 	var factor := 1.0 + collective * (maxf(lift_ratio, 1.01) - 1.0)
@@ -198,10 +155,7 @@ func _apply_yaw(body: RigidBody3D, delta: float) -> void:
 	var wanted := -steering / maxf(delta, 0.0001)
 	var change := wanted - body.angular_velocity.y
 
-	# A torque toward the rate that was asked for rather than a flat one, so the machine
-	# turns at the rate the tunables name instead of accelerating for as long as the key
-	# is held. `steering_rate_deg` therefore means degrees per second of yaw, which is
-	# what an operator reading the cvar would expect it to mean.
+	# A torque toward the rate that was asked for rather than a flat one, so the machine turns at the rate the tunables name; `steering_rate_deg` therefore means degrees per second of yaw.
 	body.apply_torque(Vector3.UP * clampf(change, -6.0, 6.0) * body.mass * 0.45)
 
 
@@ -210,9 +164,7 @@ func _apply_levelling(body: RigidBody3D, transform: Transform3D) -> void:
 	var up := transform.basis.y
 	var axis := up.cross(Vector3.UP)
 
-	# The reversed case cannot be handled by the general formula: two opposite vectors
-	# have a zero cross product, so the axis is undefined and the torque comes out NaN —
-	# which in Godot is a body that stops being simulated with nothing reported anywhere.
+	# The reversed case cannot use the general formula: two opposite vectors have a zero cross product, so the axis is undefined and the torque is NaN, which stops the body being simulated with nothing reported.
 	# An inverted chopper is pushed off its back onto a fixed axis instead.
 	var inverted := up.dot(Vector3.UP) < 0.0
 

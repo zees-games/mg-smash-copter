@@ -12,32 +12,14 @@ const ScMapSession := preload("../game/sc_map_session.gd")
 const ScAvatars := preload("../game/sc_avatars.gd")
 const ScProgress := preload("../game/sc_progress.gd")
 
-## Boots a real [DotServer], loads this game into it as a module, and runs the commands an
-## operator would actually type.
-##
-## [codeblock]
-## godot --headless --path . res://examples/dedicated.tscn
-## [/codeblock]
-##
-## [b]This is the seam the family's own notes say is never run.[/b] `headless_run` tests the
-## joins between the gameplay addons; this tests the join between the game and the SERVER —
-## the module lifecycle, the console, the cvars, and `sv_tickrate` travelling from a line in
-## a config file all the way into the netcode's own configuration.
-##
-## Nothing here opens a socket to a client, except the one section that checks still-loading. A dedicated server that never accepts one is
-## still a dedicated server as far as its console, its cvars and its modules are concerned,
-## and those are what this is about.
+## Boots a real [DotServer], loads this game into it as a module, and runs the commands an operator would type.
+## Tests the join between the game and the SERVER (module lifecycle, console, cvars, `sv_tickrate` from a config file into the netcode); `headless_run` covers the gameplay joins.
+## No socket opens to a client except the still-loading section.
 
 const SECTIONS := 17
 const CHECKS := 167
 
-## Everything this run writes, and it is deleted on the way in and on the way out.
-##
-## [b]A suite that writes to `user://` is a suite whose result depends on the last run.[/b]
-## This one used to write the real punishment store, the server's ban and admin files and
-## its audit log, all at their defaults — so every run appended to all four, and the live
-## tools' warnings alone had reached 106 records in a store a real server enforces. Nothing
-## failed yet; `docs/testing.md` has the two suites that did, on their ninth run.
+## Everything this run writes, deleted on the way in and out: a suite that writes to `user://` makes its result depend on the last run (`docs/testing.md`).
 const SERVER_DIR := "user://sc_dedicated"
 
 ## The port this test listens on. Nothing else on a developer's machine is likely to be
@@ -115,10 +97,7 @@ func _run() -> void:
 	if not probe.is_empty():
 		_test_exits_clean(probe)
 
-	# Against the declared number too. SECTIONS was declared and read by nothing — it said
-	# 6 while eight sections ran — which is the detector for "a name that occurs once"
-	# finding its own suite.
-	#
+	# Against the declared number too: SECTIONS once said 6 while eight ran.
 	# The copy of this suite that the exit probe runs does not run the probe itself.
 	var sections := SECTIONS - (1 if _is_exit_probe() else 0)
 	var checks := CHECKS - (EXIT_PROBE_CHECKS if _is_exit_probe() else 0)
@@ -128,11 +107,7 @@ func _run() -> void:
 	_report_sections(_sections_entered, _sections_finished, sections, checks)
 
 
-## Takes the server down before quitting, and this run does not end without it.
-##
-## [b]`get_tree().quit()` on a booted [DotServer] does not end the process.[/b] The listener
-## is open and the transport is holding the main loop, so the run prints its results, reports
-## success, and hangs — which in a CI job is a timeout on a suite that passed.
+## Takes the server down before quitting: `get_tree().quit()` on a booted [DotServer] does not end the process (the listener holds the main loop), so a passed suite would hang in CI.
 func _shut_down() -> void:
 	if server == null:
 		return
@@ -167,13 +142,8 @@ func _shut_down() -> void:
 func _boot() -> void:
 	_section("booting")
 
-	# The tick rate is set the way an operator actually sets it: a line in a config file the
-	# server execs at boot.
-	#
-	# [b]`startup_config`, not `autoexec_config`.[/b] `sv_tickrate` is FLAG_STARTUP_ONLY — a
-	# live server cannot re-negotiate its tick rate — and dot-server execs `server.cfg`
-	# BEFORE the listener for exactly that reason, while `autoexec.cfg` runs after and would
-	# have it refused.
+	# The tick rate is set as an operator sets it, a line in a config file the server execs at boot.
+	# `startup_config`, not `autoexec_config`: `sv_tickrate` is FLAG_STARTUP_ONLY and dot-server execs `server.cfg` before the listener, while `autoexec.cfg` runs after and would be refused.
 	var cfg_path := "%s/server.cfg" % SERVER_DIR
 	var cfg := FileAccess.open(cfg_path, FileAccess.WRITE)
 
@@ -206,11 +176,8 @@ func _boot() -> void:
 	config.admins_path = "%s/admins.json" % SERVER_DIR
 	config.bans_path = "%s/bans.json" % SERVER_DIR
 	config.audit_log_path = "%s/audit.jsonl" % SERVER_DIR
-	# [b]Off, or this run never ends.[/b] The stdin console reads on its own thread, and a
-	# thread blocked in a read is a thread Godot will not exit without — so the suite prints
-	# its results, calls `quit()`, and hangs.
-	# Kept after dot-server 5f46687, which no longer reads a pipe unless `stdin_console_pipes`
-	# is on: a terminal is still read, and a suite takes no commands from either.
+	# Off, or this run never ends: the stdin console reads on a thread Godot will not exit without.
+	# Kept after dot-server 5f46687 (no pipe reads unless `stdin_console_pipes`): a terminal is still read.
 	config.stdin_console_enabled = false
 
 	server = DotServer.new()
@@ -341,9 +308,8 @@ func _test_the_module_loads() -> void:
 	_finished()
 
 
-## A module reload must leave ONE link under the server, still named for the client's route.
-## Two used to be left, the live one renamed `@Node@n`, and every RPC to a real client was lost
-## without an error. The proof is a real client over the socket: signing on is server events.
+## A module reload must leave ONE link under the server, still named for the client's route; a second one lost every RPC to a real client without an error.
+## The proof is a real client over the socket: signing on is server events.
 func _test_a_module_reload() -> void:
 	_section("a module reload leaves one live link")
 
@@ -465,10 +431,7 @@ func _test_the_tunables() -> void:
 
 	var config := game.config
 
-	# [b]The default is the value the world was built with, not a literal.[/b] A cvar
-	# declared with its own default is a second copy of a number the layered configuration
-	# has already decided — so an operator who set it in a file would have it reported back
-	# wrong and reset the moment anything wrote it.
+	# The default is the value the world was built with, not a literal: a cvar with its own default is a second copy of a number the layered configuration already decided, reported back wrong and reset on the first write.
 	var declared := _run_command("sc_survival_seconds")
 	_check(
 		_said(declared, "3"),
@@ -587,11 +550,8 @@ func _test_a_round_runs() -> void:
 	var reached_showdown := false
 	var threw := 0
 
-	# [b]Longer than the two phases add up to, because the round cannot start until there
-	# are two sides.[/b] The module puts stand-ins in on a two-second interval and dot-match
-	# refuses to leave warmup below `min_players`, so the clock this section is waiting on
-	# does not begin at the moment the module loaded. Timing a test to the exact sum of its
-	# phases is how a suite ends up failing on a slow machine and passing on a fast one.
+	# Longer than the two phases add up to: the round cannot start until there are two sides (stand-ins join on a two-second interval, dot-match holds warmup below `min_players`).
+	# Timing a test to the exact sum of its phases passes on a fast machine and fails on a slow one.
 	for _i in range(int(14.0 * TICK_RATE)):
 		await get_tree().physics_frame
 		threw = maxi(threw, game.cannon.props_launched)
@@ -631,13 +591,8 @@ func _test_a_round_runs() -> void:
 		]
 	)
 
-	# [b]The round began inside the netcode's own tick, and that is the case this is for.[/b]
-	# The boot field is replaced by round one's from inside `DotNetManager.server_tick`,
-	# which then records lag-compensation history for the identity list it took before the
-	# platforms were let go of — re-creating a track for every id the registry had just told
-	# it to forget. Nothing reads them and nothing frees them: twelve per round, for the
-	# life of the server. `history._tracks` is read directly because a leak is exactly what
-	# no public accessor of the history would report.
+	# The round began inside the netcode's own tick, which is the case this is for: the boot field is replaced from inside `DotNetManager.server_tick`, which then re-created lag-compensation tracks for ids the registry had just forgotten (twelve leaked per round).
+	# `history._tracks` is read directly because no public accessor would report a leak.
 	var net: DotNetManager = module.net
 	var orphans: Array[int] = []
 
@@ -656,11 +611,8 @@ func _test_a_round_runs() -> void:
 	_check(orphans.is_empty(), "and lag compensation keeps nothing for what the server let go",
 		"%d tracks, %d orphaned %s" % [net.history._tracks.size(), orphans.size(), str(orphans)])
 
-	# The same moment, seen from the log: the old decks are out of the tree and still
-	# registered for that one tick, and dot-net's history read their global basis. Fixed in
-	# dot-net (DotNetHistory skips an entity that is not in the world, as
-	# DotNetIdentity.world_position already did), because taking a node out between ticks
-	# is something the netcode has already agreed a game may do.
+	# The same moment in the log: the old decks are out of the tree but still registered for one tick.
+	# Fixed in dot-net (DotNetHistory skips an entity not in the world), because taking a node out between ticks is something the netcode agreed a game may do.
 	OS.remove_logger(errors)
 	var seen := errors.seen()
 	_check(seen.is_empty(), "and the engine reported no error",
@@ -670,11 +622,7 @@ func _test_a_round_runs() -> void:
 
 
 ## The rule that keeps a round possible on a server nobody is on.
-##
-## [b]An elimination round with one side in it ends on its first tick.[/b] A server holding
-## one person would start a round, end it, start another and end that, several times a
-## second, with every decision correct — which is the bug game-buses-from-hell shipped and
-## which is why this rule exists at all.
+## An elimination round with one side in it ends on its first tick, so a server holding one person would start and end rounds several times a second.
 func _test_the_stand_ins() -> void:
 	_section("the stand-ins")
 
@@ -698,10 +646,8 @@ func _test_the_stand_ins() -> void:
 	_check(bots == game.players.size(), "and all of them are stand-ins on an empty server",
 		"%d of %d" % [bots, game.players.size()])
 
-	# [b]A person takes a stand-in's place, and leaving gives it back[/b]: DotBotQuota's fill
-	# mode, the family's default. Driven by calling the roster check rather than waiting for
-	# its interval, with a person added through the bridge the way a test's player is (peer
-	# zero, not a stand-in), so the count is exact and nothing else moves under it.
+	# A person takes a stand-in's place, and leaving gives it back (DotBotQuota's fill mode).
+	# Driven by calling the roster check, not waiting for its interval, with a person added through the bridge (peer zero) so the count is exact.
 	var quota_module := _module()
 	var quota_bridge: Object = quota_module.get("bridge") if quota_module != null else null
 	_check(server.console.find_cvar("bot_quota") != null and server.console.find_cvar("bot_quota_mode") != null,
@@ -775,10 +721,8 @@ func _test_the_stand_ins() -> void:
 	_finished()
 
 
-## dot-moderation's live tools, built by dot-game's services layer by path with this
-## game's verbs in them, driven through the console against a player who joined the way a
-## client does. The body is looked at the moment each command returns: a round can start
-## or end under this section, and a new round is a new body here.
+## dot-moderation's live tools, built by dot-game's services layer with this game's verbs, driven through the console against a player who joined as a client does.
+## The body is looked at when each command returns: a round can start or end under this section.
 func _test_the_live_tools() -> void:
 	_section("the moderator's live tools")
 
@@ -920,14 +864,8 @@ func _test_the_live_tools() -> void:
 	_finished()
 
 
-## Profiles, names and faces on a real server: dot-platform's identity layer, its module, and
-## the three events this game redraws a player on.
-##
-## [b]Admitted AFTER they are seated, on purpose.[/b] That is the order a real join has
-## whenever the profile store is slower than the content download — dot-server has no stage
-## to hold a player in between — and it is the order in which a game that only read the
-## name and face at seating shows a guest for the whole session. The session is seated with
-## no identity, then given one and announced, exactly as dot-server announces it.
+## Profiles, names and faces on a real server: dot-platform's identity layer, its module, and the three events this game redraws a player on.
+## Admitted AFTER they are seated, on purpose: a real join does this whenever the profile store is slower than the content download, and a game reading name and face only at seating shows a guest all session.
 func _test_who_they_are() -> void:
 	_section("who somebody is")
 
@@ -961,10 +899,7 @@ func _test_who_they_are() -> void:
 		"seated before the platform knows them, they wear the stock look for their seat"
 	)
 
-	# A guest first — a server with authentication off, where everybody is one. dot-user
-	# keeps no profile for a guest by default (a guest id is a random per-device string, and
-	# a file per device is a disk filling up), so they get the name they gave and keep the
-	# stock look.
+	# A guest first, on a server with authentication off. dot-user keeps no profile for a guest by default (a guest id is a random per-device string), so they get the name they gave and the stock look.
 	session.identity = DotAuthIdentity.guest("device-717", "Maggie")
 	var platform := server.modules.get_module("platform")
 	platform.call("_on_client_state_changed", session)
@@ -1008,8 +943,7 @@ func _test_who_they_are() -> void:
 		key
 	)
 
-	# What they keep is filed under the key that outlives this connection, and is still
-	# found by the world's own id.
+	# What they keep is filed under the key that outlives this connection, and is still looked up by the world's own id.
 	if game.progress != null:
 		game.progress.record(&"u717", ScProgress.DEATHS)
 	_check(
@@ -1021,10 +955,8 @@ func _test_who_they_are() -> void:
 		str(game.progress.filed_under(&"u717")) if game.progress != null else "no progress"
 	)
 
-	# An account's name is the site's, and dot-user refuses to change it here — so an
-	# operator's `platform_name` on a signed-in player is a refusal they can read, and the
-	# world keeps the name. The rename that IS allowed (a guest profile, on a server that
-	# keeps them) reaching the session is dot-platform's sandbox's to check.
+	# An account's name is the site's and dot-user refuses to change it here, so an operator's `platform_name` is a refusal and the world keeps the name.
+	# The rename that IS allowed (a guest profile on a server that keeps them) is dot-platform's sandbox's to check.
 	var renamed := _run_command("platform_name 717 Grace")
 	for _i in range(10):
 		await get_tree().process_frame
@@ -1039,12 +971,8 @@ func _test_who_they_are() -> void:
 	net.send_fn = previous_send
 	_finished()
 
-## [b]A seat whose client has not lifted its loading cover cannot be harmed, and can once it does[/b]
-## (dot-game's "still loading"), over a real ENet socket. A client joins and says nothing, as one
-## still loading its level; the world's damage path is then asked to crush it, shoot it and drop it
-## through the floor, and must refuse all three. An admin's slay still passes. The client then
-## sends `game.cover` on the wire and the same hit lands. Stand-ins never reach this: a bot is
-## never loading.
+## A seat whose client has not lifted its loading cover cannot be harmed, and can once it does (dot-game's "still loading"), over a real ENet socket.
+## A client joins and says nothing; crush, shoot and drop must be refused, an admin's slay still passes, and after `game.cover` on the wire the same hit lands.
 func _test_a_covered_seat_is_not_harmed() -> void:
 	_section("a client behind its loading cover is not harmed, and is once it lifts")
 
@@ -1065,10 +993,8 @@ func _test_a_covered_seat_is_not_harmed() -> void:
 	mirror.name = "Dedicated"
 	side.add_child(mirror)
 	mirror.add_child(link)
-	# The server's snapshots and events are RPCs to a node of this name under the link; with
-	# none here each is an engine error. It drops what arrives (it has no bridge).
-	# The link retires whatever the game left under it when it signs on, so it is put back at
-	# each phase change (a real client's game scene does this from its _ready).
+	# The server's snapshots and events are RPCs to a node of this name under the link; with none each is an engine error, and it drops what arrives.
+	# The link retires whatever the game left under it when it signs on, so it is put back at each phase change (a real client's scene does this from _ready).
 	var attach := func(_a: Variant = null, _b: Variant = null) -> void:
 		if link.get_node_or_null(NodePath(ScNetLink.NODE_NAME)) == null:
 			var sink := ScNetLink.attached_to(link, null, false)
@@ -1161,17 +1087,9 @@ func _until_player(session: int) -> ScPlayer:
 
 
 
-## The players' vote decides the next layout, end to end through what a player types: a
-## nomination, the ballot opening on its own clock with the nomination on it, a vote by
-## number, the round's end putting the winner on the next round, and rock-the-vote opening a
-## ballot early. Commands run at the console, which is where a `!vote` typed in chat lands
-## (`_on_chat_command` runs it as the player); the console's voter is "console", so the
-## voter list is that one name. Stand-ins are not voters, and a server of stand-ins never
-## opens a ballot by itself.
-##
-## Synchronous from the round's end to the layout laid: the stand-ins' rounds are running,
-## and one that started in a frame between would lay the voted layout itself and leave the
-## check reading the draw's.
+## The players' vote decides the next layout, end to end through what a player types: nomination, the ballot opening on its own clock, a vote by number, the round's end laying the winner, rock-the-vote.
+## Commands run at the console, where a chat `!vote` lands; its voter is "console". Stand-ins are not voters.
+## Synchronous from the round's end to the layout laid: a stand-in round starting in between would lay the layout itself.
 func _test_the_layout_vote() -> void:
 	_section("the layout vote")
 	var module := _module()
@@ -1383,11 +1301,8 @@ func _test_map_rotation_file() -> void:
 	_finished()
 
 
-## [b]`time_up: finish_round` waits for a round being played, never for warmup.[/b] The game
-## hands dot-vote its match's answer (`round_in_progress_fn`); without it a limit that ran out
-## in warmup held the change for `finish_round_max_sec` over a round that had not started.
-## Run on a director of its own carrying the game's own hook, so the real vote's clock is
-## untouched; the match's state is set by hand and put back.
+## `time_up: finish_round` waits for a round being played, never for warmup: the game hands dot-vote `round_in_progress_fn`, else a limit that ran out in warmup held the change for `finish_round_max_sec`.
+## Run on a director of its own carrying the game's hook, so the real vote's clock is untouched; the match's state is set by hand and put back.
 func _test_finish_round_waits_for_a_live_round() -> void:
 	_section("finish_round waits for a live round, not warmup")
 	var module := _module()
@@ -1590,22 +1505,14 @@ func _test_it_unloads_cleanly() -> void:
 	_finished()
 
 
-## The loaded module, looked up rather than kept.
-##
-## [b]Looked up every time, because the last section unloads it.[/b] A field would be a
-## dangling reference the moment it did. Typed [DotModule] rather than as its own class,
-## because `sc_module.gd` has NO `class_name` — it is loaded by path, which is the shape a
-## module delivered in a dot-cloud pack must have.
+## The loaded module, looked up every time because the last section unloads it.
+## Typed [DotModule], not its own class: `sc_module.gd` has NO `class_name`, the shape a module delivered in a dot-cloud pack must have.
 func _module() -> DotModule:
 	return server.modules.get_module("smash") if server != null else null
 
 
 ## Runs a line the way the console does and captures what came back.
-##
-## [b]Through `reply_sink`, not by reading `output` off a context built by hand.[/b] A
-## command's reply goes wherever its context sends it — a socket, RCON, stdout — and the
-## sink is that seam. A context constructed with `new()` and poked at is not the object a
-## real command is handed.
+## Through `reply_sink`, not `output` on a hand-built context: a reply goes wherever its context sends it, and a poked-at `new()` is not what a real command is handed.
 func _run_command(line: String) -> PackedStringArray:
 	var captured: Array[String] = []
 

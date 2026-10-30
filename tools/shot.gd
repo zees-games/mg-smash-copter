@@ -5,38 +5,9 @@ const ScPlatforms := preload("../game/sc_platforms.gd")
 const ScLayouts := preload("../game/sc_layouts.gd")
 const ScVote := preload("../game/sc_vote.gd")
 
-## Renders the game and exits. The check no assertion in this repository makes.
-##
-## [b]Everything about this map that can be wrong is invisible to every check in the
-## suite.[/b] The suite proves a platform leans toward a load, collapses at an angle and
-## carries what is on it. Not one of its ninety-five checks can tell you that the lean is
-## the wrong way round on screen, that a pillar is drawn through its own platform, that the
-## prototype grid came out one metre or eight, that the chopper is a pile of boxes, or that
-## a player forty metres up cannot see the floor they are standing on. Four bugs in this
-## family were each found by a picture, and one of them — the sign of a platform's normal —
-## was found in this game by an assertion only because the assertion was written to measure
-## the surface rather than the state.
-##
-## xvfb-run, never `--headless`: the headless display driver does no rendering at all, so a
-## capture under it is a black PNG — which is worse than no screenshot, because it looks
-## like one.
-##
-## [codeblock]
-## tools/shot.sh                  # the field from a player's eyes
-## tools/shot.sh --view=cover     # the loading cover, before it lifts
-## tools/shot.sh --view=field     # the whole map from above and to one side
-## tools/shot.sh --view=lean      # a platform that has been leant on, from its own level
-## tools/shot.sh --view=copter    # the chopper, close
-## tools/shot.sh --view=showdown  # the corners the round is finished in
-## tools/shot.sh --view=dais      # the ring's dais, low, from where a catwalk meets the ring
-## tools/shot.sh --view=jump      # the first jump the layout means, from behind the runner
-## tools/shot.sh --view=bridge    # a bridge leant on at one end, from beside it
-## tools/shot.sh --view=beacon    # an admin's beacon on a stand-in, from across the field
-## tools/shot.sh --view=killcam --seconds=2   # the round's last moment replayed; --seconds=8 for the podium
-## tools/shot.sh --view=blind     # the local player's own eyes, blinded, through the real HUD
-## tools/shot.sh --view=spectate  # the local player, out, through the camera the server gave them
-## tools/shot.sh --ballot          # the layout vote's ballot over any view, mid-vote
-## [/codeblock]
+## Renders the game and exits: the check no assertion in this repository makes, since a wrong-way lean, a pillar through its platform or a one-metre-or-eight grid are invisible to the suite.
+## xvfb-run, never `--headless`: the headless display driver does no rendering, so a capture is a black PNG, worse than none because it looks like one.
+## Run `tools/shot.sh [--view=NAME] [--seconds=N] [--ballot]`; views are cover, field, lean, copter, showdown, dais, jump, bridge, beacon, killcam, blind, spectate, and none for the player's eyes.
 
 # No `const CHANNEL`: this is a command-line tool, and what it says is its output (`print`),
 # not a record for an operator's log.
@@ -246,10 +217,8 @@ func _register_fixture_pack() -> void:
 	print("fixture pack: ", added.ok)
 
 
-## A real ballot from this game's vote: every layout this server plays there is, four voters, three of whom
-## have voted, drawn the way the client shell's notice overlay draws a `map_ballot` — a
-## [DotBallotPanel] down the right-hand side. Waits a second for the voters' discs to slide
-## to the row they chose; a frame too soon catches one between rows.
+## A real ballot from this game's vote (every layout this server plays, four voters, three of whom have voted) drawn as the client shell's notice overlay draws a `map_ballot`, a [DotBallotPanel] down the right.
+## Waits a second for the voters' discs to slide to their row; a frame too soon catches one between rows.
 func _show_ballot(list: Array, current: StringName) -> void:
 	var names := {&"1": "you", &"2": "bo", &"3": "quiet_one", &"4": "ana"}
 	var states: Array = []
@@ -295,11 +264,7 @@ func _show_ballot(list: Array, current: StringName) -> void:
 
 
 ## Puts a camera somewhere a first-person one can never be.
-##
-## [b]The one thing a player's own camera cannot show is the thing they are standing on.[/b]
-## Every view below exists because a question about this map cannot be answered from eye
-## height: whether the field reads as a field, whether a lean reads as a lean, and whether
-## the machine in the sky reads as a helicopter.
+## Every view below answers a question that cannot be asked from eye height: whether the field reads as a field, a lean as a lean, the machine in the sky as a helicopter.
 func _place_camera(game: ScGame, view: String) -> void:
 	var camera := Camera3D.new()
 	camera.name = "Look"
@@ -409,10 +374,7 @@ func _look_rider(game: ScGame, camera: Camera3D) -> void:
 
 
 func _look_jump(game: ScGame, camera: Camera3D) -> void:
-	# [b]From where a runner stands before the jump the layout MEANS[/b], a little
-	# above their eye, looking along the line they will run. A field from above says
-	# where the platforms are and nothing about whether the gap between two of them
-	# is a jump; this is the picture of the one question the reach section asks.
+	# From where a runner stands before the jump the layout MEANS, a little above their eye, looking along the line they will run: a field from above does not say whether a gap is a jump, which is the question the reach section asks.
 	var pair := _first_meant_jump(game)
 
 	if pair == Vector2i(-1, -1):
@@ -427,10 +389,7 @@ func _look_jump(game: ScGame, camera: Camera3D) -> void:
 
 
 func _look_bridge(game: ScGame, camera: Camera3D) -> void:
-	# [b]From beside the first bridge, at deck height, with one end weighed down.[/b]
-	# What it answers is whether a bridge lies on its two lips: the loaded platform's
-	# near edge dips, and the bridge has to run from that dipped lip to the level one
-	# with no step at either end and no lean of its own.
+	# From beside the first bridge, at deck height, with one end weighed down: whether a bridge lies on its two lips, running from the dipped near edge to the level one with no step at either end.
 	var span := await _lean_a_bridge(game)
 
 	if span == null:
@@ -484,13 +443,8 @@ func _look_flank(game: ScGame, camera: Camera3D) -> void:
 
 
 func _look_armed(game: ScGame, camera: Camera3D) -> void:
-	# [b]Somebody else holding a gun, close[/b]: the clock wound to the showdown, a
-	# stand-in that was handed a weapon, and the camera a few metres in front of them
-	# and to their left, at chest height — where the question "is the gun in the hand,
-	# the right way round and the right size" has an answer.
-	# Shorten the survival half with `--sc-survival-seconds=10 --seconds=16` rather than
-	# winding the clock here: a wound clock skipped the handover's teleport and ended the
-	# round. Waited out until somebody is armed, for up to ten seconds.
+	# Somebody else holding a gun, close: the clock wound to the showdown, a stand-in handed a weapon, the camera a few metres in front at chest height, where "is the gun in the hand, the right way round and size" has an answer.
+	# Shorten the survival half with `--sc-survival-seconds=10 --seconds=16` rather than winding the clock, which skipped the handover's teleport and ended the round. Waited out until somebody is armed, up to ten seconds.
 	var waited := 0.0
 	while waited < 10.0 and game.phase != ScGame.Phase.SHOWDOWN:
 		waited += get_process_delta_time()
@@ -534,11 +488,7 @@ func _first_meant_jump(game: ScGame) -> Vector2i:
 	return Vector2i(-1, -1)
 
 
-## Leans the first platform hard, so there is something to photograph.
-##
-## A platform in a fresh round is level, and a picture of a level platform says nothing
-## about whether the lean is drawn the right way round — which is the bug this view exists
-## to catch.
+## Leans the first platform hard, so there is something to photograph: a level platform says nothing about whether the lean is drawn the right way round.
 func _lean_one(game: ScGame) -> void:
 	var platforms := game.platforms
 	var deck := platforms.deck_at(0)
@@ -548,10 +498,7 @@ func _lean_one(game: ScGame) -> void:
 
 	var at := deck.centre + Vector3(deck.half * 0.85, 0.0, 0.0)
 
-	# [b]Heavy, because the spring is the point.[/b] A platform finds an equilibrium against
-	# whatever is standing on it, so an ordinary player's eighty kilograms is three degrees —
-	# which is exactly the amount a picture cannot settle. What is being checked here is which
-	# WAY it goes, so the load is enough to take it near its own collapse angle.
+	# Heavy, because the spring is the point: an ordinary player's eighty kilograms is three degrees, which a picture cannot settle. What is checked is which WAY it goes, so the load takes it near its own collapse angle.
 	for _i in range(90):
 		platforms.begin_loads()
 		platforms.add_load(0, at, 520.0, 0.0)

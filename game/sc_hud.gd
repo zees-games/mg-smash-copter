@@ -5,23 +5,10 @@ const ScPlayer := preload("sc_player.gd")
 const ScWeaponIcons := preload("sc_weapon_icons.gd")
 
 ## The clock, the health, and the two numbers that say whether this is still winnable.
-##
-## [b]How many platforms are left is the number that is not obvious and is the most
-## important of the four.[/b] Health says how many mistakes you have left and the clock says
-## how long you have to survive; neither says whether surviving is still possible. The
-## platform count does: a field down to its last three is a field where standing still has
-## stopped working, and a player who watches that number fall starts moving before it is too
-## late rather than after.
-##
-## [b]And the lean of the floor you are on, which nothing else could tell you.[/b] A player
-## in first person looking at the horizon cannot see the platform under their feet; the one
-## in third person can see it and cannot judge it. Ten degrees is the number, and the bar
-## goes red at the angle a player starts sliding.
+## The platform count is the least obvious and most important: health says how many mistakes are left and the clock how long to survive, but only a field down to its last three says standing still has stopped working.
+## The lean of the floor you are on, which nothing else shows (first person cannot see the platform underfoot, third cannot judge it); the bar goes red at the angle a player starts sliding.
 
-# No `const CHANNEL`. This draws numbers from state somebody else owns and has nothing an
-# operator would act on; the round, the deaths and the collapses are logged by [ScGame],
-# which is where the decisions are. A channel declared and never used is a file that meant
-# to say something and does not.
+# No `const CHANNEL`: this draws numbers from state somebody else owns, and the round, deaths and collapses are logged by [ScGame], where the decisions are.
 
 ## Radians of lean at which the tilt bar goes red. The angle a player slides at.
 const SLIDE_LEAN := 0.244
@@ -45,10 +32,8 @@ static func piece_theme() -> Theme:
 	return t
 
 
-## The Escape menu, whose theme this HUD follows (dot-menu's `follow_hud`): the menu sets the
-## theme on the HUD's root now and at every theme change, and applies the player's HUD size.
-## Christian's first play test (2026-10-11) asked for a darker HUD a player can restyle in
-## the menu. Duck-typed and called by name, for a client shell older than dot-menu 7.
+## The Escape menu, whose theme this HUD follows (dot-menu's `follow_hud`): the menu sets the theme on the HUD's root now and at every change, and applies the player's HUD size.
+## Duck-typed and called by name, for a client shell older than dot-menu 7.
 var _menu: Object = null
 
 
@@ -95,18 +80,8 @@ var _root: Control = null
 var _shout_for: float = 0.0
 
 ## An administrator's `blind`, over the world and under the HUD's numbers.
-##
-## [b]Under the numbers, on purpose.[/b] A blind takes the game away, not the player's
-## bearings: the clock, the phase and their own health still say the round is going on and
-## that they are in it, which is what makes it read as "an admin did this" rather than as a
-## client that stopped drawing.
-##
-## [b]But not under the tilt bar, which a blind hides.[/b] The bar is the floor under their
-## feet drawn as a number — in this game the one thing their eyes would have told them —
-## and a blind that left it would leave a player who can still balance by instrument.
-##
-## Black rather than white. A white screen at full brightness is a thing a player can be
-## hurt by in a dark room, and taking the picture away is the whole of the point.
+## Under the numbers, on purpose: a blind takes the game away, not the player's bearings, so it reads as "an admin did this" and not as a client that stopped drawing. But not under the tilt bar, which is the floor drawn as a number and would let a blinded player balance by instrument.
+## Black rather than white: full-brightness white can hurt in a dark room.
 var blind_overlay: ColorRect = null
 
 ## Seconds a blind takes to come down and to lift. Short, so it is unmistakably on, and not
@@ -125,22 +100,14 @@ func bind(p_game: ScGame, p_player: ScPlayer) -> void:
 
 
 func _build() -> void:
-	# [b]A full-rect Control between the CanvasLayer and the labels, and the first render of
-	# game-buses-from-hell is why.[/b] A CanvasLayer is not a Control and does not lay its
-	# children out, so anchors on a Label parented straight to one resolve against nothing:
-	# every label lands in the top-left corner on top of the others, and the only one
-	# visible is whichever drew last, clipped in half by the edge of the screen. It reads as
-	# the HUD being half-written.
+	# A full-rect Control between the CanvasLayer and the labels: a CanvasLayer does not lay its children out, so anchors on a Label parented straight to it resolve against nothing and every label lands top-left on top of the others.
 	_root = Control.new()
 	_root.name = "Screen"
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_root)
 
-	# First, so every widget added below draws over it. Full rect on `_root`, which is full
-	# rect on a CanvasLayer — so the whole viewport, with no safe-area inset between them to
-	# leave a frame of the world showing round the edge, which is what game-arena's first
-	# render of its own blind found. See [member blind_overlay].
+	# First, so every widget added below draws over it. Full rect on `_root`, which is full rect on a CanvasLayer, so the whole viewport with no safe-area inset leaving a frame of the world showing round the edge. See [member blind_overlay].
 	blind_overlay = ColorRect.new()
 	blind_overlay.name = "Blind"
 	blind_overlay.color = BLIND_COLOUR
@@ -182,11 +149,7 @@ func _build() -> void:
 	_shout.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_shout.add_theme_color_override("font_color", Color(0.99, 0.86, 0.40))
 
-	# [b]Above the chat box, because the chat box also draws itself bottom-left.[/b] The
-	# first render had the health number and the first line of chat in the same forty pixels,
-	# one on top of the other — which is exactly the shape of the bug game-buses-from-hell
-	# shipped with four HUD labels, and is invisible to a headless suite because a headless
-	# viewport is 64 x 64 and nothing there can overlap anything.
+	# Above the chat box, because the chat box also draws itself bottom-left; overlap is invisible to a headless suite, whose viewport is 64 x 64.
 	vitals = DotVitals.new()
 	vitals.name = "Vitals"
 	vitals.bar_end = 220.0
@@ -194,10 +157,7 @@ func _build() -> void:
 	vitals.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	vitals.offset_left = 24.0
 	vitals.offset_right = 24.0 + 340.0
-	# Above the chat box's FULL log, not its first line: eight rows reached y 518 at 720 and
-	# drew over the old number. ScClient.new_chat caps the box at six rows, so its log tops
-	# out 162 pixels off the bottom, under this plate's 170 (it is 56 tall; checked in
-	# headless_run).
+	# Above the chat box's FULL log, not its first line: ScClient.new_chat caps the box at six rows, so its log tops out 162 pixels off the bottom, under this plate's 170 (56 tall; checked in headless_run).
 	vitals.offset_top = -226.0
 	vitals.offset_bottom = -170.0
 	_root.add_child(vitals)
@@ -373,10 +333,7 @@ func _process(delta: float) -> void:
 
 
 ## Fades [member blind_overlay] toward whether the followed player is blinded.
-##
-## Read off [member player] rather than pushed by anybody, because the flag arrives in a
-## snapshot on a connected client and is set directly offline, and a HUD that had to be told
-## would need telling from two places. Public so a check can step it.
+## Read off [member player] rather than pushed, because the flag arrives in a snapshot on a client and is set directly offline; public so a check can step it.
 func present_blind(delta: float) -> void:
 	if blind_overlay == null:
 		return
@@ -411,9 +368,7 @@ func _phase_line() -> String:
 
 
 ## The tilt bar, from the platform the player is actually on.
-##
-## Hidden when they are not on one, because a bar reading zero while somebody is falling
-## says the floor is level rather than that there is no floor.
+## Hidden when they are not on one, because a bar reading zero while somebody is falling says the floor is level rather than that there is no floor.
 func _draw_tilt() -> void:
 	if _tilt_fill == null or _tilt_back == null:
 		return

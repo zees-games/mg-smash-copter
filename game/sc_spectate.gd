@@ -2,52 +2,21 @@ extends Node
 
 const ScPlayer := preload("sc_player.gd")
 
-## Where somebody who is out looks, and what the server lets them see.
-##
-## [b]Until this existed, falling was the end of the game for the rest of the round.[/b] The
-## camera hangs off the player's own node, and a player who ran out of map is a body at the
-## kill height: so the next two minutes were spent looking at the floor of the map from
-## inside it, while the round that decides whether your side wins happened forty metres
-## overhead. This is last-team-standing, which means the people who are out are exactly the
-## people with the most reason to watch.
-##
-## [b]The camera part is four lines; who decides is the part that matters.[/b] dot-spectate
-## computes a transform and touches no camera, and the policy — may this person watch, whom,
-## through which camera — is the server's, so a client that decided for itself what it may
-## look at would be a client that may look at anything. On a server this runs an
-## authoritative [DotSpectatorManager]; on a connected client it runs a MIRROR that is told
-## each view change in a `SPECTATE` event and computes the camera itself from the players it
-## already draws. That split is what keeps the wire to one small event per decision rather
-## than a camera transform per frame.
-##
-## [b]No delay, and it would protect nothing here.[/b] dot-spectate's delay exists because a
-## spectator watching live is a live intelligence feed — but every player in this game is
-## always relevant (the map is open air), so every client already receives every player's
-## live position in its snapshots. A delayed spectator camera would hide nothing that the
-## same client's own world is not already drawing. `delay_ticks` stays 0 and a mirror never
-## needs the history a delay samples, which is also why the mirror's `advance` records none.
-##
-## [b]No `class_name`, like everything in this game.[/b] Reached by preload from [ScGame].
-## It does not preload [ScGame] back: the world hands it the two dictionaries it reads and a
-## callable for the phase, which is a smaller contract than the world and no cycle.
+## Where somebody who is out looks, and what the server lets them see. The policy (who may watch whom, through which camera) is the server's: an authoritative [DotSpectatorManager] there, and a MIRROR on a client told each change in a `SPECTATE` event; dot-spectate computes a transform and touches no camera.
+## No delay, as it would protect nothing: every player is always relevant (open air), so every client already receives every live position. `delay_ticks` stays 0 and the mirror's `advance` records no history.
+## No `class_name`, like everything in this game; reached by preload from [ScGame], which hands it the two dictionaries it reads and a phase callable rather than being preloaded back (no cycle).
 
 const CHANNEL := "sc.spectate"
 
 ## Seconds the death camera holds before handing over.
-##
-## [b]A second and a half, and it is not a killcam.[/b] Most deaths here are falls, where
-## there is no killer to look at; what the moment is for is seeing the drop you just went
-## down, so the next round is played a metre further from that edge.
+## A second and a half, not a killcam: most deaths are falls with no killer, and the moment is for seeing the drop you went down.
 const DEATH_CAM_SECONDS := 1.5
 
 ## Seconds the freeze camera holds on whoever shot you, in the showdown.
 const FREEZE_CAM_SECONDS := 1.5
 
 ## How far above the deck a faller's death camera hangs, looking straight down the drop.
-##
-## [b]Not where they died, which is the floor.[/b] A fall is recorded at the kill height —
-## the one place in the map nothing is worth seeing from — so the camera goes back up to
-## the field over the point they left it by and looks down the forty metres instead.
+## Not where they died: a fall is recorded at the kill height, where nothing is worth seeing, so the camera goes back up over the point they left it by.
 const DROP_CAM_RISE := 6.0
 
 ## Which of the two overview cameras is the showdown's. See [method set_overviews].
@@ -153,11 +122,7 @@ func set_force_camera(force_camera: int) -> void:
 
 
 ## The two places nobody-left-to-watch looks from: over the field, and over the corners.
-##
-## [b]Two, because the round is in two places.[/b] A viewer whose whole side is out has
-## nobody the "own side" rule lets them follow, and dot-spectate falls back to a fixed
-## camera — which with one camera over the field would spend the showdown pointed at the
-## place the round has just left.
+## Two, because the round is in two places: with one camera over the field a viewer whose whole side is out would spend the showdown pointed where the round has just left.
 func set_overviews(field: Transform3D, showdown: Transform3D) -> void:
 	if manager == null:
 		return
@@ -247,10 +212,7 @@ func is_roaming(player_id: StringName) -> bool:
 
 
 ## The next or the previous person this viewer may watch, or 0 for the other camera.
-##
-## [b]Asked of the server and answered by it.[/b] On a connected client this arrives as a
-## request, and a refusal goes back as a notice; the list is the server's own
-## `targets_for`, so a client can never step onto somebody the policy forbids.
+## Asked of the server and answered by it (a refusal goes back as a notice), so a client can never step onto somebody the policy forbids.
 func step(player_id: StringName, direction: int) -> DotResult:
 	if manager == null:
 		return DotResult.fail(DotError.CODE_STATE, "Spectating is not set up.")
@@ -335,11 +297,7 @@ func watching(player_id: StringName) -> StringName:
 
 
 ## Where [param player_id]'s camera goes this frame. Identity when they are playing.
-##
-## [b]The fixed camera is chosen by the phase, here, on both ends.[/b] dot-spectate keeps a
-## per-view index into its fixed cameras; this game has exactly two and which one is right
-## is a fact about the round rather than about the viewer, so it is read from the phase a
-## client already has rather than sent.
+## The fixed camera is chosen by the phase, on both ends: this game has exactly two, and which is right is a fact about the round, so it is read from the phase a client already has rather than sent.
 func camera_for(player_id: StringName) -> Transform3D:
 	if manager == null:
 		return Transform3D.IDENTITY
@@ -412,13 +370,8 @@ func _alive(key: String) -> bool:
 
 
 ## Where somebody's eyes are, from where this process DRAWS them.
-##
-## [b]The drawn position and not the node, on a world that simulates.[/b] A node here moves
-## once a tick, so a camera hung on it advances in steps — the jitter this game measured
-## at 160 frames still in 288 and fixed for the player's own camera by drawing from
-## `render_state`. The same blend serves the spectator camera. A mirror's remote players
-## are written once a frame by the interpolator, so there the node is already right, and a
-## rider's controller is not simulated at all.
+## The drawn position, not the node, on a world that simulates: a node moves once a tick, so a camera hung on it steps (the jitter fixed for the player's own camera by drawing from `render_state`).
+## A mirror's remote players are written once a frame by the interpolator, so there the node is already right, and a rider's controller is not simulated at all.
 func _pose_of(key: String) -> Transform3D:
 	var body: ScPlayer = players.get(StringName(key))
 
@@ -447,13 +400,8 @@ func _on_retargeted(key: String, _from: String, to: String, _reason: StringName)
 
 
 ## When the server picks somebody for a viewer, it picks a team-mate if there is one.
-##
-## [b]dot-spectate chooses the first allowed name in key order, and here that is a
-## stranger.[/b] Under "own side" it can only be a team-mate anyway; under "anybody" it is
-## whoever sorts first, and somebody who has just fallen off wants to see how their own side
-## is doing — which is also who they are rooting for in the corners. So an AUTOMATIC choice
-## is moved to the first living team-mate the policy allows. A viewer stepping through the
-## list themselves is left exactly where they asked to be.
+## dot-spectate chooses the first allowed name in key order, which under "anybody" is a stranger, and somebody who just fell wants to see how their own side is doing.
+## So an AUTOMATIC choice moves to the first living team-mate the policy allows; a viewer stepping through the list themselves is left where they asked.
 func _prefer_side(key: String, mode: int, target: String) -> void:
 	if not authoritative or _stepping or _preferring or target == "":
 		return

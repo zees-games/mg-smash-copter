@@ -5,31 +5,8 @@ const ScPaths := preload("sc_paths.gd")
 const ScPlatforms := preload("sc_platforms.gd")
 
 ## What this game makes a noise about, and the noise, on the client.
-##
-## [b]Until this existed the game made no sound at all, and in THIS game that is not a
-## polish item.[/b] The cannon is behind you as often as in front of you, and the only
-## warning a player standing on a platform gets of a monolith on its way is looking up at
-## the right moment. The one warning that works without looking is a bang from the middle of
-## the map — and the second is the platform under your feet creaking before it goes, which
-## is information the tilt bar gives only to somebody reading it.
-##
-## [b]A catalogue of ids and a table of stand-ins, which is the family's shape.[/b] dot-audio
-## decides what is audible, how many at once, how far away it stops mattering and what loses
-## to what; [method sound_catalogue] is those decisions, as a document naming paths nobody
-## has produced yet. [method sound_recipes] says which synthesised voice stands in for each
-## id until they are — and [DotAudioSinkGodot] consults the file before the stand-in, so
-## dropping a real `.ogg` into `audio/` switches that one id over with no code change.
-##
-## [b]Never on a server, and never deciding anything.[/b] Every hook here is called by
-## [ScClient] from something the world or the wire already said, and none of them changes
-## the simulation — so a client still downloading content, a machine with no sound card and
-## a headless suite all run the same code and differ only in whether a speaker moves.
-## dot-audio picks its own null sink when there is no device.
-##
-## [b]The beacon's ping is not here, deliberately.[/b] [DotFxBeacon] synthesises its own tone
-## on its own [AudioStreamPlayer3D], and `headless_run` pins its rate to once a second; it
-## predates this layer and moving it is a change to a tested behaviour with nothing to gain
-## but tidiness. The day real audio ships, `beacon` is the id it moves to.
+## Sound is not polish here: the cannon is as often behind you as in front, and a bang from the middle of the map and a platform creaking before it goes are the warnings that work without looking. A catalogue of ids plus a table of synthesised stand-ins ([method sound_catalogue], [method sound_recipes]); [DotAudioSinkGodot] consults the file first, so a real `.ogg` in `audio/` switches one id over with no code change.
+## Never on a server and never deciding anything: hooks are called by [ScClient] from what the world or wire already said, so a headless suite runs the same code and differs only in whether a speaker moves. The beacon's ping stays in [DotFxBeacon] (pinned by `headless_run`); `beacon` is the id it moves to when real audio ships.
 
 const CHANNEL := "sc.audio"
 
@@ -76,18 +53,11 @@ const UI_CLICK := &"ui_click"
 const UI_DENY := &"ui_deny"
 
 ## Metres from the muzzle within which a prop that appears was just fired.
-##
-## [b]Why a distance and not an event.[/b] A client learns about a prop when it arrives, and
-## it arrives the same way whether the cannon just fired it or it was already in the air when
-## this client joined — which would be a volley of bangs on every join. A prop that turns up
-## at the mouth of the tube was fired this tick; one that turns up anywhere else was not.
+## A distance and not an event: a prop arrives the same way whether just fired or already airborne when this client joined, which would be a volley of bangs on every join.
 const MUZZLE_REACH := 6.0
 
 ## The fraction of the collapse lean at which a platform creaks, and at which it may again.
-##
-## [b]Two numbers, because one is a platform that creaks forty times a second.[/b] A lean
-## sitting on the threshold crosses it on every snapshot as it wobbles; hysteresis is what
-## makes a creak mean "this one is going" rather than "this one exists".
+## Two numbers, because a lean wobbling on one threshold crosses it every snapshot; hysteresis makes a creak mean "this one is going".
 const CREAK_AT := 0.7
 const CREAK_CLEARS_AT := 0.5
 
@@ -132,12 +102,7 @@ static func ids() -> Array[StringName]:
 
 
 ## What this game makes a noise about, and the rules for each.
-##
-## [b]Positional for everything that happens somewhere, and the distances are the map's.[/b]
-## The field is about sixty metres across and the corners are a hundred and twenty metres
-## from it, so a cull distance that suits a corridor shooter would silence the cannon for
-## anybody in the showdown and every collapse on the far side of the field. The things that
-## are warnings — the cannon, a collapse — carry across the whole map on purpose.
+## Positional for everything that happens somewhere, with the map's distances: the field is about sixty metres across and the corners a hundred and twenty from it, so a corridor-shooter cull would silence the cannon for the showdown. Warnings (cannon, collapse) carry across the whole map on purpose.
 static func sound_catalogue() -> DotAudioCatalogue:
 	var c := DotAudioCatalogue.new()
 
@@ -219,15 +184,8 @@ static func sound_catalogue() -> DotAudioCatalogue:
 	return c
 
 
-## Which synthesised voice stands in for each id until real audio is dropped into
-## [member SOUND_DIR].
-##
-## [b]A table in the game rather than a guess in dot-audio.[/b] Which noise belongs to which
-## id is this game's decision the same way the distances are. The choices worth reading
-## against each other: the cannon is the heavy shot and a collapse is the boom, so the one
-## that is a warning and the one that is a consequence never sound alike; a creak is the
-## hurt voice pitched down, which is the nearest this synthesiser has to wood under load;
-## and the teleport is the one upward sweep, because up reads as "on".
+## Which synthesised voice stands in for each id until real audio is dropped into [member SOUND_DIR].
+## A table in the game rather than a guess in dot-audio. The cannon is the heavy shot and a collapse the boom, so a warning and a consequence never sound alike; a creak is the hurt voice pitched down; the teleport is the one upward sweep, because up reads as "on".
 static func sound_recipes() -> Dictionary:
 	return {
 		CANNON_FIRE: DotAudioSynth.Voice.SHOT_HEAVY,
@@ -274,11 +232,7 @@ static func sound_recipes() -> Dictionary:
 
 
 ## The id a kind of weapon use sounds like. `ZeeWeaponNet.KIND_*` in, an id or nothing out.
-##
-## [b]By kind, and that is the same number a watcher already receives.[/b] The snapshot says
-## a weapon was used and what kind of use it was, in three bits, and not which weapon; a
-## sound per weapon would need either the slot's definition looked up on every watcher or a
-## wider field on the wire, for a distinction nobody hears across a showdown.
+## By kind, the same three-bit number a watcher already receives: a sound per weapon would need a definition lookup per watcher or a wider wire field, for a distinction nobody hears across a showdown.
 static func weapon_sound(kind: int) -> StringName:
 	match kind:
 		ZeeWeaponNet.KIND_SHOT:
@@ -463,10 +417,7 @@ func on_special() -> bool:
 
 
 ## Somebody's weapon was used. [param kind] is `ZeeWeaponNet.KIND_*`.
-##
-## [b]Positional even for your own[/b], played at the camera, so it is at full volume and
-## goes through the same pool, priorities and caps as everybody else's — a flat own-shot
-## would be exempt from the concurrency cap that stops a minigun eating every voice.
+## Positional even for your own, played at the camera: full volume through the same pool, priorities and caps, so a flat own-shot cannot escape the concurrency cap that stops a minigun eating every voice.
 func on_weapon(at: Vector3, kind: int) -> bool:
 	var id := weapon_sound(kind)
 	return _at(id, at) if id != &"" else false
@@ -480,14 +431,8 @@ func deny() -> bool:
 	return _flat_play(UI_DENY)
 
 
-## The creak, once a frame, from the leans this client already has.
-##
-## [b]Derived here and not sent, and that is the right way round for once.[/b] A client runs
-## no platform model, but it does receive every platform's lean thirty times a second —
-## that is the floor it is standing on. Whether a lean is near the collapse angle is a
-## function of two numbers it has, and an event for it would be the server telling a client
-## what the client's own snapshot already says. Returns how many platforms crossed into a
-## creak this frame.
+## The creak, once a frame, from the leans this client already has. Returns how many platforms crossed into a creak this frame.
+## Derived here and not sent: a client receives every platform's lean thirty times a second, and an event would tell it what its own snapshot already says.
 func present(platforms: ScPlatforms, collapse_lean: float) -> int:
 	if platforms == null or collapse_lean <= 0.0:
 		return 0

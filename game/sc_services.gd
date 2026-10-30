@@ -5,18 +5,8 @@ const ScNetBridge := preload("net/sc_net_bridge.gd")
 const ScPlayer := preload("sc_player.gd")
 
 ## Chat, voice and moderation, wired to this game's sides.
-##
-## [b]Seventy lines, because [DotGameServices] holds the other five hundred.[/b] The five
-## games written before that base each carry their own copy — 557 to 718 lines, differing in
-## the channels, the rules and a voice range. What is left here is what is genuinely this
-## game's: who can hear whom, and where somebody is standing.
-##
-## [b]Proximity is the channel that matters here, and no other game in this family says
-## that.[/b] The whole first objective is a field of platforms in open air where everybody
-## can see everybody, so the useful conversation is not "my team" — it is the four people on
-## the platform next to yours, who are about to be somewhere you can shout at. A range of
-## about two platform pitches reaches your neighbours and does not reach the far end of the
-## map, which is what makes it a channel rather than a second "all".
+## Short because [DotGameServices] holds the rest; what is left is who can hear whom and where somebody is standing.
+## Proximity is the channel that matters: the field is open air where everybody sees everybody, so the useful conversation is the four people on the next platform. About two platform pitches reaches neighbours but not the far end, which makes it a channel rather than a second "all".
 
 # No `const CHANNEL`: [DotGameServices] declares one and GDScript refuses a redeclaration,
 # which is the right refusal — one layer, one channel an operator can turn up.
@@ -43,14 +33,7 @@ func _chat_rules() -> Object:
 
 
 ## The same rules, as a static a CLIENT can ask for without building a services layer.
-##
-## [b]Static because the other end needs them and must not instantiate this.[/b] A services
-## layer is a [Node] with a moderation store and a router under it; a client that called
-## `new()` on one to read two numbers off it would build all of that, leak it, and — inside
-## a delivered pack — fail to compile, because a script whose base class lives in the HOST
-## build cannot hand its return type to a script in the mount. Both were measured in
-## game-buses-from-hell: seven leaked objects in a suite, and a client scene that would not
-## load at all on a real server.
+## Static because a client calling `new()` on the [Node] to read two numbers would build and leak a moderation store and router, and inside a delivered pack would fail to compile: a script whose base class lives in the HOST build cannot hand its return type to a script in the mount.
 static func chat_rules() -> DotChatRules:
 	var rules := DotChatRules.new()
 	rules.max_length = 140
@@ -126,19 +109,13 @@ static func chat_channels() -> Array[DotChatChannel]:
 
 
 ## The voice format, which both ends must agree on exactly.
-##
-## Static, because the CLIENT builds one too and a sample rate that differs between two peers
-## is a stream of packets the router refuses for being the wrong length, counted and said to
-## nobody. [method DotVoiceConfig.format_fingerprint] exists for that reason.
+## Static because the CLIENT builds one too; a differing sample rate is a stream of packets the router refuses as the wrong length, said to nobody ([method DotVoiceConfig.format_fingerprint]).
 static func voice_format() -> DotVoiceConfig:
 	var config := DotVoiceConfig.new()
 	config.sample_rate = 16000
 	config.frame_ms = 20.0
 	config.codec_id = &"adpcm"
-	# [b]Push to talk, because the survival phase is two minutes of people shouting.[/b] A
-	# platform going over under somebody is the single loudest thing that happens to a
-	# player, and open-mic voice across a side of six is six people reacting to six different
-	# platforms over the one thing anybody needed to hear.
+	# Push to talk, because the survival phase is two minutes of people shouting: open-mic voice across a side of six is six people reacting to six different platforms.
 	config.push_to_talk = true
 	config.activation_rms = 0.02
 	config.hangover_ms = 250.0
@@ -153,20 +130,14 @@ func _voice_config() -> Object:
 	return voice_format()
 
 
-## Voice goes to the whole server, and the map is the reason.
-##
-## game-buses-from-hell defaults to the team because its two sides are the game. Here every
-## side is on the same field for the first two minutes with the same problem, and half the
-## fun is hearing somebody else find out their platform was already going. Team voice is a
-## key away and is what the showdown is played on.
+## Voice goes to the whole server: every side is on the same field for the first two minutes with the same problem, and half the fun is hearing somebody else find out their platform was going.
+## Team voice is a key away and is what the showdown is played on.
 func _voice_default_channel() -> int:
 	return DotVoiceRouter.Channel.ALL
 
 
 ## Which side somebody is on, for the team channel and for team voice.
-##
-## [b]Read off the game rather than cached, because sides change between rounds.[/b] Anything
-## holding a team id would put a player in the conversation they were in last round.
+## Read off the game rather than cached, because sides change between rounds.
 func _team_of(peer_id: int) -> int:
 	var player := _player_of(peer_id)
 	return (game as ScGame).team_of(player.player_id) if player != null else 0
@@ -175,10 +146,7 @@ func _team_of(peer_id: int) -> int:
 func _position_of(peer_id: int) -> Vector3:
 	var player := _player_of(peer_id)
 
-	# [b]The simulated state, not the node.[/b] The node is wherever the last frame drew
-	# them, which on an interpolating client is between two ticks; the state is where the
-	# tick that is being resolved put them — and a proximity channel resolved against a
-	# rendered position is one whose range is a frame's worth of walking out.
+	# The simulated state, not the node: the node is wherever the last frame drew them (between two ticks on an interpolating client), and a proximity range resolved against a rendered position is a frame's walking out.
 	return player.controller.state.position if player != null else Vector3.ZERO
 
 
@@ -196,20 +164,8 @@ func _player_of(peer_id: int) -> ScPlayer:
 
 
 ## What the admin set means here, one callable per ability. See `DotGameServices`.
-##
-## [b]The platforms are the game, and an admin's noclip is how a stuck or fallen player gets
-## looked at, so it is here; so is freeze, which is how a griefer on somebody else's slab is
-## stopped.[/b] What is refused is refused for a reason about this game: respawn, because
-## falling is how a round is lost and putting a faller back decides it; give and strip,
-## because weapons are handed out at the handover, one each, at random, and that draw is
-## the second half's whole fairness. Anything that moves a body is refused while they fly
-## the chopper — the chopper is what moves.
-##
-## [b]Blind and beacon are the two about a SCREEN rather than a body[/b], and each is one flag
-## on [ScPlayer] that `ScPlayerNet` replicates — the blind to its owner alone, the beacon to
-## everybody — and that the client draws: `ScHud` blacks the owner's screen out, `DotFxBeacon`
-## rings the player on every screen and pings. The server decides; nothing about either is a
-## client's to choose.
+## Noclip and freeze are here (how a stuck player is looked at, and a griefer on another's slab stopped). Respawn is refused because putting a faller back decides the round; give and strip because the handover's one random weapon each is the second half's fairness; moves are refused while flying, since the chopper is what moves.
+## Blind and beacon are about a SCREEN: one flag on [ScPlayer] that `ScPlayerNet` replicates (blind to its owner, beacon to everybody) and the client draws (`ScHud`, `DotFxBeacon`). The server decides.
 func _mod_abilities() -> Dictionary:
 	return {
 		"noclip": func(id: StringName, args: Dictionary) -> DotResult:
@@ -254,10 +210,7 @@ func _mod_abilities() -> Dictionary:
 				return _mod_absent(id)
 			p.display_name = str(args["name"]).strip_edges().substr(0, 32)
 			return DotResult.success(p.display_name),
-		# The screen and nothing else, flying or not. A blinded player still moves, still
-		# loads the platform they are on and can still be hit; an admin who wants them to
-		# stop as well has freeze, and one verb that did both could not be used for only
-		# the first. On a slab on a pillar, a blind alone is already most of a punishment.
+		# The screen and nothing else, flying or not: a blinded player still moves, loads their platform and can be hit; freeze is the verb for stopping them, and one verb doing both could not be used for only the first.
 		"blind": func(id: StringName, args: Dictionary) -> DotResult:
 			var p := _mod_player(id)
 			if p == null:
@@ -283,12 +236,7 @@ func _mod_unsupported() -> Dictionary:
 
 
 ## Toggles that outlive a new body here, beyond dot-moderation's own god and buddha.
-##
-## [b]Blind and beacon are about the person, not the body.[/b] A noclip or a freeze ends with
-## the round because arriving on a new field noclipped, or frozen on a slab that is about to
-## be shot at, is the round broken; a player an admin blinded or wanted the room to watch is
-## still that player next round, and a fall is exactly what somebody being punished would
-## otherwise use to end it.
+## Blind and beacon are about the person, not the body: noclip or freeze ending with the round is right (arriving noclipped or frozen on a slab about to be shot at breaks the round), but a punished player must not shed it by falling.
 const PERSIST_ON_RESPAWN: Array[String] = ["blind", "beacon"]
 
 
@@ -385,11 +333,7 @@ func _mod_hurt(id: StringName, amount: float) -> DotResult:
 
 
 ## A round is everybody's new body: a noclip or a freeze from last round ends, god carries.
-##
-## [b]And a new layout is a new map.[/b] Every `return` point is a place above some
-## platform, and a round on a different layout has its platforms somewhere else, so
-## `return` would drop a player into the air where one used to be. The history is
-## cleared when the layout changes and kept when it does not (`[modtools-return-1]`).
+## A new layout is a new map: every `return` point is above some platform, so the history is cleared when the layout changes and kept when it does not (`[modtools-return-1]`).
 func _on_round_began_for_tools(_number: int, layout: StringName) -> void:
 	for key: StringName in (game as ScGame).players:
 		mod_player_respawned(StringName(String(key).trim_prefix("u")))
@@ -404,9 +348,7 @@ var _tools_layout: StringName = &""
 
 
 ## The team seam dot-chat and dot-voice both ask for, which the base cannot wire.
-##
-## [DotGameServices] knows nothing about teams — a lobby has none — so the two `team_fn`
-## hooks are set here, after the base has built each router.
+## [DotGameServices] knows nothing about teams (a lobby has none), so the two `team_fn` hooks are set here, after the base has built each router.
 func setup(p_server: DotServer, p_game: Object, p_link: Object) -> DotResult:
 	var ready_now: DotResult = await super.setup(p_server, p_game, p_link)
 

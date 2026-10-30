@@ -4,23 +4,12 @@ const ScConfig := preload("sc_config.gd")
 const ScPaths := preload("sc_paths.gd")
 
 ## The two catalogues: what the cannon throws, and what a player can fly.
-##
-## [b]Eight props in four tiers, and the tiers are the whole of the cannon's design.[/b]
-## A crate wobbles a platform, a boulder tips it, a container takes a corner off it and a
-## monolith deletes it with everybody standing on it. Every one of those outcomes comes out
-## of two numbers on a definition — the mass and the size — through one model in
-## [ScPlatforms], rather than out of a rule per prop. That is what lets a server retune the
-## whole feel of the round by editing a document, and what lets the suite assert the design
-## instead of the code.
+## Eight props in four tiers are the cannon's design: a crate wobbles a platform, a boulder tips it, a container takes a corner off and a monolith deletes it, all from mass and size through one model in [ScPlatforms] rather than a rule per prop.
+## That lets a server retune the round by editing a document, and the suite assert the design instead of the code.
 
 ## Where the bodies live, as this game was authored.
-##
-## [b]Rebased where they are defined, so no use of them can forget to.[/b] A delivered pack
-## mounts at `res://dot_cloud/<id>/<version>/`, so an absolute path to this game's OWN files
-## resolves against the host project root — which holds another game's props, or nothing.
-## They were `const`s rebased at every call site, which was correct and was also one new
-## call site away from not being: `static var` is the only spelling that can hold the
-## rebased value, because a `const` cannot call.
+## Rebased where they are defined: a delivered pack mounts at `res://dot_cloud/<id>/<version>/`, so an absolute path to this game's OWN files resolves against the host root.
+## `static var` is the only spelling that can hold the rebased value, because a `const` cannot call, and a rebase at every call site is one new site from wrong.
 static var CRATE_SCENE := ScPaths.rebase("res://props/sc_crate.tscn")
 static var TYRE_SCENE := ScPaths.rebase("res://props/sc_tyre.tscn")
 static var CONE_SCENE := ScPaths.rebase("res://props/sc_cone.tscn")
@@ -48,11 +37,7 @@ const META_TIER := &"tier"
 const TIERS := 4
 
 ## Who owns anything the world puts out itself.
-##
-## [b]Not the empty string, which dot-props reads as a player.[/b] `may_spawn` charges the
-## owner's budget, and an owner of `&""` is one account holding every prop in the round —
-## so the world's own furniture would run into a per-player limit that exists to stop
-## somebody leaning on a spawn key.
+## Not the empty string, which dot-props reads as a player: `may_spawn` charges the owner's budget, so `&""` would run the world's furniture into the per-player limit.
 const WORLD_OWNER := &"world"
 
 
@@ -60,10 +45,7 @@ const WORLD_OWNER := &"world"
 static func props(_config: ScConfig) -> DotPropCatalogue:
 	var catalogue := DotPropCatalogue.new()
 
-	#
-	# [b]Survivable by standing still, and that is what it teaches.[/b] The first twenty
-	# seconds of a round are only crates, so a player learns the one rule — a platform
-	# leans toward the load on it — while the cost of learning it is a stumble.
+	# Survivable by standing still, and that is what it teaches: the first twenty seconds are only crates, so a player learns that a platform leans toward the load on it while the cost is a stumble.
 
 	var crate := DotPropDef.make(CRATE, CRATE_SCENE)
 	crate.display_name = "Crate"
@@ -85,10 +67,7 @@ static func props(_config: ScConfig) -> DotPropCatalogue:
 	tyre.size = DotPropDef.Size.SMALL
 	tyre.mass = 28.0
 	tyre.rideable = true
-	# Indestructible, and it is the only tier-one prop that is. A tyre ROLLS: it lands,
-	# it keeps going, and where it ends up is decided by the lean of the platform it
-	# landed on — which makes it the one prop that tells a player which way the floor is
-	# going before they can feel it.
+	# Indestructible, and the only tier-one prop that is. A tyre ROLLS and where it ends up is decided by the lean of the platform it landed on, so it tells a player which way the floor is going before they feel it.
 	tyre.max_health = 0.0
 	tyre.meta = {META_TIER: 1}
 	catalogue.add(tyre)
@@ -152,10 +131,7 @@ static func props(_config: ScConfig) -> DotPropCatalogue:
 	slab.meta = {META_TIER: 3}
 	catalogue.add(slab)
 
-	#
-	# [b]Rare, and it has to be rare to work.[/b] A map where every fourth shot removes a
-	# platform outright is a map nobody survives a minute of; at one shot in twenty it is
-	# the thing a round is remembered for. See [member ScConfig.cannon_tier_weights].
+	# Rare, and it has to be: a map where every fourth shot removes a platform is one nobody survives a minute of; at one in twenty it is what a round is remembered for. See [member ScConfig.cannon_tier_weights].
 
 	var monolith := DotPropDef.make(MONOLITH, MONOLITH_SCENE)
 	monolith.display_name = "Monolith"
@@ -173,10 +149,7 @@ static func props(_config: ScConfig) -> DotPropCatalogue:
 
 
 ## Which tier a definition belongs to, or zero for anything that is not a cannon prop.
-##
-## [b]Read out of the meta rather than off a parallel list.[/b] This family has shipped the
-## same list twice and watched the copies drift; a tier that lives on the definition
-## travels with it into a JSON file an operator edits.
+## Read out of the meta rather than off a parallel list, which drifts; the tier travels with the definition into an operator's JSON file.
 static func tier_of(def: DotPropDef) -> int:
 	if def == null:
 		return 0
@@ -199,12 +172,8 @@ static func ids_in_tier(catalogue: DotPropCatalogue, tier: int) -> Array[StringN
 
 
 ## The chopper, and nothing else.
-##
-## [b]`CUSTOM` with a chassis script, because neither shipped chassis is a helicopter.[/b]
-## [DotVehicleWheeled] needs wheels on the ground and [DotVehicleHover] refuses to thrust
-## when its rays find nothing under them — which is correct for a hovercraft and is exactly
-## the state a helicopter spends its life in. `chassis_script_path` is the extension point
-## dot-vehicle documents for a fourth kind, and [ScCopter] is one.
+## `CUSTOM` with a chassis script, because neither shipped chassis is a helicopter: [DotVehicleWheeled] needs wheels on the ground and [DotVehicleHover] refuses to thrust when its rays find nothing, the state a helicopter lives in.
+## `chassis_script_path` is dot-vehicle's extension point for a fourth kind, and [ScCopter] is one.
 static func vehicles(config: ScConfig) -> DotVehicleCatalogue:
 	var catalogue := DotVehicleCatalogue.new()
 
@@ -215,10 +184,7 @@ static func vehicles(config: ScConfig) -> DotVehicleCatalogue:
 	copter.scene_path = COPTER_SCENE
 	copter.chassis_script_path = ScPaths.rebase("res://game/sc_copter.gd")
 	copter.kind = DotVehicleDef.Kind.CUSTOM
-	# Indestructible. There is no weapon in the survival phase and the showdown happens
-	# somewhere else, so the only thing that could destroy one is the cannon — and a
-	# chopper deleted by a crate is two players out of the round for a reason they could
-	# not see coming and could not have avoided.
+	# Indestructible: there is no weapon in the survival phase and the showdown is elsewhere, so only the cannon could destroy one, and a chopper deleted by a crate costs two players the round for a reason they could not see coming.
 	copter.max_health = 0.0
 
 	var tunables := DotVehicleTunables.new()
