@@ -17,7 +17,7 @@ const ScProgress := preload("../game/sc_progress.gd")
 ## No socket opens to a client except the still-loading section.
 
 const SECTIONS := 17
-const CHECKS := 167
+const CHECKS := 172
 
 ## Everything this run writes, deleted on the way in and out: a suite that writes to `user://` makes its result depend on the last run (`docs/testing.md`).
 const SERVER_DIR := "user://sc_dedicated"
@@ -305,6 +305,7 @@ func _test_the_module_loads() -> void:
 		"%d records" % int(moderation.call("count")) if moderation != null else "no moderation")
 
 	_noblock_and_config(module)
+	_test_stats_report()
 	_finished()
 
 
@@ -358,6 +359,33 @@ func _test_a_module_reload() -> void:
 		await get_tree().process_frame
 	side.queue_free()
 	_finished()
+
+
+## The family cvar `stats_report` is registered, off, and turning it on makes the tracker report.
+func _test_stats_report() -> void:
+	var cv: DotConVar = server.console.find_cvar("stats_report")
+	var progress = game.progress if game != null else null
+	_check(cv != null and cv.get_string() == "0", "stats_report is registered and off by default")
+	_check(progress != null and progress.stats != null and not progress.stats.report_to_backbone,
+		"and the tracker does not report at boot")
+	if cv == null or progress == null:
+		return
+	var _on := cv.set_value("1")
+	_check(not progress.stats.report_to_backbone, "on with no backbone client stays off, not a crash")
+
+	var client := Node.new()
+	var script := GDScript.new()
+	script.source_code = "extends Node\nfunc post_integration(_a = null, _b = null, _c = null): return null\n"
+	var _reloaded := script.reload()
+	client.set_script(script)
+	DotRegistry.register(&"dot_backbone_client", client)
+	var _r0 := cv.set_value("0")
+	var _r1 := cv.set_value("1")
+	_check(progress.stats.report_to_backbone, "on with a backbone client makes the tracker report")
+	var _r2 := cv.set_value("0")
+	_check(not progress.stats.report_to_backbone, "off stops it again")
+	DotRegistry.unregister_instance(&"dot_backbone_client", client)
+	client.free()
 
 
 ## Config cvars, the workbench's sync into a hand-written cvar, and dot-team's block rules through dot-game's DotGameNoblock.

@@ -42,6 +42,10 @@ const ScPlatforms := preload("sc_platforms.gd")
 
 const CHANNEL := "sc.progress"
 
+const REPORT_INTERVAL := 60.0
+
+var _report_timer: Timer
+
 
 ## Rounds a player was in from the start to the end.
 const ROUNDS_PLAYED := &"sc.rounds_played"
@@ -198,6 +202,37 @@ static func _sum(
 	out.tier = tier
 	return out
 
+
+
+## Turns the backbone report on or off at run time (the family cvar `stats_report`); the cvar is registered after this tracker is built, so setup() alone cannot see it.
+func set_reporting(on: bool) -> DotResult:
+	if stats == null:
+		return DotResult.fail(DotError.CODE_STATE, "There is no stats tracker.")
+
+	if achievements != null:
+		achievements.report_to_backbone = on
+
+	if not on:
+		stats.report_to_backbone = false
+		return DotResult.success(false)
+
+	stats.report_to_backbone = true
+	stats.define_on_start = true
+
+	if not stats.reporter.is_available():
+		stats.report_to_backbone = false
+		DotLog.warn(CHANNEL, "stats reporting needs a backbone client with STATS_WRITE; staying off")
+		return DotResult.fail(DotError.CODE_STATE, "No backbone client to report stats through.")
+
+	if _report_timer == null:
+		_report_timer = Timer.new()
+		_report_timer.name = "StatsReportTimer"
+		_report_timer.wait_time = REPORT_INTERVAL
+		_report_timer.autostart = true
+		_report_timer.timeout.connect(func() -> void: stats.flush())
+		add_child(_report_timer)
+
+	return DotResult.success(true)
 
 
 ## [param directory] empty keeps achievement progress in memory; see

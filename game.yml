@@ -27,6 +27,7 @@ module: game/sc_module.gd
 
 cvars:
   sc_teams: "2"
+  stats_report: "0"
   sc_survival_seconds: "120"
   sc_showdown_seconds: "90"
   sc_bots: "1"
