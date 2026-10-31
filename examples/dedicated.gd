@@ -17,7 +17,7 @@ const ScProgress := preload("../game/sc_progress.gd")
 ## No socket opens to a client except the still-loading section.
 
 const SECTIONS := 17
-const CHECKS := 172
+const CHECKS := 175
 
 ## Everything this run writes, deleted on the way in and out: a suite that writes to `user://` makes its result depend on the last run (`docs/testing.md`).
 const SERVER_DIR := "user://sc_dedicated"
@@ -35,11 +35,19 @@ const TICK_RATE := 48
 
 var server: DotServer = null
 var game: ScGame = null
+var _stats_errors: PackedStringArray = []
 
 
 func _ready() -> void:
 	DotLog.set_level(DotLog.Level.ERROR)
+	DotLog.signals().record.connect(_on_log_record)
 	_run.call_deferred()
+
+
+## An ERROR from the stats layer would otherwise scroll past and leave a stat dead with every check green.
+func _on_log_record(rec: Dictionary) -> void:
+	if int(rec.get("level", 0)) >= DotLog.Level.ERROR and String(rec.get("channel", "")).begins_with("stats"):
+		_stats_errors.append(str(rec.get("message", rec)))
 
 
 func _run() -> void:
@@ -982,6 +990,19 @@ func _test_who_they_are() -> void:
 		"and what they keep is filed under that key, found again by their seat",
 		str(game.progress.filed_under(&"u717")) if game.progress != null else "no progress"
 	)
+
+	if game.progress != null and player != null:
+		var zoned := DotDamage.make(player.entity_id, 9999, 5.0, game.combat.damage_type(&"kinetic"))
+		zoned.hit_group = DotHitGroup.NECK
+		zoned.weapon_id = &"probe"
+		game.progress.report_damage(zoned)
+		_check(game.progress.session_values(&"u717").get_cell(DotStatsHitzones.HITS, "zone:neck") >= 1.0,
+			"a hit with a hit_group is filed by body zone through the dot-stats hitzone hook")
+		_check(game.progress.stats.schema.validate().ok, "the stats schema, hitzones included, validates")
+	else:
+		_check(false, "a hit is filed by body zone", "no progress or player")
+		_check(false, "the stats schema validates")
+	_check(_stats_errors.is_empty(), "the stats layer logged no error", str(_stats_errors))
 
 	# An account's name is the site's and dot-user refuses to change it here, so an operator's `platform_name` is a refusal and the world keeps the name.
 	# The rename that IS allowed (a guest profile on a server that keeps them) is dot-platform's sandbox's to check.

@@ -360,6 +360,7 @@ func _build_progress() -> void:
 	progress.players = players
 	progress.sides = sides
 	progress.hurt_radius = config.impact_hurt_radius
+	progress.player_of = entities.key_for_id
 	add_child(progress)
 
 	var ready_now := progress.setup(config.progress_directory, config.report_progress)

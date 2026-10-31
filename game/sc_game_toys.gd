@@ -313,6 +313,7 @@ func _on_player_died(player: ScPlayer, damage: DotDamage) -> void:
 		)
 
 	if progress != null:
+		progress.report_kill(damage.attacker, player.entity_id, String(damage.weapon_id if damage.weapon_id != &"" else damage.type.id))
 		progress.on_died(
 			player.player_id, by, why == DIED_FELL,
 			phase == Phase.HANDOVER or phase == Phase.SHOWDOWN
@@ -345,6 +346,8 @@ func _note_hits(shooter: ScPlayer, shot: DotShot) -> void:
 	for damage: DotDamage in shot.damages:
 		if damage == null or damage.refused or damage.health_lost <= 0.0 or damage.victim == shooter.entity_id:
 			continue
+		if progress != null:
+			progress.report_damage(damage)
 		hit_landed.emit(shooter.player_id, damage.point, damage.lethal, damage.hit_group == DotHitGroup.HEAD)
 
 

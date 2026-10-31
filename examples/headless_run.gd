@@ -2606,7 +2606,9 @@ func _test_what_a_player_keeps() -> void:
 	var declared := ScProgress.ids()
 	var in_schema: Array[StringName] = []
 	for def in ScProgress.schema().stats:
-		in_schema.append(def.id)
+		# dot-stats' hitzone declarations ride in the same schema and are not this game's list.
+		if String(def.id).begins_with("sc."):
+			in_schema.append(def.id)
 	var watched := ScProgress.catalogue().watched_stats()
 	var unread := watched.filter(func(id: Variant) -> bool:
 		return not in_schema.has(StringName(id)))
