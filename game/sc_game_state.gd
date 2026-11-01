@@ -294,6 +294,8 @@ func _apply_body_mask(player: ScPlayer) -> void:
 		return
 	body_rules.apply_to(player.controller, physics.collision_mask(&"player"), physics.layer_mask(&"player"))
 	var tunables := player.controller.tunables
+	if player.weapons != null:
+		player.weapons.wall_extra_mask = tunables.collision_mask
 	body_rules.apply_hull(player, tunables.stand_height, tunables.radius)
 
 

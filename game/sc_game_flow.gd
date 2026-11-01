@@ -575,6 +575,7 @@ func _arm(player: ScPlayer, team: int, seat: int) -> void:
 	rig.role = ZeeWeaponRig.Role.SERVER
 	rig.authority = authoritative
 	rig.tick_rate = tick_rate
+	rig.wall_extra_mask = player.controller.tunables.collision_mask if player.controller != null else 0
 	rig.player_ref = DotNodeRef.of_path(player.get_path())
 	player.add_child(rig)
 
