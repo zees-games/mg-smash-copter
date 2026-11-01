@@ -90,6 +90,7 @@ func _run() -> void:
 	var _saved := image.save_png(ProjectSettings.globalize_path(out))
 
 	print("wrote ", out, " after %.1f s, view=%s" % [elapsed, view])
+	await DotShotSeq.new().record(get_tree(), ProjectSettings.globalize_path(out))
 
 	if game != null:
 		for line in game.describe_lines():
