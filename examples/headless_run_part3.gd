@@ -221,6 +221,7 @@ func _test_free_roam() -> void:
 	var _on := game.spectate_rules.set_cvar("mp_freeroam", "1")
 	var _own := game.spectate_rules.set_cvar("mp_forcecamera", "1")
 	_check(not game.spectate.toggle_roam(id).ok and not game.spectate.is_roaming(id), "mp_forcecamera 1 refuses it")
+	_check(not game.spectate.toggle_roam(b.player_id).ok and not game.spectate.can_roam(b.player_id), "somebody still playing cannot roam")
 
 	var restricted := await _world(func(c: ScConfig) -> void:
 		c.spectate_camera = 1)

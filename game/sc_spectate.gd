@@ -46,6 +46,7 @@ func bind(p_authoritative: bool, p_tick_rate: int, p_rules: DotSpectatorRules) -
 	chase_height = 1.2
 	eye_height = ScPlayer.EYE_HEIGHT
 	prefer_own_side = true
+	guard_roam = true
 	name_fn = _display_name
 	fixed_index_fn = _fixed_index
 
@@ -94,26 +95,6 @@ func on_spawned(player_id: StringName) -> void:
 		DotLog.debug(CHANNEL, "a new round ends watching", {"player": String(player_id)})
 
 	spawned(String(player_id))
-
-
-## The free-roam key, asked of the server like every other camera change; refused with a line when
-## roaming is off (`mp_freeroam 0`) or a camera is forced. The server owns the mode (the SPECTATE
-## event carries ROAMING); the client flies the camera ([DotSpectatorFreeCam]).
-func toggle_roam(key: String) -> DotResult:
-	if manager == null:
-		return _unset()
-
-	if not authoritative:
-		return DotResult.fail(DotError.CODE_STATE, "A mirror is told, not asked.")
-
-	if not manager.is_spectating(key):
-		return DotResult.fail(DotError.CODE_STATE, "You are playing, not watching.")
-
-	return super(key)
-
-
-func can_roam(key: String) -> bool:
-	return is_spectating(key) and super(key)
 
 
 func _fixed_index(_key: String) -> int:
