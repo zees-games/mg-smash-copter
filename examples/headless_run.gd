@@ -143,54 +143,11 @@ func _test_world_builds() -> void:
 	_check(game.platforms.index_at(9000.0, 9000.0) == -1,
 		"a point over nothing finds nothing")
 
-	# [b]The showdown's edges, which were designed, documented twice and built nowhere.[/b]
-	# `_pad` was described as "one flat surface with a kerb around it", `CORNER_LIP` had a
-	# doc comment explaining why the lip is not cover, and no line put one in the world. A
-	# render found it; nothing here could have, so this is the check that keeps it.
-	#
-	# Counted rather than measured: a pad is four kerbs and a catwalk is two, because a kerb
-	# across a catwalk's short end is a step in the middle of the walkway rather than a rail
-	# beside it.
-	#
-	# Counted by SIDE rather than by piece, because a side a catwalk joins is two pieces
-	# with the catwalk between them. Whether that gap is really there is not something a
-	# count can say — the showdown walk below is what says it.
-	var pads := 0
-	var walks := 0
-	var thin := PackedStringArray()
-
-	for child: Node in game.arena.find_children("*", "StaticBody3D", true, false):
-		var sides: Dictionary = {}
-
-		for piece: Node in child.get_children():
-			var piece_name := String(piece.name)
-
-			if piece_name.begins_with("KerbHit"):
-				sides[piece_name.trim_prefix("KerbHit").get_slice("_", 0)] = true
-
-		var kerbs := sides.size()
-
-		if String(child.name).begins_with("Catwalk"):
-			walks += 1
-
-			if kerbs != 2:
-				thin.append("%s has %d" % [child.name, kerbs])
-		elif String(child.name).begins_with("Pad") or child.name == "Ring":
-			pads += 1
-
-			if kerbs != 4:
-				thin.append("%s has %d" % [child.name, kerbs])
-
-	_check(pads == game.config.team_count + 1,
-		"every corner and the ring is a pad", "%d pads" % pads)
-	_check(walks == game.config.team_count,
-		"and every corner has a catwalk to the ring", "%d walks" % walks)
-	_check(thin.is_empty(),
-		"a pad is edged on four sides and a catwalk on two",
-		", ".join(thin))
+	_check_showdown_edges(game)
 
 	await _dispose(game)
 	_finished()
+
 
 
 ## A platform that comes off its pillar takes everybody on it, wherever they stood.
@@ -735,17 +692,7 @@ func _test_reach() -> void:
 	var config := game.config
 	var platforms := game.platforms
 
-	# The arithmetic first, read off the controller's tunables: flat, a jump is run speed times airtime.
-	var t := ScPlayer.tunables_for(config, null)
-	var flat := ScPlayer.jump_reach(config, 0.0)
-	var airtime := 2.0 * sqrt(2.0 * t.gravity * t.jump_height) / t.gravity
-	_check(
-		absf(flat - t.max_speed * airtime) < 0.001
-			and ScPlayer.jump_reach(config, 0.5) < flat
-			and is_zero_approx(ScPlayer.jump_reach(config, t.jump_height + 0.01)),
-		"the reach is the movement's own, and shrinks as the landing rises",
-		"%.2f m flat, %.2f m onto 0.5 m" % [flat, ScPlayer.jump_reach(config, 0.5)]
-	)
+	var flat := _check_reach_arithmetic(config)
 
 	var too_far := PackedStringArray()
 	var too_near := PackedStringArray()
@@ -794,12 +741,7 @@ func _test_reach() -> void:
 		if tightest != "":
 			closest.append(tightest)
 
-		if layout.with_chopper:
-			for i in range(config.chopper_count):
-				var pad := game.chopper_pad_on(layout, i)
-
-				if platforms.index_at(pad.x, pad.z) < 0:
-					parked.append("%s chopper %d" % [layout.id, i])
+		parked.append_array(_unparked_choppers(game, layout))
 
 	_check(too_far.is_empty(), "every jump a layout means can be made from a run",
 		"; ".join(too_far) if not too_far.is_empty() else ", ".join(closest))
@@ -814,6 +756,7 @@ func _test_reach() -> void:
 
 	await _dispose(game)
 	_finished()
+
 
 
 ## The flanks: a perch between every two pads, joined by catwalks that never touch the ring.
@@ -1208,55 +1151,9 @@ func _test_the_showdown_walk() -> void:
 
 		await _dispose(game)
 
-	# [b]And over a kerb, at walking pace.[/b] The openings above were cut on 2026-09-23
-	# because step-up refused this game's 0.34 m kerb 0.6 m deep at any speed, whatever
-	# `step_height` (0.45) said. dot-player-controller 2e6d930 fixed the step; this closes
-	# the pad's kerb across its catwalk again and walks over it with the brake held, so a
-	# regression in the step shows up here rather than as a survivor stuck on their pad.
-	# The height reached is in the detail, for the addon's [kerb-pop-1] (a fast body is
-	# thrown well over the kerb).
-	var closed := await _world(func(c: ScConfig) -> void:
-		c.team_count = 2
-		c.cannon_enabled = false
-		c.specials_enabled = false
-	)
-	var pad := closed.arena.get_node(^"Showdown/Pad0") as StaticBody3D
-	var none: Array[Vector2] = []
-	closed.arena._build_kerb(pad, Vector2(closed.config.corner_size, closed.config.corner_size),
-		true, none)
-	await _physics_frame()
-
-	var home := closed.arena.corner_point(0, 2)
-	var facing := closed.arena.showdown_yaw(0, 2)
-	var stepper := closed.add_player(&"stepper", "Stepper", 1)
-	stepper.place_at(home + Vector3.UP * 0.2, facing)
-	var highest := -INF
-	var over := false
-
-	for _i in range(int(8.0 * TICK_RATE)):
-		var command := DotFpsCommand.new()
-		command.yaw = facing
-		command.move = Vector2(0.0, 1.0)
-		command.set_button(DotFpsCommand.BUTTON_WALK, true)
-		stepper.controller.apply_command(command)
-		closed.simulate(TICK)
-		await _physics_frame()
-
-		var now := stepper.controller.state.position
-		highest = maxf(highest, now.y - home.y)
-
-		# Two metres past the pad's edge is on the catwalk.
-		if Vector2(now.x - home.x, now.z - home.z).length() > closed.config.corner_size * 0.5 + 2.0:
-			over = true
-			break
-
-	_check(over and stepper.is_alive() and highest < ScArena.CORNER_LIP + 0.3,
-		"a survivor walks over their pad's kerb onto the catwalk",
-		"over %s, highest %.2f m over the pad against a %.2f m kerb" % [
-			over, highest, ScArena.CORNER_LIP])
-
-	await _dispose(closed)
+	await _walk_over_a_kerb()
 	_finished()
+
 
 
 ## A catwalk stops at the ring's edge and its pad's, at neither short of it.
@@ -1285,36 +1182,7 @@ func _test_catwalks_meet_their_edges() -> void:
 			var inside := func(p: Vector3, centre: Vector3, half: float) -> bool:
 				return absf(p.x - centre.x) < half - 0.01 and absf(p.z - centre.z) < half - 0.01
 
-			# Every point of the slab's top, sampled, and every corner of every kerb.
-			var points: Array[Vector3] = []
-
-			for piece: Node in body.get_children():
-				var collider := piece as CollisionShape3D
-
-				if collider == null:
-					continue
-
-				var to_world := body.global_transform * collider.transform
-				var convex := collider.shape as ConvexPolygonShape3D
-				var box := collider.shape as BoxShape3D
-
-				if convex != null:
-					var top: Array[Vector3] = []
-
-					for i in range(4):
-						top.append(to_world * convex.points[i])
-
-					for u in range(11):
-						for v in range(41):
-							var a := top[0].lerp(top[1], u / 10.0)
-							var b := top[3].lerp(top[2], u / 10.0)
-							points.append(a.lerp(b, v / 40.0))
-				elif box != null:
-					var h := box.size * 0.5
-
-					for x: float in [-h.x, h.x]:
-						for z: float in [-h.z, h.z]:
-							points.append(to_world * Vector3(x, -h.y, z))
+			var points := _catwalk_points(body)
 
 			for p in points:
 				if inside.call(p, middle, ring):
@@ -1363,6 +1231,7 @@ func _test_catwalks_meet_their_edges() -> void:
 		await _dispose(game)
 
 	_finished()
+
 
 
 ## The Spine: a bridge must not lean more than a platform edge (see [method ScPlatforms._rest_bridges]).
@@ -2056,46 +1925,10 @@ func _test_delivery() -> void:
 
 	_check(declared.is_empty(), "no script in this game declares a class_name", ", ".join(declared))
 
-	# Form four: the pack carries what it references. Every model and atlas named in a prop
-	# scene has to exist, because a missing one is a prop that spawns, falls, lands and
-	# damages a platform while being invisible — which is what game-buses-from-hell shipped.
-	var missing := PackedStringArray()
-	var referenced := 0
-
-	for path: String in _prop_scenes():
-		var text := FileAccess.get_file_as_string(path)
-
-		for line: String in text.split("\n"):
-			if not (line.begins_with("model_path") or line.begins_with("atlas_path")):
-				continue
-
-			var quoted := line.get_slice("\"", 1)
-
-			if quoted == "":
-				continue
-
-			referenced += 1
-
-			if not ResourceLoader.exists(quoted) and not FileAccess.file_exists(quoted):
-				missing.append(quoted)
-
-	_check(referenced > 0, "the prop scenes name their art by path", "%d references" % referenced)
-	_check(missing.is_empty(), "every model and atlas a prop scene names is in this repository", ", ".join(missing))
-
-	# Form three: a script naming this game's own file by a bare `"res://…"` resolves it
-	# against the HOST's root once mounted. Every such path is rebased where it is defined
-	# (`static var X := ScPaths.rebase("res://…")`), because a `const` rebased at each use
-	# is one new use away from a prop that silently does not spawn in a delivered round.
-	# Armed: with `sc_content.gd`'s CRATE_SCENE put back to a bare `const`, this fails and
-	# names the line.
-	var bare := _bare_own_paths()
-	_check(
-		_scripts_here().size() > 0 and bare.is_empty(),
-		"no shipped script names this game's own file by a bare res:// path",
-		", ".join(bare)
-	)
+	_check_pack_references()
 
 	_finished()
+
 
 
 func _test_zee_art_root() -> void:
@@ -2133,62 +1966,7 @@ func _test_zee_art_root() -> void:
 		ZeeModelCache.resolve(ART)
 	)
 
-	# And the settings: Escape used to let go of the mouse and offer nothing to click. The
-	# document is built, the sampler and the camera read it, and Escape opens the screen.
-	var settings: Variant = client.get("settings")
-	var camera: Camera3D = client.get("camera")
-	_check(
-		settings != null and bool(settings.describe().get("look_bound", 0)) \
-			and camera != null and bool(settings.describe().get("camera_bound", false)) \
-			and is_equal_approx(camera.fov, float(settings.settings.get_int(&"field_of_view", 0))),
-		"the client's settings are read by its sampler and its camera",
-		str(settings.describe()) if settings != null else "no settings"
-	)
-
-	# [b]The sensitivity survives a respawn.[/b] `ScPlayer.retune` (every respawn, every
-	# special) hands the sampler a fresh tunables object at DotFpsTunables' default, and the
-	# settings stayed bound to the old one: offline, the first respawn put the view back to
-	# 0.25 degrees per count whatever the slider said. Armed: without `_follow_look` both fail.
-	var me: ScPlayer = client.get("player")
-	if me != null:
-		me.retune(me.active)
-	await get_tree().physics_frame
-	await get_tree().physics_frame
-	var per_count := DotMenuApplier.DEGREES_PER_COUNT
-	var look_after: DotFpsTunables = me.sampler.tunables if me != null and me.sampler != null else null
-	_check(
-		look_after != null and settings != null and is_equal_approx(look_after.mouse_sensitivity,
-			settings.settings.get_float(&"sensitivity") * per_count),
-		"a respawn's fresh tunables still turn at the player's sensitivity",
-		"%.4f" % (look_after.mouse_sensitivity if look_after != null else -1.0)
-	)
-	# Read off the applier rather than by moving the slider: this client is on the player's
-	# real settings document, and `sensitivity` is ACCOUNT scope, shared by every game.
-	_check(
-		look_after != null and settings != null and settings.applier._look.has(look_after),
-		"and the slider is bound to them, so moving it after a respawn still turns the view"
-	)
-
-	var escape := InputEventAction.new()
-	escape.action = &"ui_cancel"
-	escape.pressed = true
-	client.call("_unhandled_input", escape)
-	_check(settings != null and settings.is_open(), "and Escape opens them")
-	settings.close()
-
-	# The Tab board, held: the menu's, drawn from the local world offline.
-	var tab := InputEventKey.new()
-	tab.physical_keycode = KEY_TAB
-	tab.pressed = true
-	settings.menu.handle_event(tab)
-	var board: DotMenuScoreboard = client.get("board")
-	_check(board != null and board.is_open() and board.rows().size() >= 1
-		and board.rows().any(func(r: Dictionary) -> bool: return bool(r.get("you", false))),
-		"Tab holds the scoreboard up, with this player on it and picked out",
-		str(board.rows()) if board != null else "no board")
-	tab.pressed = false
-	settings.menu.handle_event(tab)
-	_check(board != null and not board.is_open() and not settings.is_open(), "and letting go puts it away")
+	await _check_client_settings(client)
 
 	ZeeModelCache.set_asset_root(ELSEWHERE)
 	remove_child(client)
@@ -2202,6 +1980,7 @@ func _test_zee_art_root() -> void:
 
 	ZeeModelCache.set_asset_root("res://")
 	_finished()
+
 
 
 ## What an administrator's blind and beacon draw, which the net and dedicated suites cannot reach.
