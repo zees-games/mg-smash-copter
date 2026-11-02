@@ -125,8 +125,16 @@ func _walk(game: ScGame, me: ScPlayer, other: ScPlayer, spot: Vector3, from: Vec
 	await get_tree().physics_frame
 	Input.action_press(&"dot_fps_forward")
 	var closest := INF
+	# Every other player is held, not only the one walked at: a free bot's brain walks it
+	# into the player, and the closing speed of two hulls is not what this measures.
+	var held := {}
+	for id in game.players:
+		var body: ScPlayer = game.players[id]
+		if body != me:
+			held[body] = spot if body == other else body.controller.state.position
 	for i in 90:
-		other.controller.teleport(spot, NAN, NAN)
+		for body in held:
+			body.controller.teleport(held[body], NAN, NAN)
 		await get_tree().physics_frame
 		var a := me.controller.state.position
 		# A deck leans under the two of them and carries both: once it has pushed one into
