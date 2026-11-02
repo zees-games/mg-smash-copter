@@ -39,16 +39,12 @@ examples/headless_run.gd::_test_two_islands	107
 examples/headless_run.gd::_test_what_a_player_keeps	129
 examples/headless_run.gd::_test_world_builds	96
 examples/headless_run.gd::_test_zee_art_root	108
-game/net/sc_net_bridge.gd::_on_event	144
 game/net/sc_net_bridge.gd::attach	90
 game/sc_arena.gd	916
 game/sc_audio.gd::sound_catalogue	83
 game/sc_client.gd	1390
 game/sc_client.gd::_build_netcode	86
 game/sc_config.gd::validate	81
-game/sc_content.gd::props	108
 game/sc_hud.gd::_build	91
-game/sc_layouts.gd::_own	100
 game/sc_module.gd::_add_tunables	83
-game/sc_module.gd::_build_vote	112
 game/sc_platforms.gd	953

@@ -373,16 +373,7 @@ func _on_event(message: DotNetMessage) -> void:
 			game.remove_player(player_key(session_id))
 			roster_changed.emit(session_id)
 		ScEvents.Kind.TEAM:
-			var side := ScEvents.read_team(reader)
-
-			if bool(side["ok"]):
-				var id := player_key(int(side["player_id"]))
-				game.sides[id] = int(side["team"])
-
-				if game.players.has(id):
-					(game.players[id] as ScPlayer).team = int(side["team"])
-
-				roster_changed.emit(int(side["player_id"]))
+			_apply_team(reader)
 		ScEvents.Kind.PROP:
 			_apply_prop(reader)
 		ScEvents.Kind.PROP_GONE:
@@ -392,19 +383,7 @@ func _on_event(message: DotNetMessage) -> void:
 		ScEvents.Kind.CLOCK:
 			_apply_clock(reader)
 		ScEvents.Kind.ROUND:
-			var round_info := ScEvents.read_round(reader)
-
-			if bool(round_info["ok"]):
-				game.round_number = int(round_info["round"])
-
-				if bool(round_info["began"]):
-					game.round_elapsed = 0.0
-
-				round_changed.emit(
-					int(round_info["round"]),
-					bool(round_info["began"]),
-					int(round_info["winner"])
-				)
+			_apply_round(reader)
 		ScEvents.Kind.PHASE:
 			var moved := ScEvents.read_phase(reader)
 
@@ -421,18 +400,18 @@ func _on_event(message: DotNetMessage) -> void:
 					str(strange["blurb"])
 				)
 		ScEvents.Kind.DEATH:
-			var death := ScEvents.read_death(reader)
+			_apply_death(reader)
+		ScEvents.Kind.ARMED:
+			_apply_armed(reader)
+		ScEvents.Kind.SPECTATE:
+			_apply_spectate(reader)
+		_:
+			_apply_effect(event.kind, reader)
 
-			if bool(death["ok"]):
-				# The fall goes on the player before anybody hears of the death, so the client
-				# that draws it reads the server's pick.
-				var fell: ScPlayer = game.players.get(player_key(int(death["player_id"]))) \
-					if game != null else null
-				if fell != null and death.has("death"):
-					fell.death = death["death"]
-				death_received.emit(
-					int(death["player_id"]), int(death["by"]), death["why"], death["weapon_id"]
-				)
+
+## Events that only tell a listener something happened (no state of the world changes).
+func _apply_effect(kind: int, reader: DotNetReader) -> void:
+	match kind:
 		ScEvents.Kind.COLLAPSE:
 			var fell := ScEvents.read_collapse(reader)
 
@@ -448,17 +427,6 @@ func _on_event(message: DotNetMessage) -> void:
 
 			if bool(hit["ok"]):
 				hit_received.emit(hit["point"], bool(hit["killed"]), bool(hit["headshot"]))
-		ScEvents.Kind.ARMED:
-			var armed := ScEvents.read_armed(reader)
-
-			if bool(armed["ok"]):
-				# Noted on the player here rather than by whoever listens, so every client
-				# draws the gun in a watched player's hand: see `ScPlayer.dealt`.
-				var dealt_to: ScPlayer = game.players.get(player_key(int(armed["player_id"]))) \
-					if game != null else null
-				if dealt_to != null:
-					dealt_to.note_dealt(armed["weapon_id"], game.round_number)
-				armed_received.emit(int(armed["player_id"]), armed["weapon_id"])
 		ScEvents.Kind.CHAT:
 			var wire := ScEvents.read_chat(reader)
 
@@ -469,20 +437,6 @@ func _on_event(message: DotNetMessage) -> void:
 
 			if bool(text["ok"]):
 				notice_received.emit(str(text["text"]))
-		ScEvents.Kind.SPECTATE:
-			var view := ScEvents.read_spectate(reader)
-
-			if bool(view["ok"]) and game.spectate != null:
-				game.spectate.apply_view(
-					player_key(int(view["viewer"])),
-					int(view["mode"]),
-					player_key(int(view["target"])) if int(view["target"]) != 0 else &"",
-					player_key(int(view["killer"])) if int(view["killer"]) != 0 else &"",
-					view["death_at"]
-				)
-				spectate_received.emit(
-					int(view["viewer"]), int(view["mode"]), int(view["target"])
-				)
 		ScEvents.Kind.IMPACT:
 			var landed := ScEvents.read_impact(reader)
 
@@ -490,6 +444,73 @@ func _on_event(message: DotNetMessage) -> void:
 				impact_received.emit(
 					landed["position"], int(landed["outcome"]), float(landed["impulse"])
 				)
+
+
+func _apply_team(reader: DotNetReader) -> void:
+	var side := ScEvents.read_team(reader)
+
+	if bool(side["ok"]):
+		var id := player_key(int(side["player_id"]))
+		game.sides[id] = int(side["team"])
+
+		if game.players.has(id):
+			(game.players[id] as ScPlayer).team = int(side["team"])
+
+		roster_changed.emit(int(side["player_id"]))
+
+
+func _apply_round(reader: DotNetReader) -> void:
+	var round_info := ScEvents.read_round(reader)
+
+	if bool(round_info["ok"]):
+		game.round_number = int(round_info["round"])
+
+		if bool(round_info["began"]):
+			game.round_elapsed = 0.0
+
+		round_changed.emit(
+			int(round_info["round"]), bool(round_info["began"]), int(round_info["winner"])
+		)
+
+
+func _apply_death(reader: DotNetReader) -> void:
+	var death := ScEvents.read_death(reader)
+
+	if bool(death["ok"]):
+		# The fall goes on the player before anybody hears of the death, so the client that
+		# draws it reads the server's pick.
+		var fell: ScPlayer = game.players.get(player_key(int(death["player_id"])))
+		if fell != null and death.has("death"):
+			fell.death = death["death"]
+		death_received.emit(
+			int(death["player_id"]), int(death["by"]), death["why"], death["weapon_id"]
+		)
+
+
+func _apply_armed(reader: DotNetReader) -> void:
+	var armed := ScEvents.read_armed(reader)
+
+	if bool(armed["ok"]):
+		# Noted here, not by a listener, so every client draws a watched player's gun: see
+		# `ScPlayer.dealt`.
+		var dealt_to: ScPlayer = game.players.get(player_key(int(armed["player_id"])))
+		if dealt_to != null:
+			dealt_to.note_dealt(armed["weapon_id"], game.round_number)
+		armed_received.emit(int(armed["player_id"]), armed["weapon_id"])
+
+
+func _apply_spectate(reader: DotNetReader) -> void:
+	var view := ScEvents.read_spectate(reader)
+
+	if bool(view["ok"]) and game.spectate != null:
+		game.spectate.apply_view(
+			player_key(int(view["viewer"])),
+			int(view["mode"]),
+			player_key(int(view["target"])) if int(view["target"]) != 0 else &"",
+			player_key(int(view["killer"])) if int(view["killer"]) != 0 else &"",
+			view["death_at"]
+		)
+		spectate_received.emit(int(view["viewer"]), int(view["mode"]), int(view["target"]))
 
 
 func _apply_hello(reader: DotNetReader) -> void:

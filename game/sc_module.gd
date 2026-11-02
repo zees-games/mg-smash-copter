@@ -562,6 +562,33 @@ func _rotation_commands() -> Dictionary:
 func _build_vote(world: ScGame) -> void:
 	vote = ScVote.new()
 	vote.name = "LayoutVote"
+	_bind_vote_hooks(world)
+
+	add_child(vote)
+	var ready := vote.setup()
+
+	if not ready.ok:
+		DotLog.result(CHANNEL, "the layout vote; the draw alone chooses", ready)
+		vote.queue_free()
+		vote = null
+		return
+
+	vote.commands_spec_fn = _rotation_commands
+	var commanded := vote.install_commands(self)
+	DotLog.result(CHANNEL, "the layout vote's commands", commanded)
+
+	# The map menu (M), dot-vote's: a player holding the owner's `sv_map_menu_flag` changes the
+	# layout now, not next round, and sees the same rows a solo player does. Read by name,
+	# because a server on a dot-vote older than the menu has no `map_menu` and runs without it.
+	var menu_half: Variant = vote.commands.get(&"map_menu") if vote.commands != null else null
+	if menu_half is Object:
+		(menu_half as Object).set(&"change_fn", world.change_layout_now)
+		(menu_half as Object).set(&"rows_fn", func(_rows: Array) -> Array: return world.layout_rows())
+
+	_follow_vote_rounds(world)
+
+
+func _bind_vote_hooks(world: ScGame) -> void:
 	# Nothing to vote on when the operator turned the per-round draw off: they asked for one
 	# layout all evening.
 	vote.layouts_fn = func() -> Array:
@@ -629,27 +656,8 @@ func _build_vote(world: ScGame) -> void:
 	vote.round_in_progress_fn = func() -> bool:
 		return world.match_node == null or world.match_node.is_live()
 
-	add_child(vote)
-	var ready := vote.setup()
 
-	if not ready.ok:
-		DotLog.result(CHANNEL, "the layout vote; the draw alone chooses", ready)
-		vote.queue_free()
-		vote = null
-		return
-
-	vote.commands_spec_fn = _rotation_commands
-	var commanded := vote.install_commands(self)
-	DotLog.result(CHANNEL, "the layout vote's commands", commanded)
-
-	# The map menu (M), dot-vote's: a player holding the owner's `sv_map_menu_flag` changes the
-	# layout now, not next round, and sees the same rows a solo player does. Read by name,
-	# because a server on a dot-vote older than the menu has no `map_menu` and runs without it.
-	var menu_half: Variant = vote.commands.get(&"map_menu") if vote.commands != null else null
-	if menu_half is Object:
-		(menu_half as Object).set(&"change_fn", world.change_layout_now)
-		(menu_half as Object).set(&"rows_fn", func(_rows: Array) -> Array: return world.layout_rows())
-
+func _follow_vote_rounds(world: ScGame) -> void:
 	_tunable("sc_vote_after", vote.open_after_sec,
 		"Seconds into a round before the vote for the next layout opens",
 		func(value: float) -> void:

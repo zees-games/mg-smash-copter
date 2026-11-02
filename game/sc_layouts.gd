@@ -309,6 +309,17 @@ static func _own(config: ScConfig) -> Array[Layout]:
 	islands.jumps = Jumps.ALONG_ROWS | Jumps.ACROSS_ROWS | Jumps.DIAGONALS
 	out.append(islands)
 
+	_own_bridged(config, out)
+	_own_loose(config, out)
+
+	out.append(_terraces())
+	out.append(_ring())
+	out.append(_watchtowers())
+
+	return out
+
+
+static func _own_bridged(config: ScConfig, out: Array[Layout]) -> void:
 	var spine := _make(
 		&"spine", "The Spine", 11.0, Gaps.NONE, Bridges.ALL,
 		"Bridges everywhere. The walkways are the steady ground and everybody knows it."
@@ -333,6 +344,9 @@ static func _own(config: ScConfig) -> Array[Layout]:
 	airfield.jumps = Jumps.ALONG_ROWS
 	out.append(airfield)
 
+
+
+static func _own_loose(config: ScConfig, out: Array[Layout]) -> void:
 	var gauntlet := _make(
 		&"gauntlet", "The Gauntlet", 11.0, Gaps.COMBED, Bridges.NONE,
 		"Every platform stands alone, and none of them is holding still."
@@ -365,12 +379,6 @@ static func _own(config: ScConfig) -> Array[Layout]:
 		# Only the middle column goes, so each half is a U round the hole: the outer column's two platforms and the bridge between them, and an inner platform off each (a 0.9 m jump, the nearest floor to the tube). The bridge is the half's only way between its rows and falls with either platform, so losing an outer one strands the inner. The missing column is 12.3 m of air no jump reaches. `headless_run`'s Hollow section runs a side round its U.
 	hollow.jumps = Jumps.ALONG_ROWS
 	out.append(hollow)
-
-	out.append(_terraces())
-	out.append(_ring())
-	out.append(_watchtowers())
-
-	return out
 
 
 ## The bowl: seven columns by three, rising from the middle out, so every step is one jump.

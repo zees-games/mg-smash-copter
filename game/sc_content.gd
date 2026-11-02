@@ -84,6 +84,13 @@ static func props(_config: ScConfig) -> DotPropCatalogue:
 	catalogue.add(cone)
 
 
+	_add_tier_two(catalogue)
+	_add_tier_three(catalogue)
+	_add_tier_four(catalogue)
+	return catalogue
+
+
+static func _add_tier_two(catalogue: DotPropCatalogue) -> void:
 	var barrel := DotPropDef.make(BARREL, BARREL_SCENE)
 	barrel.display_name = "Barrel"
 	barrel.category = &"hazard"
@@ -111,6 +118,7 @@ static func props(_config: ScConfig) -> DotPropCatalogue:
 	catalogue.add(boulder)
 
 
+static func _add_tier_three(catalogue: DotPropCatalogue) -> void:
 	var container := DotPropDef.make(CONTAINER, CONTAINER_SCENE)
 	container.display_name = "Container"
 	container.category = &"debris"
@@ -131,8 +139,9 @@ static func props(_config: ScConfig) -> DotPropCatalogue:
 	slab.meta = {META_TIER: 3}
 	catalogue.add(slab)
 
-	# Rare, and it has to be: a map where every fourth shot removes a platform is one nobody survives a minute of; at one in twenty it is what a round is remembered for. See [member ScConfig.cannon_tier_weights].
 
+static func _add_tier_four(catalogue: DotPropCatalogue) -> void:
+	# Rare, and it has to be: at one in twenty it is what a round is remembered for. See [member ScConfig.cannon_tier_weights].
 	var monolith := DotPropDef.make(MONOLITH, MONOLITH_SCENE)
 	monolith.display_name = "Monolith"
 	monolith.category = &"debris"
@@ -144,8 +153,6 @@ static func props(_config: ScConfig) -> DotPropCatalogue:
 	monolith.max_health = 0.0
 	monolith.meta = {META_TIER: 4}
 	catalogue.add(monolith)
-
-	return catalogue
 
 
 ## Which tier a definition belongs to, or zero for anything that is not a cannon prop.
