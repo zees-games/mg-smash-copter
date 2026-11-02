@@ -333,15 +333,9 @@ func _handle_key(event: InputEvent) -> bool:
 
 ## The wheel and the buttons. True when the event was taken.
 func _handle_pointer(event: InputEvent) -> bool:
-	# The wheel cycles the weapons in the showdown (dot-menu's stock rows, API 10); in the
-	# chopper and out of the round it does nothing, and it is never jump.
-	if event is InputEventMouseButton and _pointer_ours() and weapons != null and not is_spectating():
-		if event.is_action_pressed(&"dot_menu_weapon_next"):
-			_slot = _cycled_slot(1)
-			return true
-		if event.is_action_pressed(&"dot_menu_weapon_previous"):
-			_slot = _cycled_slot(-1)
-			return true
+	# The wheel cycles the weapons in the showdown; in the chopper and out of the round it does nothing.
+	if event is InputEventMouseButton and _wheel_pressed(event):
+		return true
 
 	if not event is InputEventMouseButton:
 		return false
@@ -368,19 +362,18 @@ func _handle_pointer(event: InputEvent) -> bool:
 	return false
 
 
-## The next carried slot [param step] along from the one wanted, empty slots skipped, or the
-## wanted one when there is nothing to cycle to.
-func _cycled_slot(step: int) -> int:
-	if weapons == null or weapons.arsenal == null:
-		return _slot
-
-	var carried: Array = weapons.arsenal.slots()
-
-	if carried.size() < 2:
-		return _slot
-
-	var at := carried.find(_slot if _slot > 0 else weapons.arsenal.current_slot())
-	return int(carried[posmod(at + step, carried.size())])
+## The wheel (dot-menu's stock rows) walks the carried slots; true when it took the event.
+func _wheel_pressed(event: InputEvent) -> bool:
+	if _wheel == null:
+		_wheel = DotWeaponWheel.new()
+		_wheel.ring_provider = func() -> Array:
+			return weapons.arsenal.slots() if weapons != null and weapons.arsenal != null else []
+		_wheel.current_provider = func() -> Variant:
+			return _slot if _slot > 0 else weapons.arsenal.current_slot()
+		_wheel.blocked = func() -> bool:
+			return not _pointer_ours() or weapons == null or is_spectating()
+		_wheel.chosen.connect(func(slot: Variant) -> void: _slot = int(slot))
+	return _wheel.handle_event(event)
 
 
 func describe() -> Dictionary:

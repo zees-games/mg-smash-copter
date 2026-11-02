@@ -308,6 +308,22 @@ func _test_the_drawn_gun() -> void:
 	_check(same and drawn.arsenal.current_slot() == me.weapons.arsenal.current_slot(),
 		"the drawn gun holds exactly the server's weapons, slot for slot, the same one out", " ".join(held))
 
+	var ring: Array = drawn.arsenal.slots()
+	var step := InputEventAction.new()
+	step.action = &"dot_menu_weapon_next"
+	step.pressed = true
+	# The pointer is never captured headless, so only that clause of the block is lifted.
+	client.call("_wheel_pressed", InputEventAction.new())
+	var wheel: DotWeaponWheel = client.get(&"_wheel")
+	wheel.blocked = func() -> bool: return false
+	var slot_before: int = client.get(&"_slot")
+	var took: bool = client.call("_wheel_pressed", step)
+	var slot_after: int = client.get(&"_slot")
+	client.set(&"_slot", slot_before)
+	var want: int = ring[posmod(ring.find(drawn.arsenal.current_slot()) + 1, ring.size())] if ring.size() > 1 else 0
+	_check(ring.size() < 2 or (took and slot_after == want),
+		"the wheel steps to the next carried slot", "took %s, slot %s, want %d" % [took, slot_after, want])
+
 	var hud: Node = client.get("hud")
 	hud.call("_process", 0.0)
 	var counter: DotAmmoCounter = hud.get("ammo")

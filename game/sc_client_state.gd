@@ -122,6 +122,7 @@ var _firing: bool = false
 var _alt: bool = false
 var _reloading: bool = false
 var _slot: int = 0
+var _wheel: DotWeaponWheel
 
 
 
