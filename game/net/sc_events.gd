@@ -54,6 +54,8 @@ enum Kind {
 	## The field's toys: their net ids in deck order (both ends place them from the layout).
 	## After LAYOUT, and to a joiner after theirs.
 	TOYS,
+	## A crate or cone broke: where, and of what. What a client throws splinters for.
+	SHATTER,
 }
 
 enum Ask {
@@ -547,6 +549,19 @@ static func read_special(r: DotNetReader) -> Dictionary:
 		"blurb": blurb,
 		"ok": r.ok(),
 	}
+
+
+static func write_shatter(at: Vector3, material: int) -> PackedByteArray:
+	var w := _w()
+	w.write_vector3_range(at, -WORLD_EXTENT, WORLD_EXTENT, POS_BITS)
+	w.write_uint(clampi(material, 0, 7), 3)
+	return w.to_bytes()
+
+
+static func read_shatter(r: DotNetReader) -> Dictionary:
+	var at := r.read_vector3_range(-WORLD_EXTENT, WORLD_EXTENT, POS_BITS)
+	var material := r.read_uint(3)
+	return {"position": at, "material": material, "ok": r.ok()}
 
 
 static func write_blast(at: Vector3, radius: float) -> PackedByteArray:

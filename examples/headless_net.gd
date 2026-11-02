@@ -5,8 +5,8 @@ extends "headless_net_base.gd"
 ##
 ## Run: `godot --headless --path . res://examples/headless_net.tscn`. Everything is the real path minus the socket (`ScNetLink.loopback` stands in for the RPC), so encoders, seal, snapshots, prediction and reconciliation run; Godot's own RPC routing is for `dedicated.gd`. The client lives in its own [World3D] (else mirrors sit where the server's bodies are and push them) and on a different tick rate and field than the server, so HELLO and LAYOUT must correct it rather than agree by construction.
 
-const SECTIONS := 25
-const CHECKS := 254
+const SECTIONS := 26
+const CHECKS := 259
 
 
 func _ready() -> void:
@@ -45,6 +45,7 @@ func _run() -> void:
 		await _test_somebody_out_watches()
 		await _test_free_roam_crosses()
 		await _test_the_toys_reach_the_client()
+		await _test_a_crate_breaks_in_splinters()
 		await _test_leaving()
 
 	_test_the_remote_workbench()
@@ -1988,6 +1989,42 @@ func _test_free_roam_crosses() -> void:
 	rules.allow_roaming = true
 	_server_bridge.remove_player(ScNetBridge.session_of(mate.player_id))
 	_exchange()
+	_finished()
+
+
+## A crate the server breaks throws one burst of splinters on the client, and nothing with effects off.
+func _test_a_crate_breaks_in_splinters() -> void:
+	_section("a crate the server breaks throws splinters on the client, none with effects off")
+
+	var client_side := _client_game.get_parent()
+	var fx := ScFx.new()
+	client_side.add_child(fx)
+	var built := fx.setup(null)
+	_check(built.ok and fx.break_fx != null, "the client has the break effect")
+	fx.break_fx.config.headless = true
+	_client_bridge.shatter_received.connect(fx.on_shatter)
+	var spot := Vector3(0.0, 40.0, 0.0)
+	var crate := _server_game.props.spawn(ScContent.CRATE, &"world", spot)
+	await _steps(4)
+	var _b := _server_game.prop_damage.break_now(crate.instance_id, &"")
+	_exchange()
+	await _steps(3)
+	_check(fx.break_fx.spawned == 1, "one broken crate is one burst", "spawned %d" % fx.break_fx.spawned)
+	var root := fx.break_fx.get_child(fx.break_fx.get_child_count() - 1) as Node3D
+	_check(root != null and root.name.begins_with("Break_wood") and root.get_node_or_null("Pieces") != null,
+		"wood pieces are drawn")
+	_check(root != null and root.global_position.distance_to(spot) < 2.0, "where the crate was")
+
+	fx.break_fx.config.enabled = false
+	var crate2 := _server_game.props.spawn(ScContent.CRATE, &"world", spot + Vector3(2.0, 0.0, 0.0))
+	await _steps(4)
+	_b = _server_game.prop_damage.break_now(crate2.instance_id, &"")
+	_exchange()
+	await _steps(3)
+	_check(fx.break_fx.spawned == 1 and fx.break_fx.last_refusal == "disabled",
+		"with effects off nothing is drawn", "spawned %d, %s" % [fx.break_fx.spawned, fx.break_fx.last_refusal])
+	client_side.remove_child(fx)
+	fx.free()
 	_finished()
 
 

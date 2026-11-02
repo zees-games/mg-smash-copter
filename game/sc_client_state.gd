@@ -2,6 +2,7 @@ extends Node
 
 const ScBindings := preload("sc_bindings.gd")
 const ScAudio := preload("sc_audio.gd")
+const ScFx := preload("sc_fx.gd")
 const ScWeaponIcons := preload("sc_weapon_icons.gd")
 const ScSettings := preload("sc_settings.gd")
 const ScServices := preload("sc_services.gd")
@@ -59,6 +60,9 @@ var chat: DotGameChatClient = null
 
 ## What the game sounds like. See [ScAudio].
 var audio: ScAudio = null
+
+## Splinters where a crate or cone breaks. Null only if built before the world.
+var fx: ScFx = null
 
 ## The player's own settings and the screen Escape opens. See [ScSettings].
 var settings: ScSettings = null

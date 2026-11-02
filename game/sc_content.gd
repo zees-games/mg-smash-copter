@@ -27,6 +27,19 @@ const BARREL := &"barrel"
 const BOULDER := &"boulder"
 const CONTAINER := &"container"
 const SLAB := &"slab"
+
+## What breakable props shatter into, by dot-fx material name; the wire carries the index. A barrel is absent: its end is the blast.
+const BREAK_MATERIALS: Array[String] = ["wood", "plastic"]
+
+
+## The dot-fx material a broken [param prop_id] shatters into, or "" for none.
+static func break_material(prop_id: StringName) -> String:
+	match prop_id:
+		CRATE:
+			return "wood"
+		CONE:
+			return "plastic"
+	return ""
 const MONOLITH := &"monolith"
 const COPTER := &"copter"
 

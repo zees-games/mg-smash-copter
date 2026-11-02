@@ -138,6 +138,7 @@ func _build_props() -> void:
 	prop_damage.authoritative = authoritative
 	props.add_child(prop_damage)
 	prop_damage.exploded.connect(_on_prop_exploded)
+	prop_damage.broken.connect(_on_prop_broken)
 
 	props.spawned.connect(_on_prop_spawned)
 	props.removed.connect(_on_prop_removed)

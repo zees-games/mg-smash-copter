@@ -210,6 +210,10 @@ func _on_platform_collapsed(index: int, why: StringName) -> void:
 	_broadcast(ScEvents.Kind.COLLAPSE, ScEvents.write_collapse(index, why))
 
 
+func _on_shatter(at: Vector3, material: int) -> void:
+	_broadcast(ScEvents.Kind.SHATTER, ScEvents.write_shatter(at, material))
+
+
 func _on_blast(at: Vector3, radius: float) -> void:
 	_broadcast(ScEvents.Kind.BLAST, ScEvents.write_blast(at, radius))
 

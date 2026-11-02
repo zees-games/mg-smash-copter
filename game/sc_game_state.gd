@@ -108,6 +108,9 @@ signal platform_struck(index: int, at: Vector3, impulse: float, outcome: int)
 ## A barrel went off.
 signal blast(at: Vector3, radius: float)
 
+## A crate or cone broke, where, and of what (an index into [constant ScContent.BREAK_MATERIALS]).
+signal shattered(at: Vector3, material: int)
+
 ## Somebody earned an achievement. What a module turns into a notice to that one player.
 signal achievement_earned(player_id: StringName, title: String, points: int)
 

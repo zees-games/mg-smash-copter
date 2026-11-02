@@ -91,6 +91,7 @@ func attach(p_game: Object, p_net: DotNetManager) -> DotResult:
 		game.platform_collapsed.connect(_on_platform_collapsed)
 		game.platform_struck.connect(_on_platform_struck)
 		game.blast.connect(_on_blast)
+		game.shattered.connect(_on_shatter)
 
 		if game.spectate != null:
 			game.spectate.view_changed.connect(_on_spectate_changed)
@@ -422,6 +423,11 @@ func _apply_effect(kind: int, reader: DotNetReader) -> void:
 
 			if bool(went_off["ok"]):
 				blast_received.emit(went_off["position"], float(went_off["radius"]))
+		ScEvents.Kind.SHATTER:
+			var broke := ScEvents.read_shatter(reader)
+
+			if bool(broke["ok"]):
+				shatter_received.emit(broke["position"], int(broke["material"]))
 		ScEvents.Kind.HIT:
 			var hit := ScEvents.read_hit(reader)
 

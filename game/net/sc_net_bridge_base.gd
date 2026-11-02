@@ -55,6 +55,9 @@ signal collapse_received(index: int, why: StringName)
 ## A barrel went off, where, and how far it reached.
 signal blast_received(at: Vector3, radius: float)
 
+## A crate or cone broke, where, and of what (an index into [constant ScContent.BREAK_MATERIALS]).
+signal shatter_received(at: Vector3, material: int)
+
 ## A player got into or out of a chopper. The camera and the HUD read it.
 signal seat_changed(player_id: int, seated: bool)
 

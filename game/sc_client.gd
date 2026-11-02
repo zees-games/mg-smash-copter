@@ -47,6 +47,7 @@ func _ready() -> void:
 	_build_hud()
 	_build_chat()
 	_build_audio()
+	_build_fx()
 	_build_settings()
 	_build_killcam()
 
@@ -302,6 +303,7 @@ func _build_netcode() -> DotResult:
 	bridge.armed_received.connect(_on_armed)
 	bridge.hit_received.connect(_on_hit)
 	_hear_the_wire()
+	bridge.shatter_received.connect(fx.on_shatter)
 	# [b]Where a refusal is drawn.[/b] The server answers a gagged or too-fast line with a
 	# notice to that one player, and a notice nothing draws is the server explaining itself
 	# to nobody — which is indistinguishable from chat being broken.
@@ -649,6 +651,9 @@ func _build_settings() -> void:
 	if _sampler != null:
 		settings.bind_look(_sampler.tunables)
 
+	if fx != null and fx.break_fx != null:
+		fx.break_fx.follow(settings.settings)
+
 	if audio != null:
 		settings.bind_audio(audio.manager)
 		# The server's sc_ambient* drive the quiet layer; the player's sliders multiply on top.
@@ -728,6 +733,14 @@ func board_snapshot() -> Dictionary:
 
 func _seconds_here() -> int:
 	return int((Time.get_ticks_msec() - _started_msec) / 1000)
+
+
+## Offline the world's own `shattered` drives it; connected, the bridge does (the mirror world never breaks anything).
+func _build_fx() -> void:
+	fx = ScFx.new()
+	fx.name = "Fx"
+	add_child(fx)
+	var _built := fx.setup(game if _offline else null)
 
 
 func _build_audio() -> void:

@@ -1,5 +1,6 @@
 extends Node
 
+const ScContent := preload("../game/sc_content.gd")
 const ScGame := preload("../game/sc_game.gd")
 const ScPlatforms := preload("../game/sc_platforms.gd")
 const ScLayouts := preload("../game/sc_layouts.gd")
@@ -149,6 +150,19 @@ func _stage_view(client: Node, game: ScGame, view: String, seconds: float) -> vo
 		var waited_k := 0.0
 		while waited_k < seconds:
 			waited_k += get_process_delta_time()
+			await get_tree().process_frame
+	elif view == "crate":
+		# A crate breaking four metres ahead of the local player's feet, caught mid-burst.
+		var me_c: Node3D = client.get("player")
+		var yaw := deg_to_rad((me_c.get("controller") as DotFpsController).state.yaw)
+		var spot := me_c.global_position + Vector3(-sin(yaw), 0.4, -cos(yaw)) * 4.0
+		var crate := game.props.spawn(ScContent.CRATE, &"world", spot)
+		for _i in range(6):
+			await get_tree().process_frame
+		var _broke := game.prop_damage.break_now(crate.instance_id, &"local")
+		var splintering := 0.0
+		while splintering < 0.2:
+			splintering += get_process_delta_time()
 			await get_tree().process_frame
 	elif view == "hands":
 		# The local player's own eyes once the showdown is on: the gun the handover dealt, in

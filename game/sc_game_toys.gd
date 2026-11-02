@@ -240,6 +240,17 @@ func _on_prop_removed(prop: DotPropInstance, _reason: StringName) -> void:
 		cannon.forget(prop.instance_id)
 
 
+## A prop that is not a barrel broke; a barrel's end is the blast.
+func _on_prop_broken(prop: DotPropInstance, at: Vector3, _by: StringName) -> void:
+	if prop == null or prop.def == null:
+		return
+
+	var material := ScContent.BREAK_MATERIALS.find(ScContent.break_material(prop.def.id))
+
+	if material >= 0:
+		shattered.emit(at, material)
+
+
 ## A barrel went off. dot-props described the blast; this is what it does to people. The split is the addon
 ## boundary: dot-props knows props and nothing else (a player needs another id space and authority), so it shoves
 ## the other props itself and hands the rest over here.
