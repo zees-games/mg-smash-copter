@@ -44,7 +44,8 @@ func _refresh_overviews() -> void:
 	var over := middle + Vector3(0.0, 26.0, config.corner_distance * 0.9 + 18.0)
 	var showdown := Transform3D(Basis.IDENTITY, over).looking_at(middle, Vector3.UP)
 
-	spectate.set_overviews(field, showdown)
+	var cameras: Array[Transform3D] = [field, showdown]
+	spectate.set_overviews(cameras)
 
 
 ## Puts somebody in the world. [param wanted_team] is a team id, or 0 to be placed.
@@ -273,7 +274,7 @@ func remove_player(player_id: StringName) -> void:
 	# After the roster has dropped them: dot-spectate picks a watcher's replacement target
 	# from the roster, and one still holding the leaver picks the leaver.
 	if spectate != null:
-		spectate.on_left(player_id)
+		spectate.left(String(player_id))
 
 	if progress != null:
 		progress.leave(player_id)

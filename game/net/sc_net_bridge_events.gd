@@ -227,7 +227,9 @@ func _on_platform_struck(_index: int, at: Vector3, impulse: float, outcome: int)
 ## A view changed on the server. Told to its owner and to nobody else. [b]To the one peer, because a camera is
 ## private.[/b] Who somebody is watching is a fact about them that nobody else has any business knowing — and
 ## a stand-in, whose peer is zero, is told nothing, which `_tell` guarantees rather than this.
-func _on_spectate_changed(player_id: StringName) -> void:
+func _on_spectate_changed(key: String) -> void:
+	var player_id := StringName(key)
+
 	if game == null or game.spectate == null or game.spectate.manager == null:
 		return
 

@@ -45,7 +45,7 @@ func _watched_through_eyes() -> ScPlayer:
 	if mode != DotSpectatorView.Mode.FIRST_PERSON and mode != DotSpectatorView.Mode.FREEZE_CAM:
 		return null
 
-	return game.players.get(game.spectate.watching(player.player_id))
+	return game.players.get(StringName(game.spectate.watching(player.player_id)))
 
 
 ## Puts the camera where [ScSpectate] says, and takes it back when a round starts. It leaves the

@@ -339,7 +339,7 @@ func _build_spectate() -> void:
 
 	# The config's number is only the starting point: from here `mp_forcecamera` is the rule.
 	spectate_rules.force_camera = clampi(config.spectate_camera, 0, 2)
-	var ready_now := spectate.setup(authoritative, tick_rate, spectate_rules)
+	var ready_now := spectate.bind(authoritative, tick_rate, spectate_rules)
 
 	if not ready_now.ok:
 		DotLog.warn(CHANNEL, "spectating is off", {"why": ready_now.error.message})
