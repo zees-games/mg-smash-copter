@@ -239,6 +239,12 @@ func _add_tunables(world: ScGame) -> void:
 	_tunable("sc_bot_spray", config.bot_spray_metres,
 		"Metres of miss a stand-in accepts when it fires. Higher sprays from further",
 		func(value: float) -> void: config.bot_spray_metres = clampf(value, 0.1, 5.0))
+	_add_round_tunables(world)
+
+
+func _add_round_tunables(world: ScGame) -> void:
+	var config := world.config
+
 	_tunable("sc_teams", float(config.team_count), "How many sides play, two to six",
 		func(value: float) -> void: config.team_count = clampi(int(value), 2, 6))
 	_tunable("sc_columns", float(config.columns), "Platforms along each row, next round",

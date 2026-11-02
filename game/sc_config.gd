@@ -441,6 +441,13 @@ func showdown_starts_at() -> float:
 
 
 func validate() -> DotResult:
+	var res := _validate_world()
+	if not res.ok:
+		return res
+	return _validate_rules()
+
+
+func _validate_world() -> DotResult:
 	if survival_seconds <= 0.0 or showdown_seconds <= 0.0:
 		return DotResult.fail(
 			DotError.CODE_INVALID, "Both phases of a round have to last some time."
@@ -485,6 +492,10 @@ func validate() -> DotResult:
 			DotError.CODE_INVALID, "platform_shatter_impulse has to be positive."
 		)
 
+	return DotResult.success(null)
+
+
+func _validate_rules() -> DotResult:
 	if cannon_tier_weights.size() != 4 or cannon_tier_unlock.size() != 4:
 		return DotResult.fail(
 			DotError.CODE_INVALID,

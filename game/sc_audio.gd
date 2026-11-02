@@ -134,6 +134,12 @@ static func sound_catalogue() -> DotAudioCatalogue:
 	c.add(_flat(SHOWDOWN_GO, &"UI", 1, 85))
 	c.add(_flat(SPECIAL, &"UI", 1, 70))
 
+	_add_weapon_sounds(c)
+	_add_stock_rows(c)
+	return c
+
+
+static func _add_weapon_sounds(c: DotAudioCatalogue) -> void:
 	# Weapons, by kind of use. Twenty-seven weapons in the pack is twenty-seven files nobody
 	# has made; five kinds of use is the distinction a player acts on — something is being
 	# fired at me, somebody is swinging, something is on its way.
@@ -163,6 +169,8 @@ static func sound_catalogue() -> DotAudioCatalogue:
 	deny.cooldown_ms = 250
 	c.add(deny)
 
+
+static func _add_stock_rows(c: DotAudioCatalogue) -> void:
 	# A body landing: dot-player-char's stock death sounds (Kenney, CC0), shipped in the addon.
 	for row: Dictionary in DotPlayerDeathSounds.rows():
 		var fall := _placed(row["id"], 45.0, 8.0, 3, 50, float(row["pitch_min"]), float(row["pitch_max"]))
@@ -180,8 +188,6 @@ static func sound_catalogue() -> DotAudioCatalogue:
 		toy.gain_db = float(row["gain_db"])
 		toy.cooldown_ms = int(row["cooldown_ms"])
 		c.add(toy)
-
-	return c
 
 
 ## Which synthesised voice stands in for each id until real audio is dropped into [member SOUND_DIR].

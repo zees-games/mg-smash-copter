@@ -68,37 +68,41 @@ func attach(p_game: Object, p_net: DotNetManager) -> DotResult:
 		game.toys_clearing.connect(_unpair_toys)
 
 	if net.is_server:
-		game.player_added.connect(_on_player_added)
-		game.player_removed.connect(_on_player_removed)
-		game.world_clearing.connect(_on_world_clearing)
-		game.world_rebuilt.connect(_on_world_rebuilt)
-		game.props.spawned.connect(_on_prop_spawned)
-		game.props.removed.connect(_on_prop_removed)
-		game.vehicles.spawned.connect(_on_vehicle_spawned)
-		game.vehicles.removed.connect(_on_vehicle_removed)
-		game.ride.entered.connect(_on_ride_entered)
-		game.ride.exited.connect(_on_ride_exited)
-		game.round_began.connect(_on_round_began)
-		game.round_over.connect(_on_round_over)
-		game.phase_changed.connect(_on_phase_changed)
-		game.special_changed.connect(_on_special_changed)
-		game.player_died.connect(_on_player_died)
-		# To the shooter alone: a hit marker is that player's business.
-		game.hit_landed.connect(func(id: StringName, point: Vector3, killed: bool, headshot: bool) -> void:
-			var hit_peer := peer_for_player(session_of(id))
-			if hit_peer > 0:
-				_tell(hit_peer, ScEvents.Kind.HIT, ScEvents.write_hit(point, killed, headshot)))
-		game.platform_collapsed.connect(_on_platform_collapsed)
-		game.platform_struck.connect(_on_platform_struck)
-		game.blast.connect(_on_blast)
-		game.shattered.connect(_on_shatter)
-
-		if game.spectate != null:
-			game.spectate.view_changed.connect(_on_spectate_changed)
-
-		_wire_lag_compensation()
+		_connect_server_signals()
 
 	return DotResult.success(true)
+
+
+func _connect_server_signals() -> void:
+	game.player_added.connect(_on_player_added)
+	game.player_removed.connect(_on_player_removed)
+	game.world_clearing.connect(_on_world_clearing)
+	game.world_rebuilt.connect(_on_world_rebuilt)
+	game.props.spawned.connect(_on_prop_spawned)
+	game.props.removed.connect(_on_prop_removed)
+	game.vehicles.spawned.connect(_on_vehicle_spawned)
+	game.vehicles.removed.connect(_on_vehicle_removed)
+	game.ride.entered.connect(_on_ride_entered)
+	game.ride.exited.connect(_on_ride_exited)
+	game.round_began.connect(_on_round_began)
+	game.round_over.connect(_on_round_over)
+	game.phase_changed.connect(_on_phase_changed)
+	game.special_changed.connect(_on_special_changed)
+	game.player_died.connect(_on_player_died)
+	# To the shooter alone: a hit marker is that player's business.
+	game.hit_landed.connect(func(id: StringName, point: Vector3, killed: bool, headshot: bool) -> void:
+		var hit_peer := peer_for_player(session_of(id))
+		if hit_peer > 0:
+			_tell(hit_peer, ScEvents.Kind.HIT, ScEvents.write_hit(point, killed, headshot)))
+	game.platform_collapsed.connect(_on_platform_collapsed)
+	game.platform_struck.connect(_on_platform_struck)
+	game.blast.connect(_on_blast)
+	game.shattered.connect(_on_shatter)
+
+	if game.spectate != null:
+		game.spectate.view_changed.connect(_on_spectate_changed)
+
+	_wire_lag_compensation()
 
 
 ## Hands dot-combat the two callables that make lag compensation real.

@@ -149,6 +149,14 @@ func _build() -> void:
 	_shout.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_shout.add_theme_color_override("font_color", Color(0.99, 0.86, 0.40))
 
+	_build_bottom(size)
+
+	_build_tilt()
+
+	_build_crosshair()
+
+
+func _build_bottom(size: int) -> void:
 	# Above the chat box, because the chat box also draws itself bottom-left; overlap is invisible to a headless suite, whose viewport is 64 x 64.
 	vitals = DotVitals.new()
 	vitals.name = "Vitals"
@@ -185,9 +193,7 @@ func _build() -> void:
 	watching_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	watching_label.add_theme_color_override("font_color", Color(0.80, 0.90, 1.0))
 
-	_build_tilt()
 
-	_build_crosshair()
 
 ## The point being looked at, as a dot.
 func _build_crosshair() -> void:
