@@ -8,7 +8,7 @@ examples/dedicated.gd::_test_the_layout_vote	121
 examples/dedicated.gd::_test_the_live_tools	143
 examples/dedicated.gd::_test_the_stand_ins	100
 examples/dedicated.gd::_test_who_they_are	107
-examples/headless_net.gd	2387
+examples/headless_net.gd	2245
 examples/headless_net.gd::_build	164
 examples/headless_net.gd::_test_a_hit_is_the_shooters	100
 examples/headless_net.gd::_test_a_weapon_crosses	120
@@ -40,6 +40,5 @@ examples/headless_run.gd::_test_what_a_player_keeps	129
 examples/headless_run.gd::_test_world_builds	96
 examples/headless_run.gd::_test_zee_art_root	108
 game/sc_arena.gd	916
-game/sc_client.gd	1390
-game/sc_client.gd::_build_netcode	86
+game/sc_client.gd	1288
 game/sc_platforms.gd	953
