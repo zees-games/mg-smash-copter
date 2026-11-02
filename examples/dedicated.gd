@@ -266,16 +266,7 @@ func _test_the_module_loads() -> void:
 	_check(module != null, "and the host has it under its name")
 
 	if module == null:
-		_check(false, "the netcode is up")
-		_check(false, "with the game's bridge attached to it")
-		_check(false, "and a roster waiting for players")
-		_check(false, "and the netcode runs at the rate the config file asked for")
-		_check(false, "at the game's own snapshot rate")
-		_check(false, "and the world extent both ends decode positions against")
-		_check(false, "the manager does not tick itself: the module drives it")
-		_check(false, "punishments go to this run's own store")
-		_check(false, "and it starts empty")
-		_finished()
+		_fail_without_module()
 		return
 
 	# Through `get()`, because this module has no `class_name` — the shape a module
@@ -284,6 +275,28 @@ func _test_the_module_loads() -> void:
 	_check(module.get("bridge") != null, "with the game's bridge attached to it")
 	_check(module.get("roster") != null, "and a roster waiting for players")
 
+	_check_module_net(module)
+	_check_module_store(module)
+
+	_noblock_and_config(module)
+	_test_stats_report()
+	_finished()
+
+
+func _fail_without_module() -> void:
+	_check(false, "the netcode is up")
+	_check(false, "with the game's bridge attached to it")
+	_check(false, "and a roster waiting for players")
+	_check(false, "and the netcode runs at the rate the config file asked for")
+	_check(false, "at the game's own snapshot rate")
+	_check(false, "and the world extent both ends decode positions against")
+	_check(false, "the manager does not tick itself: the module drives it")
+	_check(false, "punishments go to this run's own store")
+	_check(false, "and it starts empty")
+	_finished()
+
+
+func _check_module_net(module: Object) -> void:
 	var net: DotNetManager = module.get("net")
 	_check(
 		net.config.tick_rate == TICK_RATE,
@@ -300,6 +313,8 @@ func _test_the_module_loads() -> void:
 	)
 	_check(not net.auto_tick, "the manager does not tick itself: the module drives it")
 
+
+func _check_module_store(module: Object) -> void:
 	# The store must also be empty: that says the path worked on THIS run, not on a directory
 	# still holding the last run's punishments.
 	var services: Object = module.get("services")
@@ -311,10 +326,6 @@ func _test_the_module_loads() -> void:
 	_check(moderation != null and int(moderation.call("count")) == 0,
 		"and it starts empty, so nothing a previous run did is in it",
 		"%d records" % int(moderation.call("count")) if moderation != null else "no moderation")
-
-	_noblock_and_config(module)
-	_test_stats_report()
-	_finished()
 
 
 ## A module reload must leave ONE link under the server, still named for the client's route; a second one lost every RPC to a real client without an error.
@@ -991,17 +1002,7 @@ func _test_who_they_are() -> void:
 		str(game.progress.filed_under(&"u717")) if game.progress != null else "no progress"
 	)
 
-	if game.progress != null and player != null:
-		var zoned := DotDamage.make(player.entity_id, 9999, 5.0, game.combat.damage_type(&"kinetic"))
-		zoned.hit_group = DotHitGroup.NECK
-		zoned.weapon_id = &"probe"
-		game.progress.report_damage(zoned)
-		_check(game.progress.session_values(&"u717").get_cell(DotStatsHitzones.HITS, "zone:neck") >= 1.0,
-			"a hit with a hit_group is filed by body zone through the dot-stats hitzone hook")
-		_check(game.progress.stats.schema.validate().ok, "the stats schema, hitzones included, validates")
-	else:
-		_check(false, "a hit is filed by body zone", "no progress or player")
-		_check(false, "the stats schema validates")
+	_check_hit_zone(player)
 	_check(_stats_errors.is_empty(), "the stats layer logged no error", str(_stats_errors))
 
 	# An account's name is the site's and dot-user refuses to change it here, so an operator's `platform_name` is a refusal and the world keeps the name.
@@ -1019,6 +1020,20 @@ func _test_who_they_are() -> void:
 	var _released := server.release_session(session.peer_id)
 	net.send_fn = previous_send
 	_finished()
+
+func _check_hit_zone(player: ScPlayer) -> void:
+	if game.progress != null and player != null:
+		var zoned := DotDamage.make(player.entity_id, 9999, 5.0, game.combat.damage_type(&"kinetic"))
+		zoned.hit_group = DotHitGroup.NECK
+		zoned.weapon_id = &"probe"
+		game.progress.report_damage(zoned)
+		_check(game.progress.session_values(&"u717").get_cell(DotStatsHitzones.HITS, "zone:neck") >= 1.0,
+			"a hit with a hit_group is filed by body zone through the dot-stats hitzone hook")
+		_check(game.progress.stats.schema.validate().ok, "the stats schema, hitzones included, validates")
+	else:
+		_check(false, "a hit is filed by body zone", "no progress or player")
+		_check(false, "the stats schema validates")
+
 
 ## A seat whose client has not lifted its loading cover cannot be harmed, and can once it does (dot-game's "still loading"), over a real ENet socket.
 ## A client joins and says nothing; crush, shoot and drop must be refused, an admin's slay still passes, and after `game.cover` on the wire the same hit lands.

@@ -57,10 +57,7 @@ func _run() -> void:
 	var elapsed := 0.0
 
 	if workshop:
-		while client.get("game") == null:
-			await get_tree().process_frame
-		var chosen: DotResult = (client.get("game") as ScGame).change_layout_now(&"workshop:crown")
-		print("workshop map chosen: ", chosen.ok)
+		await _choose_workshop_map(client)
 
 	# --view=killcam spends --seconds after the round ends, not before.
 	var lead := 4.0 if view == "killcam" else seconds
@@ -97,6 +94,13 @@ func _run() -> void:
 			print(line)
 
 	get_tree().quit(0)
+
+
+func _choose_workshop_map(client: Node) -> void:
+	while client.get("game") == null:
+		await get_tree().process_frame
+	var chosen: DotResult = (client.get("game") as ScGame).change_layout_now(&"workshop:crown")
+	print("workshop map chosen: ", chosen.ok)
 
 
 ## --view=cover: the loading cover dot-game's DotGameClient puts up first, before it lifts.

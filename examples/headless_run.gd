@@ -2597,9 +2597,7 @@ func _test_the_game_makes_a_noise() -> void:
 
 ## The numbers a round produces, the achievements over them, and who is never counted.
 ## Three sides, so `b` going over with their platform leaves the round running.
-func _test_what_a_player_keeps() -> void:
-	_section("what a player keeps from a round")
-
+func _check_progress_schema() -> void:
 	_check(ScProgress.schema().validate().ok and ScProgress.catalogue().validate().ok,
 		"the numbers and the achievements are both valid documents")
 
@@ -2618,6 +2616,12 @@ func _test_what_a_player_keeps() -> void:
 		"every stat an achievement reads is one the schema declares, and the list is the schema",
 		"unread %s" % [unread]
 	)
+
+
+func _test_what_a_player_keeps() -> void:
+	_section("what a player keeps from a round")
+
+	_check_progress_schema()
 
 	var game := await _world(func(c: ScConfig) -> void:
 		c.team_count = 3
@@ -2640,8 +2644,7 @@ func _test_what_a_player_keeps() -> void:
 		earned.append("%s:%s" % [id, title]))
 
 	game.start()
-	# Long enough to land: everybody is put 1.2 m over their deck, and a player who is still
-	# in the air is standing on nothing.
+	# Long enough to land: a player still in the air stands on nothing.
 	await _step(game, 40)
 
 	var progress := game.progress
@@ -2656,8 +2659,7 @@ func _test_what_a_player_keeps() -> void:
 		"a fall is a death and a fall"
 	)
 
-	# Three landings on a2's own platform, on the far side of it. Each is a WOBBLE and each
-	# missed them.
+	# Three landings on a2's platform, far side: each a WOBBLE, each a miss.
 	var index := a2.standing_on
 	var deck := game.platforms.deck_at(maxi(index, 0))
 	var away := deck.centre + (deck.centre - a2.controller.state.position).normalized() * 3.0
@@ -2683,9 +2685,7 @@ func _test_what_a_player_keeps() -> void:
 	_check(earned.has("b:Tipping Point"), "which is a secret achievement, told the moment it is earned",
 		", ".join(earned))
 
-	# And out. Not by waiting for the drop, which is six seconds of a section about the tip;
-	# that a collapse really takes everybody on it is "a platform off its pillar takes
-	# everybody on it", which waits.
+	# And out, without waiting the six seconds for the drop (another section checks that).
 	var at_b := b.controller.state.position
 	b.place_at(Vector3(at_b.x, game.config.kill_height - 5.0, at_b.z), 0.0)
 	await _step(game, 1)
@@ -2714,8 +2714,7 @@ func _test_what_a_player_keeps() -> void:
 	await _step(game, 6)
 
 	var theirs := progress.session_values(&"a2")
-	# Armed: with the counting moved back after `report_kill`, this reads 0 — the shot that
-	# ends a round is counted after the round it ended has been filed.
+	# Armed: counting moved after `report_kill` reads 0.
 	_check(not ended.is_empty() and theirs.get_value(ScProgress.SHOWDOWN_KILLS, 0.0) == 1.0,
 		"putting the last of a side out in the corners is a showdown kill, and ends the round",
 		"%.0f kills" % theirs.get_value(ScProgress.SHOWDOWN_KILLS, 0.0))
