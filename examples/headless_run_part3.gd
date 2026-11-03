@@ -458,18 +458,9 @@ func _bare_own_paths() -> PackedStringArray:
 
 ## The showdown's pads and catwalks are edged: counted per side, since the walk section says whether the gaps are real.
 func _check_showdown_edges(game: ScGame) -> void:
-	# [b]The showdown's edges, which were designed, documented twice and built nowhere.[/b]
-	# `_pad` was described as "one flat surface with a kerb around it", `CORNER_LIP` had a
-	# doc comment explaining why the lip is not cover, and no line put one in the world. A
-	# render found it; nothing here could have, so this is the check that keeps it.
-	#
-	# Counted rather than measured: a pad is four kerbs and a catwalk is two, because a kerb
-	# across a catwalk's short end is a step in the middle of the walkway rather than a rail
-	# beside it.
-	#
-	# Counted by SIDE rather than by piece, because a side a catwalk joins is two pieces
-	# with the catwalk between them. Whether that gap is really there is not something a
-	# count can say — the showdown walk below is what says it.
+	# [b]The showdown's edges are built.[/b] Counted by side, not piece: a pad is four kerbs, a
+	# catwalk two (a kerb across its short end is a step mid-walkway). Whether the gap beside
+	# a catwalk is there is what the showdown walk below says.
 	var pads := 0
 	var walks := 0
 	var thin := PackedStringArray()
@@ -533,12 +524,9 @@ func _check_pack_references() -> void:
 	_check(referenced > 0, "the prop scenes name their art by path", "%d references" % referenced)
 	_check(missing.is_empty(), "every model and atlas a prop scene names is in this repository", ", ".join(missing))
 
-	# Form three: a script naming this game's own file by a bare `"res://…"` resolves it
-	# against the HOST's root once mounted. Every such path is rebased where it is defined
-	# (`static var X := ScPaths.rebase("res://…")`), because a `const` rebased at each use
-	# is one new use away from a prop that silently does not spawn in a delivered round.
-	# Armed: with `sc_content.gd`'s CRATE_SCENE put back to a bare `const`, this fails and
-	# names the line.
+	# Form three: a bare `"res://…"` resolves against the HOST's root once mounted, so every
+	# path is rebased where defined (`static var X := ScPaths.rebase(...)`). Armed: a bare `const`
+	# CRATE_SCENE in `sc_content.gd` fails this and names the line.
 	var bare := _bare_own_paths()
 	_check(
 		_scripts_here().size() > 0 and bare.is_empty(),
@@ -549,8 +537,7 @@ func _check_pack_references() -> void:
 
 ## The booted client's settings: read by sampler and camera, kept over a respawn, Escape and Tab.
 func _check_client_settings(client: Node) -> void:
-	# And the settings: Escape used to let go of the mouse and offer nothing to click. The
-	# document is built, the sampler and the camera read it, and Escape opens the screen.
+	# The settings: the document is built, the sampler and camera read it, Escape opens the screen.
 	var settings: Variant = client.get("settings")
 	var camera: Camera3D = client.get("camera")
 	_check(
@@ -561,10 +548,9 @@ func _check_client_settings(client: Node) -> void:
 		str(settings.describe()) if settings != null else "no settings"
 	)
 
-	# [b]The sensitivity survives a respawn.[/b] `ScPlayer.retune` (every respawn, every
-	# special) hands the sampler a fresh tunables object at DotFpsTunables' default, and the
-	# settings stayed bound to the old one: offline, the first respawn put the view back to
-	# 0.25 degrees per count whatever the slider said. Armed: without `_follow_look` both fail.
+	# [b]The sensitivity survives a respawn.[/b] `ScPlayer.retune` hands the sampler a fresh
+	# tunables object each respawn; the settings must follow it (`_follow_look`). Armed: without
+	# `_follow_look` both fail.
 	var me: ScPlayer = client.get("player")
 	if me != null:
 		me.retune(me.active)
@@ -609,13 +595,9 @@ func _check_client_settings(client: Node) -> void:
 
 ## The pad's kerb closed across its catwalk, walked over at walking pace.
 func _walk_over_a_kerb() -> void:
-	# [b]And over a kerb, at walking pace.[/b] The openings above were cut on 2026-09-23
-	# because step-up refused this game's 0.34 m kerb 0.6 m deep at any speed, whatever
-	# `step_height` (0.45) said. dot-player-controller 2e6d930 fixed the step; this closes
-	# the pad's kerb across its catwalk again and walks over it with the brake held, so a
-	# regression in the step shows up here rather than as a survivor stuck on their pad.
-	# The height reached is in the detail, for the addon's [kerb-pop-1] (a fast body is
-	# thrown well over the kerb).
+	# [b]Over a kerb at walking pace.[/b] Closes the pad's kerb across its catwalk and walks over it
+	# with the brake held, so a step-up regression shows here, not as a survivor stuck on a pad.
+	# The height reached is in the detail, for the addon's [kerb-pop-1].
 	var closed := await _world(func(c: ScConfig) -> void:
 		c.team_count = 2
 		c.cannon_enabled = false
