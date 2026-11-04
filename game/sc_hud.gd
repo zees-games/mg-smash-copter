@@ -179,6 +179,13 @@ func _build_bottom(size: int) -> void:
 	_field.offset_top = -80.0
 	_field.offset_bottom = -26.0
 	_field.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	if DotPlatform.has_touch():
+		# The bottom-right corner is the FIRE/USE cluster: park the line top right.
+		_field.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+		_field.offset_left = -400.0
+		_field.offset_right = -30.0
+		_field.offset_top = 20.0
+		_field.offset_bottom = 60.0
 
 	# Bottom middle, above where the chat box's input line opens, and under nothing else:
 	# the health number is bottom-left and the field bottom-right, and a player who is out
