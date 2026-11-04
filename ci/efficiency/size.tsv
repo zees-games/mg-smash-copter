@@ -1,13 +1,12 @@
 # size
 # Baselines only shrink: scripts/<gate> --update lowers or drops entries and refuses to add.
-examples/dedicated.gd	1596
-examples/dedicated.gd::_test_a_covered_seat_is_not_harmed	97
-examples/dedicated.gd::_test_a_round_runs	102
-examples/dedicated.gd::_test_map_rotation_file	92
 examples/dedicated.gd::_test_the_layout_vote	121
 examples/dedicated.gd::_test_the_live_tools	143
-examples/dedicated.gd::_test_the_stand_ins	100
 examples/dedicated.gd::_test_who_they_are	107
+examples/dedicated_part2.gd::_test_a_covered_seat_is_not_harmed	102
+examples/dedicated_part2.gd::_test_a_round_runs	102
+examples/dedicated_part2.gd::_test_map_rotation_file	92
+examples/dedicated_part2.gd::_test_the_stand_ins	96
 examples/headless_net.gd::_build	164
 examples/headless_net_part2.gd::_test_the_wire	226
 examples/headless_net_part3.gd::_test_somebody_else_is_drawn	206
