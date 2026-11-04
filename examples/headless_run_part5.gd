@@ -286,6 +286,47 @@ func _test_hollow_centre() -> void:
 	var outer_near := _deck_at_cell(platforms, 0, 0)
 	var outer_far := _deck_at_cell(platforms, 0, 1)
 	var inner_far := _deck_at_cell(platforms, 1, 1)
+	var ran := await _hollow_run_the_u(game, runner, inner_near, outer_near, outer_far, inner_far)
+	var made: PackedStringArray = ran["made"]
+	var length: float = ran["length"]
+
+	var covered := _covered
+	var top := _top_speed
+	_track(null)
+	var max_speed := ScPlayer.tunables_for(config, null).max_speed
+
+	_check(made.size() == 3 and not ", ".join(made).contains("MISSED"),
+		"a runner goes round a U: a jump along a row, the outer bridge, a jump back in",
+		", ".join(made))
+	_check(length > 0.0 and covered >= length * 0.95 and top >= max_speed * 0.95,
+		"and covers the route at a run",
+		"%.1f m covered of a %.1f m route, top speed %.2f of %.2f m/s" % [
+			covered, length, top, max_speed])
+	_check(inner_far >= 0 and runner.is_alive() and runner.standing_on == inner_far
+			and platforms.standing_count() == platforms.count(),
+		"and ends on the far inner platform, with all of it still up",
+		"on %d, alive %s, %d of %d up" % [runner.standing_on, runner.is_alive(),
+			platforms.standing_count(), platforms.count()])
+
+	# And the other U is not reached: straight across the hole from the inner platform,
+	# running, is a fall.
+	var across := _deck_at_cell(platforms, config.columns - 2, 1)
+	var fell := false
+
+	if inner_far >= 0 and across >= 0 and runner.standing_on == inner_far:
+		var reached := await _jump_across(game, runner, inner_far, across)
+		fell = not reached and runner.controller.state.position.y < config.deck_height - 3.0
+
+	_check(fell, "and running across the hole at the other half is a fall",
+		"%.1f m" % runner.controller.state.position.y)
+
+	await _dispose(game)
+	_finished()
+
+
+## Runs the runner round the left U; returns the legs made and the route's length.
+func _hollow_run_the_u(game: ScGame, runner: ScPlayer, inner_near: int, outer_near: int, outer_far: int, inner_far: int) -> Dictionary:
+	var platforms := game.platforms
 	var made := PackedStringArray()
 	var length := 0.0
 
@@ -324,38 +365,7 @@ func _test_hollow_centre() -> void:
 				if landed:
 					await _walk_to(game, runner, platforms.deck_at(inner_far).centre)
 
-	var covered := _covered
-	var top := _top_speed
-	_track(null)
-	var max_speed := ScPlayer.tunables_for(config, null).max_speed
-
-	_check(made.size() == 3 and not ", ".join(made).contains("MISSED"),
-		"a runner goes round a U: a jump along a row, the outer bridge, a jump back in",
-		", ".join(made))
-	_check(length > 0.0 and covered >= length * 0.95 and top >= max_speed * 0.95,
-		"and covers the route at a run",
-		"%.1f m covered of a %.1f m route, top speed %.2f of %.2f m/s" % [
-			covered, length, top, max_speed])
-	_check(inner_far >= 0 and runner.is_alive() and runner.standing_on == inner_far
-			and platforms.standing_count() == platforms.count(),
-		"and ends on the far inner platform, with all of it still up",
-		"on %d, alive %s, %d of %d up" % [runner.standing_on, runner.is_alive(),
-			platforms.standing_count(), platforms.count()])
-
-	# And the other U is not reached: straight across the hole from the inner platform,
-	# running, is a fall.
-	var across := _deck_at_cell(platforms, config.columns - 2, 1)
-	var fell := false
-
-	if inner_far >= 0 and across >= 0 and runner.standing_on == inner_far:
-		var reached := await _jump_across(game, runner, inner_far, across)
-		fell = not reached and runner.controller.state.position.y < config.deck_height - 3.0
-
-	_check(fell, "and running across the hole at the other half is a fall",
-		"%.1f m" % runner.controller.state.position.y)
-
-	await _dispose(game)
-	_finished()
+	return {"made": made, "length": length}
 
 
 ## Broadside: the chopper is parked on the middle column; runs both sides to it at the layout's own
@@ -553,11 +563,41 @@ func _test_the_airfield() -> void:
 
 		routes.append([run[0], legs])
 
+	var ran := await _airfield_run_routes(game, copter, pad, last, routes)
+	var metres: Array[float] = ran["metres"]
+	var jumps: Array[int] = ran["jumps"]
+	var fastest: float = ran["fastest"]
+	var max_speed := ScPlayer.tunables_for(config, null).max_speed
+
+	_check(jumps.size() == 2 and jumps[0] == last and jumps[1] == last - 1 and fastest >= max_speed * 0.95,
+		"four jumps and three, at a run",
+		"%s jumps, slower top speed %.2f of %.2f m/s" % [str(jumps), fastest, max_speed])
+	# The far bridge is what makes it contested: each side has a row of its own to it.
+	var ratio: float = float(metres.max()) / maxf(float(metres.min()), 0.01)
+	_check(metres.size() == 2 and ratio <= 1.5,
+		"and neither side is much nearer it than the other",
+		"%.1f m against %.1f m, %.2f to one" % [metres[0], metres[1], ratio])
+
+	var now := copter.body().global_position if copter != null and copter.body() != null \
+		else Vector3(INF, INF, INF)
+	_check(now.distance_to(parked) < 0.5 and platforms.standing_count() == platforms.count()
+			and first.is_alive() and second.is_alive(),
+		"and it is where it was after both have boarded it, with everybody up",
+		"moved %.2f m, %d of %d platforms up, alive %s and %s" % [now.distance_to(parked),
+			platforms.standing_count(), platforms.count(), first.is_alive(), second.is_alive()])
+
+	await _airfield_pad_collapses(game, copter, pad, parked, home, across, first, second)
+	await _dispose(game)
+	_finished()
+
+
+## Each side along its own row, jump by jump, then into the machine and out again; returns metres, jumps and the slowest top speed.
+func _airfield_run_routes(game: ScGame, copter: DotVehicleInstance, pad: int, last: int, routes: Array) -> Dictionary:
+	var platforms := game.platforms
 	var metres: Array[float] = []
 	var jumps: Array[int] = []
 	var fastest := INF
 	var took := PackedStringArray()
-	var max_speed := ScPlayer.tunables_for(config, null).max_speed
 
 	for route: Array in routes:
 		var runner: ScPlayer = route[0]
@@ -595,23 +635,13 @@ func _test_the_airfield() -> void:
 			"%s runs its own row onto the bridge and gets in" % runner.player_id,
 			took[took.size() - 1])
 
-	_check(jumps.size() == 2 and jumps[0] == last and jumps[1] == last - 1 and fastest >= max_speed * 0.95,
-		"four jumps and three, at a run",
-		"%s jumps, slower top speed %.2f of %.2f m/s" % [str(jumps), fastest, max_speed])
-	# The far bridge is what makes it contested: each side has a row of its own to it.
-	var ratio: float = float(metres.max()) / maxf(float(metres.min()), 0.01)
-	_check(metres.size() == 2 and ratio <= 1.5,
-		"and neither side is much nearer it than the other",
-		"%.1f m against %.1f m, %.2f to one" % [metres[0], metres[1], ratio])
+	return {"metres": metres, "jumps": jumps, "fastest": fastest}
 
-	var now := copter.body().global_position if copter != null and copter.body() != null \
-		else Vector3(INF, INF, INF)
-	_check(now.distance_to(parked) < 0.5 and platforms.standing_count() == platforms.count()
-			and first.is_alive() and second.is_alive(),
-		"and it is where it was after both have boarded it, with everybody up",
-		"moved %.2f m, %d of %d platforms up, alive %s and %s" % [now.distance_to(parked),
-			platforms.standing_count(), platforms.count(), first.is_alive(), second.is_alive()])
 
+## The pad goes with the platform it rests on.
+func _airfield_pad_collapses(game: ScGame, copter: DotVehicleInstance, pad: int, parked: Vector3, home: int, across: int, first: ScPlayer, second: ScPlayer) -> void:
+	var platforms := game.platforms
+	var last := game.config.columns - 1
 	# The pad goes with the platform it rests on: (last, 1) down, the bridge and the machine
 	# on it go with it.
 	# Both sides back home first, so nobody falls with it and the round goes on.
@@ -628,6 +658,3 @@ func _test_the_airfield() -> void:
 		"and when a platform under the pad goes, the pad and the chopper go with it",
 		"bridge standing %s, chopper %.1f m lower" % [platforms.deck_at(pad).is_standing(),
 			parked.y - after])
-
-	await _dispose(game)
-	_finished()

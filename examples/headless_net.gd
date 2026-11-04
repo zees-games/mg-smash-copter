@@ -66,6 +66,20 @@ func _run() -> void:
 func _build() -> bool:
 	_section("bringing both halves up")
 
+	var sides: Array = await _build_halves()
+	var server_side: Node = sides[0]
+	var client_side: Node = sides[1]
+	_attach_bridges(server_side, client_side)
+	_open_links(server_side, client_side)
+	await _start_the_world()
+	_check_lag_compensation()
+
+	_finished()
+	return _failed == 0
+
+
+## Both worlds, each in its own physics space; returns [server_side, client_side].
+func _build_halves() -> Array:
 	var server_side := Node.new()
 	server_side.name = "ServerSide"
 	add_child(server_side)
@@ -103,7 +117,11 @@ func _build() -> bool:
 			_client_game.platforms.count(), _server_game.platforms.count()
 		]
 	)
+	return [server_side, client_side]
 
+
+## The managers and bridges, attached; a client world on a server manager is refused.
+func _attach_bridges(server_side: Node, client_side: Node) -> void:
 	Engine.physics_ticks_per_second = CLIENT_ENGINE_TICK_RATE
 
 	_server_net = _make_manager(true, &"server", 1, server_side, _server_game.tick_rate)
@@ -140,6 +158,9 @@ func _build() -> bool:
 	)
 	wrong.queue_free()
 
+
+## The links, the two builds' own message types, the seal and the loopback.
+func _open_links(server_side: Node, client_side: Node) -> void:
 	_server_bridge.open_link(server_side)
 	_client_bridge.open_link(client_side)
 	_check(_server_bridge.link != null and _client_bridge.link != null, "both links open")
@@ -180,6 +201,10 @@ func _build() -> bool:
 		"and so does the client's, which predicts and interpolates instead"
 	)
 
+
+
+## Starts both managers, seats the stand-in and lays the server's field out.
+func _start_the_world() -> void:
 	var _server_started := _server_net.start()
 	var _client_started := _client_net.start()
 
@@ -204,6 +229,8 @@ func _build() -> bool:
 		"%d bodies" % int(_server_bridge.describe()["bodies"])
 	)
 
+
+func _check_lag_compensation() -> void:
 		# The flag and the callable together, because either alone is a lie: dot-combat defaults lag compensation ON and resolves against the present when nothing is wired. The world builds with it off and the bridge turns it on with the two callables, so these three checks are one fact from three sides.
 		#
 		# Armed: with the assignment in `_wire_lag_compensation` removed, the first fails.
@@ -219,9 +246,6 @@ func _build() -> bool:
 		_server_game.combat.config.lag_compensation,
 		"and only then does it say lag compensation is on"
 	)
-
-	_finished()
-	return _failed == 0
 
 
 ## [b]A server and a client built from different sources, on one wire.[/b]

@@ -155,36 +155,8 @@ func _test_blind_and_beacon_drawn() -> void:
 		"under every number the HUD draws, which still say the round is going on"
 	)
 
-	# The chat box's full log against the health number, both bottom-anchored, so the
-	# arithmetic holds at any height: eight rows once drew over the "100".
-	var chat := ScClient.new_chat()
-	add_child(chat)
-	var w: DotChatWindow = chat.window
-	var log_top := w.margin_bottom + w.entry_height + float(w.max_lines) * (w.line_height + w.line_gap)
+	_hud_chat_and_theme(hud)
 	var vitals: DotVitals = hud.vitals
-	var plate_bottom := -(vitals.offset_top + vitals.footprint().end.y)
-	_check(
-		plate_bottom >= log_top,
-		"a full chat log stays under the health plate",
-		"log reaches %.0f px off the bottom, the plate ends %.0f off it" % [log_top, plate_bottom]
-	)
-	chat.queue_free()
-
-	# Christian's first play test: a darker HUD by default, restyled live by the menu's theme.
-	var settings := ScSettings.new()
-	add_child(settings)
-	var _built: Variant = settings.setup(DotSettingsStoreMemory.new())
-	hud.follow_menu(settings.menu)
-	var plate := hud.vitals.colour(&"plate")
-	_check(plate.get_luminance() < 0.1 and plate.a >= 0.7, "the HUD is dark by default, in the menu's theme", str(plate))
-	var _t := settings.settings.set_value(&"ui_theme", &"contrast")
-	var contrast: DotMenuPalette = settings.menu.palette()
-	_check(contrast.id == &"contrast" and hud.vitals.colour(&"plate") == contrast.hud_plate and hud.vitals.colour(&"text") == contrast.hud_text,
-		"a theme picked in the menu reaches the pieces at once")
-	_check(hud.vitals.colour(&"highlight") == Color(0.98, 0.86, 0.40) and hud._field.get_theme_color(&"font_color") == contrast.hud_text,
-		"keeping this game's accent, and the HUD's own lines follow it too")
-	_t = settings.settings.set_value(&"ui_theme", &"midnight")
-	settings.queue_free()
 
 	# Health and the clock are dot-ui's glance pieces, handed this world's numbers.
 	me.health.health = 17.4
@@ -218,6 +190,49 @@ func _test_blind_and_beacon_drawn() -> void:
 		hud.present_blind(1.0 / 60.0)
 	_check(not hud.blind_overlay.visible, "and lifts when the flag does")
 
+	_beacon_drawn(me, them)
+
+	hud.queue_free()
+	await _dispose(game)
+	_finished()
+
+
+## The full chat log against the health plate, and the menu's theme reaching the HUD.
+func _hud_chat_and_theme(hud: ScHud) -> void:
+	var vitals: DotVitals = hud.vitals
+	# The chat box's full log against the health number, both bottom-anchored, so the
+	# arithmetic holds at any height: eight rows once drew over the "100".
+	var chat := ScClient.new_chat()
+	add_child(chat)
+	var w: DotChatWindow = chat.window
+	var log_top := w.margin_bottom + w.entry_height + float(w.max_lines) * (w.line_height + w.line_gap)
+	var plate_bottom := -(vitals.offset_top + vitals.footprint().end.y)
+	_check(
+		plate_bottom >= log_top,
+		"a full chat log stays under the health plate",
+		"log reaches %.0f px off the bottom, the plate ends %.0f off it" % [log_top, plate_bottom]
+	)
+	chat.queue_free()
+
+	# Christian's first play test: a darker HUD by default, restyled live by the menu's theme.
+	var settings := ScSettings.new()
+	add_child(settings)
+	var _built: Variant = settings.setup(DotSettingsStoreMemory.new())
+	hud.follow_menu(settings.menu)
+	var plate := hud.vitals.colour(&"plate")
+	_check(plate.get_luminance() < 0.1 and plate.a >= 0.7, "the HUD is dark by default, in the menu's theme", str(plate))
+	var _t := settings.settings.set_value(&"ui_theme", &"contrast")
+	var contrast: DotMenuPalette = settings.menu.palette()
+	_check(contrast.id == &"contrast" and hud.vitals.colour(&"plate") == contrast.hud_plate and hud.vitals.colour(&"text") == contrast.hud_text,
+		"a theme picked in the menu reaches the pieces at once")
+	_check(hud.vitals.colour(&"highlight") == Color(0.98, 0.86, 0.40) and hud._field.get_theme_color(&"font_color") == contrast.hud_text,
+		"keeping this game's accent, and the HUD's own lines follow it too")
+	_t = settings.settings.set_value(&"ui_theme", &"midnight")
+	settings.queue_free()
+
+
+## The beacon's pings, its column on other screens and when its marker goes.
+func _beacon_drawn(me: ScPlayer, them: ScPlayer) -> void:
 	# The beacon at sixty frames a second for 2.9 s (short of three: float sums land on a period boundary).
 	# The promise is a ripple a SECOND; a ping on every frame would be 174.
 	them.beacon = true
@@ -249,10 +264,6 @@ func _test_blind_and_beacon_drawn() -> void:
 		me.beacon_marker == null and me.beacon,
 		"and while they are out, though the flag waits for the next round"
 	)
-
-	hud.queue_free()
-	await _dispose(game)
-	_finished()
 
 
 ## Where somebody who is out looks, on the world that decides it.

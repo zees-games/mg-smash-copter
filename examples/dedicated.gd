@@ -131,6 +131,17 @@ func _test_the_live_tools() -> void:
 	_check(DotFpsAdminModifiers.is_frozen(player.controller), "`freeze Pilot` holds them on their slab")
 	_run_command("unfreeze Pilot")
 
+	await _live_tools_blind_and_beacon(player, services)
+	await _live_tools_return_and_refusals(player, tools, services)
+
+	module.get("roster").call("remove", session)
+	var _released := server.release_session(session.peer_id)
+	net.send_fn = previous_send
+	_finished()
+
+
+## Blind, beacon and `modtools`, through the console an admin types at.
+func _live_tools_blind_and_beacon(player: ScPlayer, services: Object) -> void:
 	# Blind and beacon, through the console an admin types at. What is asserted is the flag
 	# and the field the netcode sends, which is the whole of what the server decides; the
 	# audience is `headless_net`'s, and the picture is `tools/shot.sh --view=blind`'s.
@@ -175,6 +186,9 @@ func _test_the_live_tools() -> void:
 		"`modtools` lists both as supported", " | ".join(listed)
 	)
 
+
+## The return point across rounds, and what `slay`, `respawn` and `give` say.
+func _live_tools_return_and_refusals(player: ScPlayer, tools: Object, services: Object) -> void:
 	# `[modtools-return-1]`: a return point survives a round on the same layout and not
 	# one on another, because a point above a platform is only a place while the platform
 	# is there. The handler is called as the round's signal calls it.
@@ -208,11 +222,6 @@ func _test_the_live_tools() -> void:
 	for _i in range(2):
 		await get_tree().process_frame
 	_check(_said(given, "handover"), "`give` says why weapons are not given here", " | ".join(given))
-
-	module.get("roster").call("remove", session)
-	var _released := server.release_session(session.peer_id)
-	net.send_fn = previous_send
-	_finished()
 
 
 ## The players' vote decides the next layout, end to end through what a player types: nomination, the ballot opening on its own clock, a vote by number, the round's end laying the winner, rock-the-vote.

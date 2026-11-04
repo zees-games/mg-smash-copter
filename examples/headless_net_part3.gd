@@ -48,6 +48,14 @@ func _test_the_local_player_is_predicted() -> void:
 		"%d predicted of %d players" % [predicted.size(), _client_game.players.size()]
 	)
 
+	await _predicted_key_moves(client_player, server_player)
+	await _predicted_run_and_stop(client_player, server_player)
+	await _predicted_correction(client_player, server_player)
+	_finished()
+
+
+## A key moves the client's player in its own tick, before the server has seen it.
+func _predicted_key_moves(client_player: ScPlayer, server_player: ScPlayer) -> void:
 	# On a standing deck's middle, facing along +X, and still: the next tick starts from
 	# agreement. An earlier section ran this player a long way and collapsed a deck.
 	var deck = null
@@ -90,6 +98,13 @@ func _test_the_local_player_is_predicted() -> void:
 	_flush()
 	await get_tree().physics_frame
 
+
+## A straight run then a stop leaves the client where the server has the player.
+func _predicted_run_and_stop(client_player: ScPlayer, server_player: ScPlayer) -> void:
+	var forward := DotFpsCommand.new()
+	forward.move = Vector2(0.0, 1.0)
+	forward.yaw = 0.0
+
 	# A short straight run, then stop. Printed rather than asserted: it is the number to
 	# watch, and positive is the client drawing the player AHEAD of the server along the run,
 	# which is what prediction with an input lead looks like.
@@ -112,6 +127,9 @@ func _test_the_local_player_is_predicted() -> void:
 		)
 	)
 
+
+## A move the client cannot know about is corrected, and then nothing more is.
+func _predicted_correction(client_player: ScPlayer, server_player: ScPlayer) -> void:
 		# A disagreement the client cannot know about (an admin moves the player): the next snapshot is a correction, and its count moving proves the predictor RUNS rather than adopting what it is sent.
 	var corrected_before := int(_client_net.predictor.describe()["corrections"])
 	var moved_to := server_player.controller.state.position + Vector3(1.5, 0.0, 0.0)
@@ -143,8 +161,6 @@ func _test_the_local_player_is_predicted() -> void:
 		"and then stays converged: no correction while nothing disagrees",
 		"%d more" % (int(_client_net.predictor.describe()["corrections"]) - settled)
 	)
-
-	_finished()
 
 
 ## A second person on their own peer, as this client draws them.
