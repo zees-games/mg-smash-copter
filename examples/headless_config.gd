@@ -7,6 +7,10 @@ const ScConfig := preload("../game/sc_config.gd")
 const ROOT := "user://sc_cfgtest"
 const GAME := "mg-smash-copter"
 const CHECKS := 31
+const SECTIONS := 5
+
+var _entered := 0
+var _finished := 0
 
 
 func _ready() -> void:
@@ -19,6 +23,7 @@ func _run() -> void:
 		_probe()
 		return
 	print("mg-smash-copter: config binder")
+	_entered += 1
 	var config := ScConfig.new()
 	var binder := ScConfig.make_binder(config)
 	binder.strict = true
@@ -49,23 +54,23 @@ func _run() -> void:
 	_check(not strict.load_layers().ok, "strict: an unknown key is refused")
 	DirAccess.remove_absolute("user://sc_config_bad.json")
 
+	_finished += 1
+
+	_entered += 1
 	_shipped_yml()
-
+	_finished += 1
+	_entered += 1
 	_layers()
+	_finished += 1
+	_entered += 1
 	_templates(binder)
-
+	_finished += 1
+	_entered += 1
 	_workbench(binder, config, keys)
+	_finished += 1
 
 	console.free()
-	print("")
-	print("%d passed, %d failed" % [_passed, _failed])
-	for line in _failures:
-		print("  FAIL  %s" % line)
-	if _passed + _failed != CHECKS:
-		print("ERROR: %d checks ran, %d expected." % [_passed + _failed, CHECKS])
-		get_tree().quit(1)
-		return
-	get_tree().quit(1 if _failed > 0 else 0)
+	_report_sections(_entered, _finished, SECTIONS, CHECKS)
 
 
 func _shipped_yml() -> void:

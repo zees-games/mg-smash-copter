@@ -63,4 +63,4 @@ func _run() -> void:
 	_check(console.find_cvar("sc_gravity").get_float() == 9.8, "unloading restores")
 	_check(ScMapConfig.KEYS.has("mp_killcam_time") and not ScMapConfig.KEYS.has("sc_teams"), "whitelist keeps rules, not layout size")
 
-	_report(CHECKS)
+	_report_sections(_sections, _sections, SECTIONS, CHECKS)
