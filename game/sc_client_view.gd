@@ -121,7 +121,7 @@ func _build_camera() -> void:
 	camera.fov = 92.0
 	camera.current = true
 
-		# Other players and stand-ins: hidden when one is at the lens, faded in third person when between camera and you. Handed the figures rather than found by a query: a hull is off while mp_solidplayers is 0, exactly when a body walks through you.
+		# Other players and stand-ins: hidden when one is at the lens, faded in third person when between camera and you. Handed the figures rather than looked up by a query: a hull is off while mp_solidplayers is 0, exactly when a body walks through you.
 	_fade = DotCameraFade.new()
 	_fade.name = "Fade"
 	_fade.bodies_fn = _other_players
