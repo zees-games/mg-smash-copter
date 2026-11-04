@@ -22,11 +22,9 @@ const CHECKS := 175
 ## Everything this run writes, deleted on the way in and out: a suite that writes to `user://` makes its result depend on the last run (`docs/testing.md`).
 const SERVER_DIR := "user://sc_dedicated"
 
-## The port this test listens on. Nothing else on a developer's machine is likely to be
-## holding it, and a boot that failed on a busy 27015 would look like the module being
-## broken.
-const PORT := 28891
-const QUERY_PORT := 28892
+## The ports this run listens on, probed free so two suites never collide.
+var PORT := ScTestPorts.free_port(2)
+var QUERY_PORT := PORT + 1
 
 ## What the config file asks for. Deliberately not the project's own default: the point of
 ## the chain below is that the SERVER decides, so a test using the same number on both sides
