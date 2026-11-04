@@ -248,7 +248,7 @@ func _build_netcode() -> DotResult:
 	config.enable_prediction = true
 	# Rewinding resolves shots, which only the server does.
 	config.enable_lag_compensation = false
-	config.max_entities_per_snapshot = 192
+	config.max_entities_per_snapshot = 0
 	# From the game: two copies of this number drift apart.
 	config.world_extent = ScGame.NET_WORLD_EXTENT
 	net.config = config

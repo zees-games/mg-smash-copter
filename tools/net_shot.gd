@@ -206,7 +206,7 @@ func _make_manager(server: bool, peer_id: int, parent: Node, tick_rate: int) -> 
 	config.snapshot_rate = ScGame.NET_SNAPSHOT_RATE
 	config.enable_prediction = true
 	config.enable_lag_compensation = false
-	config.max_entities_per_snapshot = 192
+	config.max_entities_per_snapshot = 0
 	config.world_extent = ScGame.NET_WORLD_EXTENT
 	manager.config = config
 
