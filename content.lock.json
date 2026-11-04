@@ -1,13 +1,13 @@
 {
 	"format": 1,
 	"mirrors": [],
-	"origin": "https://dev.dotgames.org/content",
+	"origin": "https://dotgames.org/content",
 	"packs": [
 		{
 			"id": "gamemann/mg-smash-copter",
 			"into": "",
 			"kind": "pack",
-			"manifest_sha256": "4774467824c602a908b146232a5c34d4ddb5e04a56a3e8caf743e255e05724d8",
+			"manifest_sha256": "b23acb7030632f24891310a5e045a09e18b448a81edea740fa6bcb299c7154ca",
 			"optional": false,
 			"version": "1.0.0"
 		}

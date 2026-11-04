@@ -12,6 +12,8 @@ func _ready() -> void:
 	platform = DotGameClient.new()
 	platform.name = "Platform"
 	platform.force_offline = force_offline
+	# Offline the project is the content; the lock pins this game's own pack and would hold the cover on a fetch of itself.
+	platform.use_locked_content = not force_offline
 	platform.spawned_fn = func() -> bool: return player != null
 	platform.scoreboard_action = ScBindings.SCOREBOARD
 	add_child(platform)
