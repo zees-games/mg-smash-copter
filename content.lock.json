@@ -7,9 +7,9 @@
 			"id": "gamemann/mg-smash-copter",
 			"into": "",
 			"kind": "pack",
-			"manifest_sha256": "b23acb7030632f24891310a5e045a09e18b448a81edea740fa6bcb299c7154ca",
+			"manifest_sha256": "df2d7aebe6523eb881aef1291b5daabfe16e7a36c5775ea435bc6ce606196711",
 			"optional": false,
-			"version": "1.0.0"
+			"version": "1.0.1"
 		}
 	]
 }
