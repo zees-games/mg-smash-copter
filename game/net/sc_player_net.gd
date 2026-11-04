@@ -97,7 +97,7 @@ func _register_net_vars() -> void:
 		for spec in DotFpsNetSync.rewind_specs():
 			var _timers := replicate(spec["property"], DotNetVar.Type[spec["type"]]).bits(int(spec["bits"])).to_owner_only()
 
-	replicate(&"net_health", DotNetVar.Type.FLOAT_RANGE).range_of(0.0, 1000.0).bits(12)
+	replicate(&"net_health", DotNetVar.Type.FLOAT_RANGE).range_of(0.0, 1000.0).bits(12).server_driven()
 	replicate(&"net_riding", DotNetVar.Type.BOOL)
 
 	for spec in ZeeWeaponNet.all_specs():
@@ -112,13 +112,14 @@ func _register_net_vars() -> void:
 		if bool(spec["owner_only"]):
 			var _owner := declaration.to_owner_only()
 
+	# Health, blind, beacon and warp are written by the game alone, never by the owner's prediction: server-driven, so a server bump is not a misprediction.
 	# Per-player state rather than an event, so both survive what an event does not: a client joining after `beacon`, a lost snapshot, a field re-laid at round top are baselines the next snapshot corrects.
 	# The blind goes to its owner alone (an opponent receiving it would learn the moment somebody could not see).
 	# No relevance change for a beacon: every player here is already always relevant (`ScNetBridge`), and turning it OFF by setting `always_relevant` false would take the player out of everybody's snapshot.
-	var _blind := replicate(&"net_blind", DotNetVar.Type.BOOL).to_owner_only()
-	replicate(&"net_beacon", DotNetVar.Type.BOOL)
+	var _blind := replicate(&"net_blind", DotNetVar.Type.BOOL).to_owner_only().server_driven()
+	replicate(&"net_beacon", DotNetVar.Type.BOOL).server_driven()
 	replicate(&"net_flashlight", DotNetVar.Type.BOOL)
-	replicate(&"net_warp", DotNetVar.Type.UINT).bits(4)
+	replicate(&"net_warp", DotNetVar.Type.UINT).bits(4).server_driven()
 
 
 func _net_apply_input(input: DotNetInput, _tick: int) -> void:
