@@ -6,9 +6,8 @@ extends "sc_client_hearing.gd"
 
 
 func _ready() -> void:
-	# First, before anything can be drawn: the field and the player arrive after this node is in
-	# the tree. The platform puts the loading cover up, held until the player exists and the
-	# camera is current, and finds the link.
+	# First, before anything is drawn: the platform raises the loading cover (held until the
+	# player exists and the camera is current) and finds the link.
 	platform = DotGameClient.new()
 	platform.name = "Platform"
 	platform.force_offline = force_offline
@@ -20,15 +19,14 @@ func _ready() -> void:
 	gate = platform.gate
 
 	# [b]zee-dot-weapons' art is this game's copy of it, wherever this game is mounted.[/b]
-	# `ZeeWeaponArtTable` names `res://assets/…`, and in a delivered pack that is the one place
-	# the art is not: every gun and the arms would load invisible, one WARN each.
+	# `ZeeWeaponArtTable` names `res://assets/…`, which a delivered pack lacks: guns and arms
+	# would load invisible.
 	ZeeModelCache.set_asset_root(ScPaths.root())
 
 	var config := ScConfig.new()
 
-	# [b]`load_layered` on the CLIENT too.[/b] The family's `defaults < JSON < env < argv`
-	# chain is a convention, and a client that quietly skipped it would be one where every
-	# command-line flag worked against a dedicated server and did nothing at all offline.
+	# `load_layered` on the client too: otherwise flags work on a dedicated server and do
+	# nothing offline.
 	var binder := ScConfig.make_binder(config, config_file)
 	var loaded := binder.load_layers()
 
