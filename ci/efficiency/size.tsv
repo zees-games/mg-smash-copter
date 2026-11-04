@@ -13,9 +13,6 @@ examples/headless_net_part3.gd::_test_who_somebody_is_crosses	99
 examples/headless_net_part4.gd::_test_a_hit_is_the_shooters	100
 examples/headless_net_part4.gd::_test_a_weapon_crosses	120
 examples/headless_net_part4.gd::_test_blind_and_beacon	91
-examples/headless_run.gd::_test_the_dais	163
-examples/headless_run.gd::_test_the_flanks	178
-examples/headless_run.gd::_test_the_pieces	172
 examples/headless_run_part4.gd::_test_a_collapse_takes_everybody	125
 examples/headless_run_part4.gd::_test_a_shot_lands	106
 examples/headless_run_part4.gd::_test_the_chopper	126
