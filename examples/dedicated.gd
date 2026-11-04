@@ -241,9 +241,17 @@ func _test_the_layout_vote() -> void:
 
 	_check(commands_there, "and registered dot-vote's vote, rtv and nominate")
 
-	# Hibernation: DotGameModule hands the director the server, the ballot's timer waits with
-	# it, and waking starts both again from the top.
 	var director: DotVoteDirector = vote.get("director")
+	_vote_sleeps_with_the_server(vote, director)
+	_vote_offers_every_layout(vote)
+	await _vote_map_menu(vote)
+	var wanted := _vote_nominate_and_cast(vote, director)
+	_vote_round_end_and_rtv(vote, director, wanted)
+	_finished()
+
+
+## Hibernation: DotGameModule hands the director the server, the ballot's timer waits with it, and waking starts both again from the top.
+func _vote_sleeps_with_the_server(vote: Node, director: DotVoteDirector) -> void:
 	_check(server.hibernation_changed.is_connected(director.set_hibernating),
 		"the vote follows the server's hibernation without a line of this game's")
 	vote.set("_opened_this_layout", true)
@@ -257,6 +265,8 @@ func _test_the_layout_vote() -> void:
 	_check(is_zero_approx(vote.get("_on_layout_sec")) and not vote.get("_opened_this_layout") and not director.hibernating,
 		"waking wakes the vote, and the layout ballot is owed again from the top")
 
+
+func _vote_offers_every_layout(vote: Node) -> void:
 	var ids: Array = []
 
 	for choice: DotVoteChoice in (vote.get("source") as DotVoteListSource).entries:
@@ -265,8 +275,10 @@ func _test_the_layout_vote() -> void:
 	_check(ids.size() == ScLayouts.ids(game.config).size() and ids.has("checker"),
 		"it offers every layout this server plays", str(ids))
 
-	# The map menu's server half (M): the owner's flag changes the layout now, anybody else
-	# gets a nomination and a rock-the-vote. Contexts as dot-server makes them for a chat line.
+
+## The map menu's server half (M): the owner's flag changes the layout now, anybody else gets a nomination and a rock-the-vote.
+## Contexts as dot-server makes them for a chat line.
+func _vote_map_menu(vote: Node) -> void:
 	var menu_half: Object = vote.get("commands").get("map_menu")
 	_check(menu_half != null and server.console.find_command("mapmenu") != null
 		and server.console.find_cvar("sv_map_menu_flag").get_string() == "generic"
@@ -289,6 +301,9 @@ func _test_the_layout_vote() -> void:
 	_check(bool(changed["ok"]) and game.layout.id == target, "staff choosing one changes the layout on the spot",
 		"%s: %s" % [target, changed.get("text", "")])
 
+
+## Nomination, the ballot opening on its own clock, a vote by number; returns the layout nominated.
+func _vote_nominate_and_cast(vote: Node, director: DotVoteDirector) -> String:
 	# A layout that is not the one being played, so it can be nominated.
 	var playing := String(game.layout.id)
 	director.begin(StringName(playing))
@@ -318,7 +333,10 @@ func _test_the_layout_vote() -> void:
 	vote.call("advance", 0.05)
 	_check(director.pending_id() == StringName(wanted), "and decides it, waiting for the round's end",
 		str(director.pending_id()))
+	return wanted
 
+
+func _vote_round_end_and_rtv(vote: Node, director: DotVoteDirector, wanted: String) -> void:
 	vote.call("note_round_end")
 	_check(game.next_layout_id == StringName(wanted), "the round's end hands it to the world", str(game.next_layout_id))
 	game.call("_lay_out_round")
@@ -342,7 +360,6 @@ func _test_the_layout_vote() -> void:
 	# Under MANUAL the director opens a rocked ballot itself (dot-vote API 2); this game no longer
 	# does, so exactly one ballot opens, not one from each.
 	_check(ballots.size() == 1, "and exactly one ballot, the director's alone", str(ballots.size()))
-	_finished()
 
 
 ## Profiles, names and faces on a real server: dot-platform's identity layer, its module, and the three events this game redraws a player on.
@@ -380,9 +397,21 @@ func _test_who_they_are() -> void:
 		"seated before the platform knows them, they wear the stock look for their seat"
 	)
 
-	# A guest first, on a server with authentication off. dot-user keeps no profile for a guest by default (a guest id is a random per-device string), so they get the name they gave and the stock look.
-	session.identity = DotAuthIdentity.guest("device-717", "Maggie")
 	var platform := server.modules.get_module("platform")
+	await _who_guest_admitted_late(player, session, platform)
+	var key := await _who_signed_in(player, session, platform)
+	_who_progress_is_keyed(player, module, session, key)
+	await _who_rename_is_refused(player)
+
+	module.get("roster").call("remove", session)
+	var _released := server.release_session(session.peer_id)
+	net.send_fn = previous_send
+	_finished()
+
+
+## A guest first, on a server with authentication off. dot-user keeps no profile for a guest by default (a guest id is a random per-device string), so they get the name they gave and the stock look.
+func _who_guest_admitted_late(player: ScPlayer, session: DotClientSession, platform: Object) -> void:
+	session.identity = DotAuthIdentity.guest("device-717", "Maggie")
 	platform.call("_on_client_state_changed", session)
 
 	var deadline := Time.get_ticks_msec() + 5000
@@ -397,15 +426,17 @@ func _test_who_they_are() -> void:
 		player.display_name if player != null else "-"
 	)
 
-	# Then the same seat signed in, which is the case profiles exist for. Re-announced the way
-	# dot-server announces a state change: a guest admission stored no key, so it runs again.
+
+## Then the same seat signed in, which is the case profiles exist for; returns the key the platform scoped them to.
+## Re-announced the way dot-server announces a state change: a guest admission stored no key, so it runs again.
+func _who_signed_in(player: ScPlayer, session: DotClientSession, platform: Object) -> String:
 	session.identity = DotAuthIdentity.from_dict({
 		"uid": "backbone:acc-717", "provider": "backbone", "provider_id": "acc-717",
 		"display_name": "Margaret", "authenticated_at": int(Time.get_unix_time_from_system()),
 	})
 	platform.call("_on_client_state_changed", session)
 
-	deadline = Time.get_ticks_msec() + 5000
+	var deadline := Time.get_ticks_msec() + 5000
 	while (player == null or player.display_name != "Margaret") \
 			and Time.get_ticks_msec() < deadline:
 		await get_tree().process_frame
@@ -423,8 +454,11 @@ func _test_who_they_are() -> void:
 		"and draws what the platform resolved: this game's stock look, for their scoped key",
 		key
 	)
+	return key
 
-	# What they keep is filed under the key that outlives this connection, and is still looked up by the world's own id.
+
+## What they keep is filed under the key that outlives this connection, and is still looked up by the world's own id.
+func _who_progress_is_keyed(player: ScPlayer, module: Object, session: DotClientSession, key: String) -> void:
 	if game.progress != null:
 		game.progress.record(&"u717", ScProgress.DEATHS)
 	_check(
@@ -439,8 +473,10 @@ func _test_who_they_are() -> void:
 	_check_hit_zone(player)
 	_check(_stats_errors.is_empty(), "the stats layer logged no error", str(_stats_errors))
 
-	# An account's name is the site's and dot-user refuses to change it here, so an operator's `platform_name` is a refusal and the world keeps the name.
-	# The rename that IS allowed (a guest profile on a server that keeps them) is dot-platform's sandbox's to check.
+
+## An account's name is the site's and dot-user refuses to change it here, so an operator's `platform_name` is a refusal and the world keeps the name.
+## The rename that IS allowed (a guest profile on a server that keeps them) is dot-platform's sandbox's to check.
+func _who_rename_is_refused(player: ScPlayer) -> void:
 	var renamed := _run_command("platform_name 717 Grace")
 	for _i in range(10):
 		await get_tree().process_frame
@@ -449,8 +485,3 @@ func _test_who_they_are() -> void:
 		"renaming a signed-in player is refused with the reason, and the world keeps the name",
 		"%s | %s" % [player.display_name if player != null else "-", " | ".join(renamed)]
 	)
-
-	module.get("roster").call("remove", session)
-	var _released := server.release_session(session.peer_id)
-	net.send_fn = previous_send
-	_finished()

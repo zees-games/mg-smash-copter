@@ -335,6 +335,15 @@ func _test_somebody_out_watches() -> void:
 		"and a chase camera is refused, because behind a team-mate sees round corners"
 	)
 
+	await _watch_anybody_allowed(game, spectate, a, b, mate)
+	await _watch_side_with_nobody_up(game, spectate, a, mate)
+	await _watch_next_round(game, spectate, a, c)
+
+	await _dispose(game)
+	_finished()
+
+
+func _watch_anybody_allowed(game: ScGame, spectate: ScSpectate, a: ScPlayer, b: ScPlayer, mate: ScPlayer) -> void:
 	spectate.set_force_camera(0)
 	_check(
 		spectate.step(&"a", 0).ok and spectate.mode_of(&"a") == DotSpectatorView.Mode.CHASE,
@@ -356,6 +365,8 @@ func _test_somebody_out_watches() -> void:
 		"when the server chooses, it chooses a team-mate first",
 		String(spectate.watching(&"a")))
 
+
+func _watch_side_with_nobody_up(game: ScGame, spectate: ScSpectate, a: ScPlayer, mate: ScPlayer) -> void:
 	spectate.set_force_camera(1)
 	var at_mate := mate.controller.state.position
 	mate.place_at(Vector3(at_mate.x, game.config.kill_height - 5.0, at_mate.z), 0.0)
@@ -380,6 +391,8 @@ func _test_somebody_out_watches() -> void:
 		"and in the showdown, over the corners instead, where the round has gone"
 	)
 
+
+func _watch_next_round(game: ScGame, spectate: ScSpectate, a: ScPlayer, c: ScPlayer) -> void:
 	# A round starting is everybody's new body. `c` going leaves one side, which ends it.
 	var at_c := c.controller.state.position
 	c.place_at(Vector3(at_c.x, game.config.kill_height - 5.0, at_c.z), 0.0)
@@ -391,15 +404,47 @@ func _test_somebody_out_watches() -> void:
 		"round %d, alive %s" % [game.round_number, a.is_alive()]
 	)
 
-	await _dispose(game)
-	_finished()
-
 
 ## What this game makes a noise about, both ways round.
 ## An id with no recipe stays silent with nothing logged above DEBUG; a recipe naming an unknown id reaches nothing.
 func _test_the_game_makes_a_noise() -> void:
 	_section("the game makes a noise, and every id has one")
 
+	_noise_catalogue_is_whole()
+
+	var game := await _world()
+	var audio := ScAudio.new()
+	add_child(audio)
+	_check(audio.setup().ok and audio.manager.sink is DotAudioSinkNull,
+		"it comes up headless, on the sink that records rather than plays")
+
+	var sink := audio.manager.sink as DotAudioSinkNull
+	audio.muzzle = game.arena.muzzle()
+
+	await _noise_cannon_and_landings(game, audio, sink)
+
+	sink.forget()
+	var _yours := audio.on_death(Vector3(0.0, 1.5, 0.0), true, true)
+	var _theirs := audio.on_death(Vector3(0.0, 1.5, 0.0), true, false)
+	var heard := sink.played()
+	_check(
+		heard.size() == 2 and str(heard[0]["id"]) == String(ScAudio.YOU_ARE_OUT)
+			and int(heard[0]["kind"]) == DotAudioDef.Kind.FLAT
+			and str(heard[1]["id"]) == String(ScAudio.PLAYER_FELL)
+			and int(heard[1]["kind"]) == DotAudioDef.Kind.POSITIONAL_3D,
+		"your own fall is flat and everybody else's comes from where they went",
+		str(sink.played_ids())
+	)
+
+	_noise_creaks(game, audio, sink)
+
+	audio.queue_free()
+	await _dispose(game)
+	_finished()
+
+
+## Every id the catalogue lists has a recipe, and every recipe an id, and the synthesiser bakes them.
+func _noise_catalogue_is_whole() -> void:
 	var catalogue := ScAudio.sound_catalogue()
 	var recipes := ScAudio.sound_recipes()
 
@@ -441,15 +486,8 @@ func _test_the_game_makes_a_noise() -> void:
 		str(unheard)
 	)
 
-	var game := await _world()
-	var audio := ScAudio.new()
-	add_child(audio)
-	_check(audio.setup().ok and audio.manager.sink is DotAudioSinkNull,
-		"it comes up headless, on the sink that records rather than plays")
 
-	var sink := audio.manager.sink as DotAudioSinkNull
-	audio.muzzle = game.arena.muzzle()
-
+func _noise_cannon_and_landings(game: ScGame, audio: ScAudio, sink: DotAudioSinkNull) -> void:
 	# The cannon is heard from anywhere on the map — and the corners are the far end of it.
 	# Armed: at a corridor shooter's 90 m cull the showdown hears no cannon at all.
 	audio.listen_from(game.arena.showdown_centre())
@@ -476,19 +514,8 @@ func _test_the_game_makes_a_noise() -> void:
 		"and a wobble and a shattering are two different noises"
 	)
 
-	sink.forget()
-	var _yours := audio.on_death(Vector3(0.0, 1.5, 0.0), true, true)
-	var _theirs := audio.on_death(Vector3(0.0, 1.5, 0.0), true, false)
-	var heard := sink.played()
-	_check(
-		heard.size() == 2 and str(heard[0]["id"]) == String(ScAudio.YOU_ARE_OUT)
-			and int(heard[0]["kind"]) == DotAudioDef.Kind.FLAT
-			and str(heard[1]["id"]) == String(ScAudio.PLAYER_FELL)
-			and int(heard[1]["kind"]) == DotAudioDef.Kind.POSITIONAL_3D,
-		"your own fall is flat and everybody else's comes from where they went",
-		str(sink.played_ids())
-	)
 
+func _noise_creaks(game: ScGame, audio: ScAudio, sink: DotAudioSinkNull) -> void:
 	# The creak, from the lean alone. Armed: with the hysteresis taken out, the held lean
 	# creaks on every frame and this reads 1 + 29 more.
 	sink.forget()
@@ -516,10 +543,6 @@ func _test_the_game_makes_a_noise() -> void:
 	deck.lean = Vector2(limit * 0.75, 0.0)
 	_check(audio.present(game.platforms, limit) == 0,
 		"but not for wobbling on the threshold without settling below half")
-
-	audio.queue_free()
-	await _dispose(game)
-	_finished()
 
 
 ## The numbers a round produces, the achievements over them, and who is never counted.
@@ -577,6 +600,25 @@ func _test_what_a_player_keeps() -> void:
 	var progress := game.progress
 	_check(progress != null, "an authoritative world keeps progress")
 
+	await _keeps_a_fall(game, progress, a)
+	_keeps_dodges(game, progress, a2)
+	_keeps_tipping(game, progress, b, earned)
+	await _keeps_round_ends(game, progress, a, a2, b, earned)
+	await _keeps_showdown_win(game, progress, a, a2, bot)
+
+	# Armed: with the bot guard taken out of `record`, the stand-in has a row.
+	_check(not progress.stats.has_player(&"bot"),
+		"and the stand-in, who survived, was shot and lost, was never counted at all")
+
+	game.remove_player(&"a2")
+	_check(not progress.stats.has_player(&"a2") and not progress.achievements.has("a2"),
+		"somebody who leaves stops being counted, and their progress is let go of")
+
+	await _dispose(game)
+	_finished()
+
+
+func _keeps_a_fall(game: ScGame, progress: ScProgress, a: ScPlayer) -> void:
 	var went := a.controller.state.position
 	a.place_at(Vector3(went.x, game.config.kill_height - 5.0, went.z), 0.0)
 	await _step(game, 1)
@@ -586,6 +628,8 @@ func _test_what_a_player_keeps() -> void:
 		"a fall is a death and a fall"
 	)
 
+
+func _keeps_dodges(game: ScGame, progress: ScProgress, a2: ScPlayer) -> void:
 	# Three landings on a2's platform, far side: each a WOBBLE, each a miss.
 	var index := a2.standing_on
 	var deck := game.platforms.deck_at(maxi(index, 0))
@@ -602,6 +646,8 @@ func _test_what_a_player_keeps() -> void:
 	_check(lifetime == 3.0, "and the lifetime total is three, not the running totals added up",
 		"%.0f" % lifetime)
 
+
+func _keeps_tipping(game: ScGame, progress: ScProgress, b: ScPlayer, earned: Array[String]) -> void:
 	# b's platform goes over by LEAN with b on it: that is b's doing.
 	var tipped_at := b.standing_on
 	var _went_over := game.platforms.collapse(tipped_at, ScPlatforms.WHY_LEAN)
@@ -612,6 +658,8 @@ func _test_what_a_player_keeps() -> void:
 	_check(earned.has("b:Tipping Point"), "which is a secret achievement, told the moment it is earned",
 		", ".join(earned))
 
+
+func _keeps_round_ends(game: ScGame, progress: ScProgress, a: ScPlayer, a2: ScPlayer, b: ScPlayer, earned: Array[String]) -> void:
 	# And out, without waiting the six seconds for the drop (another section checks that).
 	var at_b := b.controller.state.position
 	b.place_at(Vector3(at_b.x, game.config.kill_height - 5.0, at_b.z), 0.0)
@@ -628,6 +676,8 @@ func _test_what_a_player_keeps() -> void:
 		"whoever is still up survived the round, and is told"
 	)
 
+
+func _keeps_showdown_win(game: ScGame, progress: ScProgress, a: ScPlayer, a2: ScPlayer, bot: ScPlayer) -> void:
 	game.round_elapsed = game.config.showdown_starts_at() + 0.02
 	await _step(game, 2)
 
@@ -663,14 +713,3 @@ func _test_what_a_player_keeps() -> void:
 			and progress.session_values(&"a").get_value(ScProgress.SHOWDOWN_WINS, 0.0) == 0.0,
 		"a team-mate who fell off wins the round and not the showdown"
 	)
-
-	# Armed: with the bot guard taken out of `record`, the stand-in has a row.
-	_check(not progress.stats.has_player(&"bot"),
-		"and the stand-in, who survived, was shot and lost, was never counted at all")
-
-	game.remove_player(&"a2")
-	_check(not progress.stats.has_player(&"a2") and not progress.achievements.has("a2"),
-		"somebody who leaves stops being counted, and their progress is let go of")
-
-	await _dispose(game)
-	_finished()
