@@ -1,0 +1,55 @@
+[
+  {
+    "paths": [
+      ""
+    ],
+    "licence": "MIT",
+    "author": "TMC",
+    "url": "https://github.com/zees-games/mg-smash-copter",
+    "title": "mg-smash-copter (original content; bundled addons carry their own licences in their repositories)"
+  },
+  {
+    "paths": [
+      "assets/blaster-kit/",
+      "assets/models/",
+      "assets/ammo/",
+      "assets/melee/",
+      "assets/kenney/",
+      "assets/arms/character",
+      "assets/arms/Textures/",
+      "assets/arms/LICENSE-kenney"
+    ],
+    "licence": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://kenney.nl",
+    "title": "Kenney kits (see the LICENSE files beside each)"
+  },
+  {
+    "paths": [
+      "assets/arms/arms-",
+      "assets/arms/LICENSE-fps"
+    ],
+    "licence": "CC0-1.0",
+    "author": "para",
+    "url": "https://opengameart.org/content/fps-arms-rigged-only",
+    "title": "fps arms (rigged only), modified"
+  },
+  {
+    "paths": [
+      "assets/low-poly-guns/"
+    ],
+    "licence": "CC0-1.0",
+    "author": "Quaternius",
+    "url": "https://opengameart.org/content/low-poly-guns-pack",
+    "title": "Ultimate Low Poly Guns Pack, kitbashed"
+  },
+  {
+    "paths": [
+      "textures/prototype/"
+    ],
+    "licence": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://kenney.nl",
+    "title": "Kenney prototype textures"
+  }
+]
