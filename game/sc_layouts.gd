@@ -381,25 +381,29 @@ static func _own_loose(config: ScConfig, out: Array[Layout]) -> void:
 	out.append(hollow)
 
 
-## The bowl: seven columns by three, rising from the middle out, so every step is one jump.
+## The level a Terraces row puts a platform at, at least, by its distance from the middle row: the rim rows match the end columns' three.
+const TERRACE_ROW_LEVELS: Array[int] = [0, 2, 3]
+
+
+## The bowl: seven columns by five, three terraces round the cannon's mouth, the rim all one height.
 ##
-## Each platform stands [constant LEVEL_RISE] above the one nearer the middle, so the high ground is a staircase of leaning platforms and the rim sees the whole bowl. The middle cell is left out for the cannon's mouth; rows are a jump apart as on Two Islands.
+## The floor is the two platforms either side of the mouth (level 1), the ring round them level 2, and every edge cell level 3, so no two neighbours are more than one [constant LEVEL_RISE] apart and the rim looks down on the whole bowl. On seven by three the long sides were the second terrace, not a rim. Rows are a jump apart as on Two Islands.
 static func _terraces() -> Layout:
 	var layout := _make(
 		&"terraces", "Terraces", 9.0, Gaps.NONE, Bridges.NONE,
 		"A bowl of stepped islands. Every step is one jump, and the rim sees everything."
 	)
 	layout.columns = 7
-	layout.rows = 3
+	layout.rows = 5
 	layout.row_pitch_scale = 0.51
 	layout.jumps = Jumps.ALONG_ROWS | Jumps.ACROSS_ROWS | Jumps.DIAGONALS
 
-	for row in range(3):
+	for row in range(5):
 		for column in range(7):
-			if column == 3 and row == 1:
+			if column == 3 and row == 2:
 				continue
 
-			var level := mini(maxi(absi(column - 3), 2 * absi(row - 1)), MAX_LEVEL)
+			var level := maxi(absi(column - 3), TERRACE_ROW_LEVELS[absi(row - 2)])
 			layout.custom.append(make_cell(column, row, KIND_PLATFORM, level))
 
 	return layout
