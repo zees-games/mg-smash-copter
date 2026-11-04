@@ -33,4 +33,3 @@ examples/headless_run.gd::_test_the_pieces	173
 examples/headless_run.gd::_test_the_spine	113
 examples/headless_run.gd::_test_two_islands	107
 examples/headless_run.gd::_test_what_a_player_keeps	129
-game/sc_client.gd	1288

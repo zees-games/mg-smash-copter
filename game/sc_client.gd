@@ -1,4 +1,4 @@
-extends "sc_client_hearing.gd"
+extends "sc_client_round.gd"
 
 ## One local player, a camera and a HUD over an [ScGame], offline or against a server.
 ##
@@ -96,11 +96,6 @@ func _hold_for_fields() -> void:
 	game.world_clearing.connect(func() -> void: gate.hold(&"map", "Loading the field"))
 	game.world_rebuilt.connect(func() -> void: gate.release(&"map"))
 	game.hold_clock = _covered
-
-
-
-
-
 
 
 func _build_ragdolls() -> void:
@@ -203,7 +198,6 @@ func _bind_bot_console() -> void:
 	if index >= 0 and index + 1 < args.size():
 		DotLog.result(CHANNEL, "bot difficulty from the command line",
 			DotBotSettings.of(game).set_difficulty(args[index + 1]))
-
 
 
 ## Follows the server's replicated cvars: this end traces, places its camera and predicts under them.
@@ -368,7 +362,6 @@ func _adopt(candidate: ScPlayer) -> void:
 		hud.bind(game, player)
 
 
-
 func _on_seat_changed(session_id: int, seated: bool) -> void:
 	if player == null or session_id != _watch_id:
 		return
@@ -405,193 +398,6 @@ func _on_special(_id: StringName, starting: bool, blurb: String) -> void:
 
 	if game.effects != null:
 		var _flashed := game.effects.flash(&"special")
-
-
-## The round's last moment, a death. A shot puts the victim in the shooter's eyes, anything
-## else (a fall, a crush, a blast) in the victim's own.
-func _note_death(victim: StringName, by: StringName, why: StringName, weapon_id: StringName = &"") -> void:
-	if killcam == null:
-		return
-	var who: ScPlayer = game.players.get(victim)
-	var name_of := who.display_name if who != null else String(victim)
-	if by != &"" and game.players.has(by) and by != victim:
-		killcam.note_moment(by, "put down", name_of, weapon_id)
-		return
-	var what := "was shot"
-	match why:
-		ScGame.DIED_FELL:
-			what = "ran out of map"
-		ScGame.DIED_CRUSHED:
-			what = "was under it"
-		ScGame.DIED_BLAST:
-			what = "stood next to a barrel"
-	killcam.note_moment(victim, what)
-
-
-func _build_killcam() -> void:
-	killcam = ScKillcam.new()
-	killcam.name = "RoundKillcam"
-	killcam.players_fn = func() -> Array: return game.players.values() if game != null else []
-	killcam.player_for_fn = func(key: StringName) -> Variant: return game.players.get(key) if game != null else null
-	killcam.feet_fn = func(p: ScPlayer) -> Vector3: return drawn_position(p, net != null and net.is_running() and p != player)
-	killcam.colour_fn = func(p: ScPlayer) -> Color: return _team_colour(game.team_of(p.player_id))
-	killcam.seconds_fn = func() -> float: return _killcam_sec if _killcam_sec >= 0.0 else game.config.killcam_seconds
-	killcam.hide_while_playing = [hud, chat.window if chat != null else null]
-	killcam.over.connect(func(_skipped: bool) -> void: _reveal_round())
-	add_child(killcam)
-	winner_reveal = DotWinnerReveal.new()
-	winner_reveal.name = "WinnerReveal"
-	winner_reveal.skip_actions = ScKillcam.SKIP_ACTIONS
-	winner_reveal.hold_seconds = 4.0
-	winner_reveal.finished.connect(_on_reveal_finished)
-	add_child(winner_reveal)
-
-
-func _team_colour(team: int) -> Color:
-	return ScGame.TEAM_COLOURS[team - 1] if team >= 1 and team <= ScGame.TEAM_COLOURS.size() else Color(0.7, 0.7, 0.72)
-
-
-## `mp_killcam_time`, from the server's replicated cvar.
-func _on_killcam_cvar(cvar_name: String, value: String) -> void:
-	if cvar_name == "mp_killcam_time" and value.strip_edges().is_valid_float():
-		_killcam_sec = clampf(value.to_float(), 0.0, 30.0)
-
-
-func _begin_round_end(number: int, winner: int) -> void:
-	_round_end_number = number
-	_round_end_winner = winner
-	_round_ending = true
-	if killcam != null:
-		var _playing := killcam.round_ended()
-
-
-## The winning side's players on a podium, after the killcam and before the board.
-func _reveal_round() -> void:
-	if not _round_ending:
-		return
-	var winner := _round_end_winner
-	var rows: Array = []
-	for key: StringName in game.players:
-		var who: ScPlayer = game.players[key]
-		if winner >= 1 and game.team_of(key) == winner:
-			rows.append(who)
-	rows.sort_custom(func(a: ScPlayer, b: ScPlayer) -> bool:
-		if a.is_alive() != b.is_alive():
-			return a.is_alive()
-		return a.warps > b.warps)
-	var entries: Array = []
-	for who: ScPlayer in rows.slice(0, 3):
-		entries.append({"name": who.display_name, "score": "up" if who.is_alive() else "out",
-			"colour": _team_colour(winner)})
-	if entries.is_empty():
-		_open_round_board()
-		return
-	winner_reveal.reduced_motion = settings != null and settings.settings != null and settings.settings.get_bool(&"reduce_motion", false)
-	var shown := winner_reveal.present(entries, {"title": "ROUND %d" % _round_end_number,
-		"subtitle": "%s wins" % ScGame.TEAM_NAMES[winner - 1], "hint": "Jump to skip"})
-	if not shown.ok:
-		_open_round_board()
-		return
-	if hud != null:
-		_hud_was_visible = hud.visible
-		hud.visible = false
-
-
-func _on_reveal_finished(_skipped: bool) -> void:
-	if hud != null and not killcam.is_playing():
-		hud.visible = _hud_was_visible
-	if _round_ending:
-		_open_round_board()
-
-
-func _open_round_board() -> void:
-	if board != null and not board.is_open():
-		board.open()
-		_round_board_open = true
-
-
-## A new round: whatever is still up goes, so it never covers the start.
-func _end_round_presentation() -> void:
-	_round_ending = false
-	if killcam != null:
-		killcam.skip()
-	if winner_reveal != null:
-		winner_reveal.skip()
-	if _round_board_open and board != null:
-		board.close()
-	_round_board_open = false
-
-
-func _on_round(number: int, began: bool, winner: int) -> void:
-	_round_presentation(number, began, winner)
-	if ragdolls != null:
-		# A body from before would lie on a floor that has been rebuilt or reset.
-		ragdolls.clear()
-	if audio != null:
-		var _heard := audio.on_round(began)
-
-	if began:
-		hud.shout("ROUND %d" % number, 2.4)
-		return
-
-	var team := "Nobody"
-
-	if winner >= 1 and winner <= ScGame.TEAM_NAMES.size():
-		team = ScGame.TEAM_NAMES[winner - 1]
-
-	hud.shout("%s wins" % team, 4.0)
-
-
-func _round_presentation(number: int, began: bool, winner: int) -> void:
-	if began:
-		_end_round_presentation()
-	else:
-		_begin_round_end(number, winner)
-
-
-func _on_death(session_id: int, by: int, why: StringName, weapon_id: StringName = &"") -> void:
-	var id := ScNetBridge.player_key(session_id)
-	var who: ScPlayer = game.players.get(id)
-
-	_note_death(id, ScNetBridge.player_key(by) if by > 0 else &"", why, weapon_id)
-
-	_hear_death(who, why)
-
-	if chat == null:
-		return
-
-	var name_of := who.display_name if who != null else String(id)
-
-	var line := "%s was shot" % name_of
-
-	match why:
-		ScGame.DIED_FELL:
-			line = "%s ran out of map" % name_of
-		ScGame.DIED_CRUSHED:
-			line = "%s was under it" % name_of
-		ScGame.DIED_BLAST:
-			line = "%s stood next to a barrel" % name_of
-
-	chat.say_locally(line, Color(0.80, 0.82, 0.86))
-
-
-## A platform went. The screen shakes if it was near enough to matter.
-##
-## Distance-scaled, so a far collapse is seen and one under your feet is felt.
-func _on_collapse(index: int, _why: StringName) -> void:
-	_hear_collapse(index)
-
-	if game.effects == null or game.platforms == null:
-		return
-
-	var deck = game.platforms.deck_at(index)
-
-	if deck == null:
-		return
-
-	game.effects.viewer_position = camera.global_position if camera != null else Vector3.ZERO
-	game.effects.shake_at(&"collapse", deck.centre, 42.0)
-
 
 
 ## The player's settings, applied to everything that reads them. See [ScSettings].
@@ -650,72 +456,6 @@ func _build_settings() -> void:
 		_dress_board()
 
 
-## The Tab board: dot-menu's, with this game's columns.
-##
-## Online it is the server's roster (names, pings, time on) with the replicated side, alive and warp counts joined in by id; sides are the board's teams. Offline it is [method board_snapshot].
-func _dress_board() -> void:
-	if board == null:
-		return
-	board.title_text = "Smash Copter"
-	board.columns = [
-		{"key": &"name", "title": "Player", "width": 3.0},
-		{"key": &"state", "title": "", "width": 1.2},
-		{"key": &"warps", "title": "Warps", "kind": DotMenuScoreboard.KIND_NUMBER},
-		{"key": &"seconds", "title": "Time", "kind": DotMenuScoreboard.KIND_DURATION},
-		{"key": &"ping", "title": "Ping", "kind": DotMenuScoreboard.KIND_PING},
-	]
-	board.sort_with = func(a: Dictionary, b: Dictionary) -> bool:
-		if bool(a.get("alive", false)) != bool(b.get("alive", false)):
-			return bool(a.get("alive", false))
-		return str(a.get("name", "")).naturalnocasecmp_to(str(b.get("name", ""))) < 0
-	board.decorate = _decorate_row
-	board.prepare = _prepare_board
-
-
-func _decorate_row(row: Dictionary) -> void:
-	if game == null:
-		return
-	var id := ScNetBridge.player_key(int(row.get("id", 0)))
-	if not game.players.has(id):
-		id = StringName(str(row.get("id", "")))
-	var who: ScPlayer = game.players.get(id)
-	if who == null:
-		return
-	var up := who.is_alive()
-	row["alive"] = up
-	row["state"] = "up" if up else "out"
-	row["warps"] = who.warps
-	row["team"] = game.team_of(id)
-	if who == player:
-		row["you"] = true
-
-
-## The layout in the header, and the sides in play as the teams.
-func _prepare_board(snap: Dictionary) -> void:
-	if game == null:
-		return
-	if game.layout != null:
-		snap["header"] = {"Layout": game.layout.display_name}
-	var sides: Array = []
-	for index in range(game.config.team_count):
-		sides.append({"id": index + 1, "name": ScGame.TEAM_NAMES[index], "color": ScGame.TEAM_COLOURS[index]})
-	snap["teams"] = sides
-
-
-## The board offline: every player in the local world. Public so a suite can read it.
-func board_snapshot() -> Dictionary:
-	var players: Array = []
-	if game != null:
-		for id in game.players:
-			var who: ScPlayer = game.players[id]
-			players.append({"id": String(id), "name": who.display_name, "seconds": _seconds_here(), "ping": -1, "bot": who.is_bot})
-	return {"server": {"name": "Smash Copter", "game": "offline"}, "players": players}
-
-
-func _seconds_here() -> int:
-	return int((Time.get_ticks_msec() - _started_msec) / 1000)
-
-
 ## Offline the world's own `shattered` drives it; connected, the bridge does (the mirror world never breaks anything).
 func _build_fx() -> void:
 	fx = ScFx.new()
@@ -741,226 +481,6 @@ func _build_audio() -> void:
 
 	if game != null and game.arena != null:
 		audio.muzzle = game.arena.muzzle()
-
-
-func _on_armed(session_id: int, weapon_id: StringName) -> void:
-	if session_id == _watch_id and weapons != null:
-		_give_locally(weapon_id)
-
-	if session_id != _watch_id or chat == null:
-		return
-
-	chat.say_locally("You were handed a %s." % String(weapon_id), Color(0.86, 0.92, 0.80))
-
-
-
-## Builds a view model for this player's own hands at the handover.
-##
-## Drawn, never decided (`authority` is false): the server owns every shot and this is a gun that visibly deploys, reloads and kicks.
-func _arm_locally() -> void:
-	if weapons != null or player == null:
-		return
-
-	if camera == null:
-		_build_camera()
-
-	if camera == null:
-		return
-
-	view_model = ZeeViewModel.new()
-	view_model.name = "ViewModel"
-	camera.add_child(view_model)
-
-	weapons = ZeeWeaponRig.new()
-	weapons.name = "Weapons"
-	weapons.role = ZeeWeaponRig.Role.LOCAL
-	weapons.authority = false
-	weapons.tick_rate = game.tick_rate
-	# The held weapon lowers at every brush that stops the player, fences and clip included.
-	weapons.wall_extra_mask = player.controller.tunables.collision_mask if player.controller != null else 0
-	weapons.view_model_ref = DotNodeRef.of_path(view_model.get_path())
-	weapons.player_ref = DotNodeRef.of_path(player.get_path())
-	player.add_child(weapons)
-
-	var ready_now := weapons.setup()
-
-	if not ready_now.ok:
-		DotLog.warn(CHANNEL, "the view model would not set up", {
-			"why": ready_now.error.message,
-		})
-		_disarm_locally()
-		return
-
-	# [b]Only what the server dealt[/b] (`_give_dealt`), never the whole pack: `give_everything`
-	# put all of it in five slots, so a slot held whichever weapon was given last and the drawn
-	# gun was not the one the server fired (mg-prop-hunt's play test).
-	_give_dealt()
-
-	# Your own shots, from your own rig: a predicted use, heard the tick it happens rather
-	# than when the server's snapshot says it did. At the camera, so it is at full volume.
-	weapons.used.connect(func(outcome: DotWeaponOutcome) -> void:
-		if audio != null and camera != null:
-			var _heard := audio.on_weapon(
-				camera.global_position, ZeeWeaponNet.kind_number(outcome.kind)
-			)
-	)
-
-
-func _give_locally(weapon_id: StringName) -> void:
-	if weapons == null or weapon_id == &"":
-		return
-	if weapons.arsenal != null and weapons.arsenal.carries(weapon_id):
-		return
-	var given := weapons.give(weapon_id)
-	if not given.ok:
-		DotLog.warn(CHANNEL, "the drawn rig refused a weapon", {"weapon": String(weapon_id), "why": given.error.message})
-
-
-## Gives the drawn rig what this player was dealt: offline the world's rig weapons, selected first; connected, every ARMED the server sent (`ScPlayer.dealt`).
-##
-## An ARMED that arrives after the rig is built is given by [method _on_armed].
-func _give_dealt() -> void:
-	if weapons == null or player == null:
-		return
-	var ids: Array[StringName] = []
-	var world: ZeeWeaponRig = player.weapons
-	if _offline and world != null and world != weapons and world.arsenal != null:
-		var first := world.current_def()
-		if first != null:
-			ids.append(first.id)
-		for slot in world.arsenal.slots():
-			var held := world.arsenal.slot_at(slot)
-			if held != null and held.def != null and not ids.has(held.def.id):
-				ids.append(held.def.id)
-	else:
-		ids.append_array(player.dealt)
-	for id in ids:
-		_give_locally(id)
-	if not ids.is_empty() and weapons.arsenal != null:
-		var def := weapons.arsenal.catalogue.get_def(ids[0])
-		if def != null:
-			var _selected := weapons.arsenal.select(def.slot, 0)
-
-
-func _disarm_locally() -> void:
-	if weapons != null:
-		player.remove_child(weapons)
-		weapons.queue_free()
-		weapons = null
-
-	if view_model != null and is_instance_valid(view_model):
-		view_model.queue_free()
-		view_model = null
-
-
-
-func _build_camera() -> void:
-	if camera != null or player == null:
-		return
-
-	camera = Camera3D.new()
-	camera.name = "Eye"
-	camera.fov = 92.0
-	camera.current = true
-
-		# Other players and stand-ins: hidden when one is at the lens, faded in third person when between camera and you. Handed the figures rather than found by a query: a hull is off while mp_solidplayers is 0, exactly when a body walks through you.
-	_fade = DotCameraFade.new()
-	_fade.name = "Fade"
-	_fade.bodies_fn = _other_players
-	camera.add_child(_fade)
-
-	if not game.view_rules.changed.is_connected(_on_view_rules_changed):
-		game.view_rules.changed.connect(_on_view_rules_changed)
-	third_person = game.view_rules.resolve(third_person)
-
-	_place_camera(player.riding)
-
-
-## Puts the camera where this view mode wants it, rebuilding the rig if the mode changed.
-##
-## A boom in third person, nothing in first: dot-core's [DotCameraBoom] sweeps a sphere from the eye so backing to a platform edge does not put the view inside the floor, and eases in rather than snapping like a ray.
-func _place_camera(seated: bool) -> void:
-	if camera == null or player == null:
-		return
-
-	var eye := ScPlayer.EYE_HEIGHT + (0.9 if seated else 0.0)
-
-	if camera.get_parent() != null:
-		camera.get_parent().remove_child(camera)
-
-	if _arm != null and is_instance_valid(_arm):
-		_arm.queue_free()
-		_arm = null
-
-	if not third_person:
-		player.add_child(camera)
-		_rig_height = eye
-		camera.position = Vector3(0.0, eye, 0.0)
-		camera.rotation = Vector3.ZERO
-		if _fade != null:
-			_fade.focus = null
-		return
-
-	_arm = DotCameraBoom.new()
-	_arm.name = "Chase"
-	_arm.spring_length = CHASE_BACK
-	# The level, never players: they are faded instead (a stand-in behind you would pull the
-	# camera into your head).
-	_arm.collision_mask = _level_mask()
-	_arm.add_excluded_object(player.get_rid())
-	# Swept from the eye, the height above it added in the world's up: a pivot above the
-	# head can itself be inside a beam, and a sweep that starts inside does not see it.
-	_rig_height = eye
-	_arm.lift = CHASE_UP - ScPlayer.EYE_HEIGHT
-	_arm.position = Vector3(0.0, _rig_height, 0.0)
-	player.add_child(_arm)
-
-	_arm.add_child(camera)
-	camera.position = Vector3.ZERO
-	camera.rotation = Vector3.ZERO
-	if _fade != null:
-		_fade.focus = _arm
-
-
-## Swaps the view, where the server's `mp_forceview` allows. Presentation only: the
-## simulation does not know which one is on.
-func toggle_view() -> void:
-	var wanted := game.view_rules.toggled(third_person)
-	if wanted == third_person:
-		if hud != null and game.view_rules.refusal() != "":
-			hud.shout(game.view_rules.refusal(), 1.6)
-		return
-	third_person = wanted
-	_place_camera(player.riding if player != null else false)
-
-	if audio != null:
-		var _heard := audio.click()
-
-	if hud != null:
-		hud.shout("third person" if third_person else "first person", 1.2)
-
-
-## Everybody but this player, for the camera fade.
-func _other_players() -> Array:
-	var out: Array = []
-	if game == null:
-		return out
-	for id in game.players:
-		var other: Node3D = game.players[id]
-		if other != player and is_instance_valid(other):
-			out.append(other)
-	return out
-
-
-
-
-## The server changed `mp_forceview`: the view it allows now.
-func _on_view_rules_changed() -> void:
-	var allowed := game.view_rules.resolve(third_person)
-	if allowed != third_person:
-		third_person = allowed
-		if not is_spectating():
-			_place_camera(player.riding if player != null else false)
 
 
 func _build_hud() -> void:
@@ -1031,9 +551,6 @@ func _suspend_input(suspended: bool) -> void:
 		player.sampler.suspended = suspended
 
 
-
-
-
 ## The sampled command, on a connected client, once per tick the clock says has passed.
 ##
 ## Offline this does nothing and the world ticks itself. Connected, the local player is simulated by the PREDICTOR from the command that was sent, and a second sample would predict something the server was not told.
@@ -1067,21 +584,6 @@ func _physics_process(delta: float) -> void:
 	_drive_view_model(move)
 
 
-## Keeps the settings' sensitivity and invert bound to the tunables the offline sampler reads now.
-##
-## A respawn builds fresh tunables at the default, so asked every tick (one identity comparison) because the player knows nothing of the settings; the old object is unbound so a session does not collect one per round.
-func _follow_look() -> void:
-	if settings == null or player == null or player.sampler == null:
-		return
-	var now := player.sampler.tunables
-	if now == _look_tunables or now == null:
-		return
-	if _look_tunables != null and settings.applier != null:
-		settings.applier.unbind(_look_tunables)
-	_look_tunables = now
-	settings.bind_look(now)
-
-
 ## Offline the world samples for itself; what is left is the buttons this file owns.
 func _drive_offline(_delta: float) -> void:
 	if player == null or player.sampler == null:
@@ -1096,111 +598,6 @@ func _drive_offline(_delta: float) -> void:
 		player.wanted_slot = _slot
 
 	_drive_view_model(pending)
-
-
-## Puts this game's three buttons and the slot onto a command.
-func _stamp(command: DotFpsCommand) -> void:
-	if command == null:
-		return
-
-	if is_roaming():
-		# The roaming spectator flies a camera and does not walk the dead body about, online
-		# (the command sent) and offline (`command_stamp` on the world's own sample).
-		command.move = Vector2.ZERO
-		command.buttons = 0
-		return
-
-	command.set_button(ScNetCommand.BUTTON_FIRE, _firing)
-	command.set_button(ScNetCommand.BUTTON_ALT, _alt)
-	command.set_button(ScNetCommand.BUTTON_RELOAD, _reloading)
-
-
-func _drive_view_model(command: DotFpsCommand) -> void:
-	if weapons == null or player == null:
-		return
-
-	var weapon_command := DotWeaponCommand.new()
-
-	if command != null:
-		weapon_command.set_button(
-			DotWeaponCommand.BUTTON_ATTACK, command.is_pressed(ScNetCommand.BUTTON_FIRE)
-		)
-		weapon_command.set_button(
-			DotWeaponCommand.BUTTON_ALT, command.is_pressed(ScNetCommand.BUTTON_ALT)
-		)
-		weapon_command.set_button(
-			DotWeaponCommand.BUTTON_RELOAD, command.is_pressed(ScNetCommand.BUTTON_RELOAD)
-		)
-		weapon_command.yaw = command.yaw
-		weapon_command.pitch = command.pitch
-
-	weapon_command.slot = _slot
-
-	var _outcome := weapons.simulate_tick(weapon_command, game.round_number * 100000 + Engine.get_physics_frames())
-
-	var busy := weapon_command.is_pressed(DotWeaponCommand.BUTTON_ATTACK) \
-		or weapon_command.is_pressed(DotWeaponCommand.BUTTON_RELOAD) \
-		or weapons.arsenal.is_reloading() or weapons.arsenal.is_switching()
-	_drawn_quiet = 0.0 if busy else _drawn_quiet + 1.0 / float(maxi(game.tick_rate, 1))
-	var _corrected := correct_drawn()
-
-
-
-
-## Brings the drawn gun's magazine and reserve (what the HUD counts) to the server's once it has been quiet [constant DRAWN_SETTLE_SEC]: online from this player's owner-only fields, offline from the world's rig. True when it changed anything.
-##
-## The drawn gun predicts, so a refused shot or a fresh refill leaves its counter wrong and nothing else corrects it.
-func correct_drawn() -> bool:
-	if weapons == null or weapons.arsenal == null or _drawn_quiet < DRAWN_SETTLE_SEC:
-		return false
-
-	var source := _server_count()
-
-	if source.is_empty() or bool(source.busy):
-		return false
-
-	var arsenal := weapons.arsenal
-	var held := arsenal.current()
-
-	if held == null or int(source.slot) != arsenal.current_slot() or arsenal.is_reloading() or arsenal.is_switching():
-		return false
-
-	var changed := false
-
-	if held.def.uses_magazine() and held.magazine != int(source.magazine):
-		held.magazine = clampi(int(source.magazine), 0, held.def.magazine)
-		changed = true
-
-	if held.def.ammo_type != &"" and not held.def.infinite_reserve \
-			and arsenal.ammo().count(held.def.ammo_type) != int(source.reserve):
-		arsenal.ammo().set_count(held.def.ammo_type, maxi(int(source.reserve), 0))
-		changed = true
-
-	return changed
-
-
-## The server's count for this player's gun: `{magazine, reserve, slot, busy}`, or empty.
-func _server_count() -> Dictionary:
-	if _offline:
-		var world: ZeeWeaponRig = player.weapons if player != null else null
-		if world == null or world == weapons or world.arsenal == null or world.arsenal.current() == null:
-			return {}
-		var def := world.current_def()
-		return {
-			"magazine": world.arsenal.current().magazine,
-			"reserve": world.arsenal.ammo().count(def.ammo_type) if def.ammo_type != &"" else 0,
-			"slot": world.arsenal.current_slot(),
-			"busy": world.arsenal.is_reloading() or world.arsenal.is_switching(),
-		}
-
-	var mine: Variant = bridge._behaviours.get(_watch_id) if bridge != null else null
-	if not (mine is ScPlayerNet):
-		return {}
-	var behaviour := mine as ScPlayerNet
-	return {
-		"magazine": behaviour.net_magazine, "reserve": behaviour.net_reserve, "slot": behaviour.net_slot,
-		"busy": behaviour.net_reloading or behaviour.net_switching,
-	}
 
 
 ## A hit the server confirmed for this player's shot: the marker, and zee's red burst on the body

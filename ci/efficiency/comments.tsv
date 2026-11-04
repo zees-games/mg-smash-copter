@@ -14,7 +14,6 @@ game/net/sc_request.gd::long_block	2
 game/net/sc_toy_net.gd::long_block	1
 game/sc_bindings.gd::history	1
 game/sc_bindings.gd::long_block	1
-game/sc_client.gd::history	1
 game/sc_figure.gd::history	1
 game/sc_figure.gd::long_block	2
 game/sc_map_session.gd::long_block	2
