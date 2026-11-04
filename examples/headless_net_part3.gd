@@ -292,6 +292,22 @@ func _test_somebody_else_is_drawn() -> void:
 		"in third person its own body is drawn, and back in first it is gone again"
 	)
 
+	await _else_runs_across_a_deck(theirs, server_theirs, mine)
+
+	await _else_rides_then_teleports(key, theirs, server_theirs, mine)
+
+	_server_bridge.remove_player(OTHER_SESSION)
+	_exchange()
+	await _steps(2)
+	_check(not _client_game.players.has(key), "and they leave again, so nothing after this sees them")
+	_finished()
+
+
+## A pilot is drawn as the machine, then a showdown teleport arrives through the ordinary snapshot path.
+
+
+## Bea runs across a standing deck and every frame is drawn on the server's path.
+func _else_runs_across_a_deck(theirs: ScPlayer, server_theirs: ScPlayer, mine: ScPlayer) -> void:
 		# Running along -X (yaw -90) from near one edge to past the middle, a second at full speed, put on a STANDING deck first (an earlier section collapsed one).
 	var deck = null
 	for index in range(_server_game.platforms.count()):
@@ -357,6 +373,11 @@ func _test_somebody_else_is_drawn() -> void:
 		"last drawn %s" % str(last.snapped(Vector3.ONE * 0.01))
 	)
 
+	_else_runs_evenly(theirs, drawn, server_track, clips)
+
+
+## The drawn body moves by an even step, faces the way it runs, and plays a running clip.
+func _else_runs_evenly(theirs: ScPlayer, drawn: Array[Vector3], server_track: Array[Vector3], clips: Array[StringName]) -> void:
 		# Smoothness: each frame should move the body by about what the frame before did; a client drawing only on snapshots moves one frame in several. Measured against the server's own run, whose per-tick step halves once as the deck leans: a drawn body may change pace as sharply as the server's did, no more.
 	var mean := 0.0
 	var steps: Array[float] = []
@@ -392,7 +413,7 @@ func _test_somebody_else_is_drawn() -> void:
 		"and running, rather than sliding across in a standing pose",
 		String(clips[clips.size() - 1])
 	)
-
+func _else_rides_then_teleports(key: StringName, theirs: ScPlayer, server_theirs: ScPlayer, mine: ScPlayer) -> void:
 	# In the chopper: the server seats them, and the client draws the machine, not a person
 	# frozen on the pad they climbed in from.
 	_server_game._set_riding(key, true)
@@ -451,12 +472,6 @@ func _test_somebody_else_is_drawn() -> void:
 		"and never drawn in the sky between, sweeping sixty metres",
 		"%d frames between the two" % strays
 	)
-
-	_server_bridge.remove_player(OTHER_SESSION)
-	_exchange()
-	await _steps(2)
-	_check(not _client_game.players.has(key), "and they leave again, so nothing after this sees them")
-	_finished()
 
 
 func _test_the_phases() -> void:

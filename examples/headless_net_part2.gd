@@ -58,6 +58,18 @@ func _test_the_wire() -> void:
 		"and so does a collapse, with its reason"
 	)
 
+	_wire_join_and_deaths()
+	_wire_props_and_seats()
+	_wire_clock_and_phases()
+	_wire_blast_and_chat()
+	_wire_spectate_and_impact()
+
+
+## A truncated message says so, and every kind fits its field.
+
+
+## Join, leave, side, death and armed messages.
+func _wire_join_and_deaths() -> void:
 	var join := ScEvents.read_join(_reader(ScEvents.write_join(SESSION, 5, "Ada", 4)))
 	_check(
 		bool(join["ok"]) and int(join["player_id"]) == SESSION and str(join["name"]) == "Ada"
@@ -100,6 +112,9 @@ func _test_the_wire() -> void:
 		"and a survivor's weapon is named"
 	)
 
+
+## Props, removals and seats.
+func _wire_props_and_seats() -> void:
 	var at := Vector3(-41.25, 46.5, 17.75)
 	var prop := ScEvents.read_prop(_reader(
 		ScEvents.write_prop(3, ScContent.MONOLITH, at, false)
@@ -126,6 +141,9 @@ func _test_the_wire() -> void:
 	var seat := ScEvents.read_seat(_reader(ScEvents.write_seat(SESSION, 12, true)))
 	_check(bool(seat["ok"]) and bool(seat["seated"]), "a seat change decodes")
 
+
+## Clock, round, phase and special.
+func _wire_clock_and_phases() -> void:
 	var clock := ScEvents.read_clock(_reader(
 		ScEvents.write_clock(3, 61.5, ScGame.Phase.SHOWDOWN, 9, 5, 2, true)
 	))
@@ -158,6 +176,10 @@ func _test_the_wire() -> void:
 		"and carries what to shout, so an older client can still say something"
 	)
 
+
+## Blast, say, notice, chat and a side request.
+func _wire_blast_and_chat() -> void:
+	var at := Vector3(-41.25, 46.5, 17.75)
 	var blast := ScEvents.read_blast(_reader(ScEvents.write_blast(at, 6.5)))
 	_check(
 		bool(blast["ok"]) and (blast["position"] as Vector3).distance_to(at) < 0.01
@@ -190,6 +212,10 @@ func _test_the_wire() -> void:
 	var asked := ScEvents.read_ask_team(_reader(ScEvents.write_ask_team(5)))
 	_check(bool(asked["ok"]) and int(asked["team"]) == 5, "and a request for a side")
 
+
+## Spectator views and impacts.
+func _wire_spectate_and_impact() -> void:
+	var at := Vector3(-41.25, 46.5, 17.75)
 	# The death position is the field dot-spectate's own wire leaves out; see
 	# `ScEvents.write_spectate`. A mirror without it puts the death camera in the cannon.
 	var drop := Vector3(-12.25, 44.0, 30.5)
@@ -229,9 +255,6 @@ func _test_the_wire() -> void:
 	_check_wire_limits()
 
 	_finished()
-
-
-## A truncated message says so, and every kind fits its field.
 func _check_wire_limits() -> void:
 		# A reader past its end returns plausible zeros: exhaustion was not sticky in dot-net, so a decoder skipping the `ok` check read a believable value after the overrun.
 	var truncated := ScEvents.read_hello(DotNetReader.new(PackedByteArray([1, 2])))
