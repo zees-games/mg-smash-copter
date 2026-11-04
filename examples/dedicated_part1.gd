@@ -11,6 +11,7 @@ const ScLayouts := preload("../game/sc_layouts.gd")
 const ScMapSession := preload("../game/sc_map_session.gd")
 const ScAvatars := preload("../game/sc_avatars.gd")
 const ScProgress := preload("../game/sc_progress.gd")
+const ScTestPorts := preload("test_ports.gd")
 
 ## Boots a real [DotServer], loads this game into it as a module, and runs the commands an operator would type.
 ## Tests the join between the game and the SERVER (module lifecycle, console, cvars, `sv_tickrate` from a config file into the netcode); `headless_run` covers the gameplay joins.
