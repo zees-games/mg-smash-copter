@@ -168,7 +168,7 @@ func _make_manager(
 	config.snapshot_rate = SNAPSHOT_RATE
 	config.enable_prediction = true
 	config.enable_lag_compensation = false
-	config.max_entities_per_snapshot = 192
+	config.max_entities_per_snapshot = 0
 	config.world_extent = ScGame.NET_WORLD_EXTENT
 	manager.config = config
 
