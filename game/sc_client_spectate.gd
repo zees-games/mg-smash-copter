@@ -272,6 +272,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _covered():
 		return
 
+	if event is InputEventScreenTouch or event is InputEventScreenDrag:
+		_on_screen_touch(event)
+		return
+
 	if event is InputEventKey and _handle_key(event):
 		return
 
@@ -292,6 +296,83 @@ func _unhandled_input(event: InputEvent) -> void:
 			player.sampler.handle_event(event)
 		elif _sampler != null:
 			_sampler.handle_event(event)
+
+
+## The phone's buttons over the HUD, on a touch device only. Fire and alt are the click's two buttons (out, they step who is watched); E asks to board; the arrows step the weapon wheel; TAB holds the scoreboard.
+func _build_touch() -> void:
+	if not DotPlatform.has_touch() or hud == null:
+		return
+	_touch = ScTouch.new()
+	var _built: Variant = _touch.build(self, _active_sampler, {
+		ScTouch.FIRE: func(down: bool) -> void: _touch_pointer(true, down),
+		ScTouch.ALT: func(down: bool) -> void: _touch_pointer(false, down),
+		ScTouch.USE: func(down: bool) -> void:
+			if down and not _covered():
+				var _taken := _handle_key(_action_event(ScBindings.BOARD)),
+		ScTouch.RELOAD: func(down: bool) -> void:
+			if not is_spectating():
+				_reloading = down,
+		ScTouch.PREV: func(down: bool) -> void: _touch_step(-1, down),
+		ScTouch.NEXT: func(down: bool) -> void: _touch_step(1, down),
+		ScTouch.BOARD: func(down: bool) -> void:
+			var board: Object = settings.menu.scoreboard if settings != null and settings.menu != null else null
+			if board != null:
+				board.call(&"open" if down else &"close"),
+		ScTouch.CHAT: func(down: bool) -> void:
+			if down and chat != null and chat.window != null and not _covered():
+				chat.window.call(&"open"),
+	})
+
+
+func _action_event(action: StringName) -> InputEventAction:
+	var ev := InputEventAction.new()
+	ev.action = action
+	ev.pressed = true
+	return ev
+
+
+## Fire or alt as the mouse button does it: held, or out, one step through who is watched.
+func _touch_pointer(primary: bool, down: bool) -> void:
+	if _covered():
+		return
+	if is_spectating():
+		_firing = false
+		_alt = false
+		if down:
+			spectate_step(1 if primary else -1)
+	elif primary:
+		_firing = down
+	else:
+		_alt = down
+
+
+## A weapon step through the wheel's own ring, which a touch player reaches without a captured pointer.
+func _touch_step(step: int, down: bool) -> void:
+	if not down or weapons == null or is_spectating() or _covered():
+		return
+	var _made: Variant = _wheel_pressed(InputEventKey.new())
+	var to: Variant = _wheel.target(step)
+	if to != null:
+		_slot = int(to)
+
+
+func _active_sampler() -> DotFpsSampler:
+	if _offline and player != null:
+		return player.sampler
+	return _sampler
+
+
+func _touch_ignores(position: Vector2) -> bool:
+	return _touch != null and _touch.buttons != null and _touch.buttons.contains_point(position)
+
+
+## A finger on the look or move half goes to the touch sampler.
+func _on_screen_touch(event: InputEvent) -> void:
+	var sampler := _active_sampler()
+	if sampler is DotFpsTouchSampler:
+		(sampler as DotFpsTouchSampler).set_screen_width(get_viewport().get_visible_rect().size.x)
+	if sampler != null and not is_roaming():
+		sampler.handle_event(event)
 
 
 ## The game's keys, each a row of [ScBindings] read through its action, so a key moved on the

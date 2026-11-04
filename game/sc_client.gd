@@ -41,10 +41,11 @@ func _ready() -> void:
 	# The sampler lives HERE and not on the player, because on a connected client the local
 	# player does not exist yet: they arrive in a JOIN, several frames after the keyboard
 	# does.
-	_sampler = DotFpsSampler.new(ScPlayer.tunables_for(config, ScSpecials.Active.new()))
+	_sampler = ScTouch.make_sampler(ScPlayer.tunables_for(config, ScSpecials.Active.new()), _touch_ignores)
 	ScPlayer.register_actions(_sampler)
 
 	_build_hud()
+	_build_touch()
 	_build_chat()
 	_build_audio()
 	_build_fx()
@@ -366,6 +367,8 @@ func _adopt(candidate: ScPlayer) -> void:
 
 	if hud != null:
 		hud.bind(game, player)
+	if player.sampler is DotFpsTouchSampler:
+		(player.sampler as DotFpsTouchSampler).ignore_fn = _touch_ignores
 
 
 
