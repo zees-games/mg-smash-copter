@@ -16,6 +16,7 @@ const ScGame := preload("sc_game.gd")
 const ScHud := preload("sc_hud.gd")
 const ScPaths := preload("sc_paths.gd")
 const ScPlayer := preload("sc_player.gd")
+const ScTouch := preload("sc_touch.gd")
 const ScKillcam := preload("sc_killcam.gd")
 const ScSpecials := preload("sc_specials.gd")
 const ScWorkshop := preload("sc_workshop.gd")
@@ -123,6 +124,9 @@ var _alt: bool = false
 var _reloading: bool = false
 var _slot: int = 0
 var _wheel: DotWeaponWheel
+
+## The phone's on-screen buttons; null off a touch device.
+var _touch: ScTouch = null
 
 
 

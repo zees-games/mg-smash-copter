@@ -1,6 +1,7 @@
 extends CharacterBody3D
 
 const ScConfig := preload("sc_config.gd")
+const ScTouch := preload("sc_touch.gd")
 const ScFigure := preload("sc_figure.gd")
 const ScAvatars := preload("sc_avatars.gd")
 const ScPlatforms := preload("sc_platforms.gd")
@@ -172,7 +173,7 @@ func _ready() -> void:
 	controller.simulated.connect(_on_simulated)
 
 	if samples_input:
-		sampler = DotFpsSampler.new(controller.tunables)
+		sampler = ScTouch.make_sampler(controller.tunables)
 		register_actions(sampler)
 
 
