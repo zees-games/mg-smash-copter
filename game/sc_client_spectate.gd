@@ -322,6 +322,8 @@ func _build_touch() -> void:
 			if down and chat != null and chat.window != null and not _covered():
 				chat.window.call(&"open"),
 	})
+	if platform != null:
+		platform.fit_touch_buttons(_touch.buttons, ScTouch.layout())
 
 
 func _action_event(action: StringName) -> InputEventAction:
