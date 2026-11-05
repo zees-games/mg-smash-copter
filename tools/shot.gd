@@ -38,6 +38,8 @@ func _run() -> void:
 			out = arg.substr(6)
 		elif arg.begins_with("--view="):
 			view = arg.substr(7)
+		elif arg == "--touch":
+			DotPlatform.touch_override = 1
 		elif arg == "--ballot":
 			ballot = true
 		elif arg == "--workshop":

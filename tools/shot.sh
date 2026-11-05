@@ -24,6 +24,7 @@
 #   tools/shot.sh --ballot            # the layout vote's ballot over the frame, mid-vote
 #   tools/shot.sh --view=walk         # a CONNECTED client running its own player, measured
 #   tools/shot.sh --action emote dance   # the local player in third person playing an avatar action (action_a/_b.png)
+#   tools/shot.sh --touch --resolution=844x390   # a phone: touch buttons
 #   tools/shot.sh --view=field --seconds=20 --out=res://screenshots/late.png
 #   tools/shot.sh --view=field --sc-layout-ids=checker   # any --sc-* is the game's own config
 #
@@ -38,6 +39,7 @@ view="eyes"
 seconds="4"
 out=""
 config=()
+res="1280x720"
 
 take=0
 for arg in "$@"; do
@@ -48,7 +50,8 @@ for arg in "$@"; do
         --seconds=*) seconds="${arg#*=}" ;;
         --out=*)     out="${arg#*=}" ;;
         --sc-*)      config+=("$arg") ;;
-        --ballot|--workshop) config+=("$arg") ;;
+        --ballot|--workshop|--touch) config+=("$arg") ;;
+        --resolution=*) res="${arg#*=}" ;;
         *)           echo "unknown argument: $arg" >&2; exit 2 ;;
     esac
 done
@@ -60,5 +63,5 @@ done
 scene="res://tools/shot.tscn"
 [ "$view" = "walk" ] && scene="res://tools/net_shot.tscn"
 
-exec xvfb-run -a "${GODOT:-godot}" --path . --resolution 1280x720 \
+exec xvfb-run -a "${GODOT:-godot}" --path . --resolution "$res" \
     "$scene" -- "--seconds=$seconds" "--view=$view" "--out=$out" "${config[@]}"
