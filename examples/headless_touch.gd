@@ -26,9 +26,9 @@ func _run() -> void:
 
 
 func _touch_buttons() -> void:
-	var list := ScTouch.layout()
+	var list := ScTouch.touch_layout().buttons()
 	var ids: Array = list.map(func(b: Dictionary) -> Variant: return b["id"])
-	for want: StringName in [ScTouch.FIRE, ScTouch.ALT, ScTouch.JUMP, ScTouch.DUCK, ScTouch.USE, ScTouch.RELOAD, ScTouch.PREV, ScTouch.NEXT, ScTouch.BOARD, ScTouch.CHAT]:
+	for want: StringName in [ScTouch.FIRE, ScTouch.ALT, ScTouch.JUMP, ScTouch.CROUCH, ScTouch.USE, ScTouch.RELOAD, ScTouch.PREV, ScTouch.NEXT, ScTouch.BOARD, ScTouch.CHAT]:
 		_check(ids.has(want), "the layout has the %s button" % want)
 	var probe := DotTouchButtons.new()
 	var m := probe.margin
