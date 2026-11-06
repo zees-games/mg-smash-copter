@@ -149,7 +149,9 @@ func pull() -> void:
 	net_riding = player.riding
 	net_blind = player.blinded
 	net_beacon = player.beacon
-	net_warp = player.warps & 0xF
+	# Server only: the client's own warp count ticks on predicted pads and replays, which reads as a mismatch.
+	if identity == null or identity.is_authoritative:
+		net_warp = player.warps & 0xF
 
 	# After the arsenal has simulated, which on this end it has: the whole world ticks before anything is pulled.
 	# A rig that does not exist yet leaves these at zero, a carrier holding nothing, which is true.
