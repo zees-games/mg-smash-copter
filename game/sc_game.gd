@@ -419,6 +419,7 @@ func tick_once(tick: int) -> void:
 func _step(delta: float) -> void:
 	_advance_phase(delta)
 	_advance_specials(delta)
+	_advance_flashlights()
 
 	for id: StringName in players:
 		(players[id] as ScPlayer).simulate(_tick, delta)
@@ -456,3 +457,53 @@ func _step(delta: float) -> void:
 		return
 
 	match_node.tick(_tick)
+
+
+# --- The flashlight --------------------------------------------------------------
+
+## The flashlight config, made on first use.
+func flashlight_conf() -> DotFlashlightConfig:
+	if flashlight_config == null:
+		flashlight_config = ScFlashlight.make_config()
+		flashlight_binder = ScFlashlight.make_binder(flashlight_config)
+		DotLog.result(CHANNEL, "flashlight config", flashlight_binder.load_layers())
+	return flashlight_config
+
+
+## The layout id the light rules are asked about.
+func _flashlight_layout_id() -> String:
+	return String(layout.id) if layout != null else ""
+
+
+## A new layout sets everybody's light by the sky's mood (a lit sky starts dark). Server side.
+func _advance_flashlights() -> void:
+	if not authoritative:
+		return
+
+	var cfg := flashlight_conf()
+	var layout_id := _flashlight_layout_id()
+
+	if layout_id != _flashlight_layout:
+		_flashlight_layout = layout_id
+		for p: ScPlayer in players.values():
+			p.flashlight_ready = false
+
+	for id: StringName in players:
+		var player: ScPlayer = players[id]
+
+		if not player.flashlight_ready:
+			player.flashlight_ready = true
+			player.flashlight = ScFlashlight.starts_on(cfg, layout_id)
+
+
+## A living player in the round switches their light. Refused for somebody who is out, and where the config disallows it. Server side.
+func toggle_flashlight(id: StringName) -> bool:
+	var player: ScPlayer = players.get(id)
+
+	if player == null or not player.is_alive() \
+			or (spectate != null and spectate.is_spectating(String(id))) \
+			or not DotFlashlightRules.allowed_on(flashlight_conf(), _flashlight_layout_id()):
+		return false
+
+	player.flashlight = not player.flashlight
+	return true

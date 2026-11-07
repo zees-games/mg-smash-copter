@@ -42,6 +42,7 @@ When you fall, you are out until the next round and watch somebody on your own s
 | **WASD** | Move. In the chopper: W/S tilt forward and back, A/D turn |
 | **Shift** | Walk (the brake) |
 | **Space** / **Ctrl** | Jump / crouch. In the chopper: up / down |
+| **F** | Flashlight, while still up (starts off: the sky is lit). A lit beam is seen by everyone who can see you |
 | **E** | Get into or out of the chopper |
 | **Mouse 1** | Fire (in the showdown). In the chopper: drop a crate |
 | **1**-**5** | Weapon slots (in the showdown) |

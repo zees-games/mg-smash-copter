@@ -451,6 +451,11 @@ func ask_team(team: int) -> void:
 	_ask(ScEvents.Ask.TEAM, ScEvents.write_ask_team(team))
 
 
+## Switch the flashlight. The server owns on/off and answers in the player's replicated state.
+func ask_flashlight() -> void:
+	_ask(ScEvents.Ask.FLASHLIGHT, PackedByteArray([0]))
+
+
 ## Out, and asking for the free camera, or to go back onto a player from it.
 func ask_roam() -> void:
 	_ask(ScEvents.Ask.ROAM, ScEvents.write_ask_roam())

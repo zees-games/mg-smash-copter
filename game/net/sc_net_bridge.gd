@@ -282,6 +282,11 @@ func _on_request(message: DotNetMessage) -> void:
 				_spectate_step(peer_id, int(step["direction"]))
 		ScEvents.Ask.ROAM:
 			_spectate_roam(peer_id)
+		ScEvents.Ask.FLASHLIGHT:
+			var session_id := player_for_peer(peer_id)
+
+			if session_id != 0:
+				var _switched := game.toggle_flashlight(player_key(session_id))
 
 
 ## Everything in the world, to one peer, once its own copy exists.

@@ -104,6 +104,10 @@ var blinded: bool = false
 ## Replicated to everybody (`ScPlayerNet.net_beacon`); drawn by [method present_beacon], which only a client calls.
 var beacon: bool = false
 
+## The flashlight is on (server-owned, replicated); `flashlight_ready` is cleared on a new round so the next tick sets its start state.
+var flashlight: bool = false
+var flashlight_ready: bool = false
+
 ## The marker [member beacon] draws, while it does. Client side.
 var beacon_marker: DotFxBeacon = null
 
@@ -610,6 +614,7 @@ func describe() -> Dictionary:
 		"armed": weapons != null,
 		"blinded": blinded,
 		"beacon": beacon,
+		"flashlight": flashlight,
 		"avatar": avatar.digest() if avatar != null else "stock",
 		"figure": figure.describe() if figure != null else {},
 	}

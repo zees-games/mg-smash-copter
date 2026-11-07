@@ -319,6 +319,11 @@ func _handle_key(event: InputEvent) -> bool:
 		_reloading = event.is_pressed()
 		return true
 
+	if event.is_action_pressed(ScBindings.FLASHLIGHT) and player != null and player.is_alive() and not is_spectating():
+		if flash != null:
+			var _asked := flash.toggle()
+		return true
+
 	if event.is_action_pressed(ScBindings.BOARD):
 		# Boarding a chopper is a REQUEST, not a button: it happens once, must not be lost, and is
 		# resolved against where the server thinks you are, not where you were a round trip ago.

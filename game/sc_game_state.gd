@@ -6,6 +6,7 @@ const ScCannon := preload("sc_cannon.gd")
 const ScConfig := preload("sc_config.gd")
 const ScContent := preload("sc_content.gd")
 const ScCopter := preload("sc_copter.gd")
+const ScFlashlight := preload("sc_flashlight.gd")
 const ScLayouts := preload("sc_layouts.gd")
 const ScPlatforms := preload("sc_platforms.gd")
 const ScPlayer := preload("sc_player.gd")
@@ -199,6 +200,11 @@ var view_rules: DotPlayerViewRules = DotPlayerViewRules.new()
 var body_rules: DotPlayerBodyRules = DotPlayerBodyRules.new()
 ## The ambience cvars (`sc_ambient*`): bound by the module (REPLICATED), followed by a client through its link.
 var ambient_rules: DotAmbienceRules = ScAmbience.make_rules()
+
+## The flashlight's config and binder, made on first use so a suite that builds a game by hand still has one; the layout the lights were last set for.
+var flashlight_config: DotFlashlightConfig = null
+var flashlight_binder: DotGameConfigBinder = null
+var _flashlight_layout: String = ""
 
 
 func _init() -> void:
