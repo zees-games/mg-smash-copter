@@ -6,7 +6,7 @@ extends "headless_net_part4.gd"
 ## Run: `godot --headless --path . res://examples/headless_net.tscn`. Everything is the real path minus the socket (`ScNetLink.loopback` stands in for the RPC), so encoders, seal, snapshots, prediction and reconciliation run; Godot's own RPC routing is for `dedicated.gd`. The client lives in its own [World3D] (else mirrors sit where the server's bodies are and push them) and on a different tick rate and field than the server, so HELLO and LAYOUT must correct it rather than agree by construction.
 
 const SECTIONS := 27
-const CHECKS := 263
+const CHECKS := 264
 
 
 func _ready() -> void:
