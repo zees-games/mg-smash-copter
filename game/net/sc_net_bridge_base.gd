@@ -1,4 +1,4 @@
-extends Node
+extends DotGameNetIo
 
 const ScCopterNet := preload("sc_copter_net.gd")
 const ScEvent := preload("sc_event.gd")
@@ -98,16 +98,9 @@ signal chat_received(wire: Dictionary)
 signal voice_arrived(payload: PackedByteArray)
 
 var game: ScGame = null
-var net: DotNetManager = null
-var link: ScNetLink = null
 
 ## Which session this process is. Zero on a server.
 var local_player_id: int = 0
-
-## Where the clock learns how long the link is, in milliseconds. dot-net cannot measure a transport;
-## dot-server's heartbeat does ([method DotClientLink.ping_ms]). Fed nothing, the clock assumes an
-## instant link and every command is stamped for a tick the server has already simulated.
-var rtt_source: Callable = Callable()
 
 ## Where a voice frame goes on the server. Assigned by [DotGameModule] to the services
 ## layer's `relay_voice`, because the bridge is the only thing that names both ends.
