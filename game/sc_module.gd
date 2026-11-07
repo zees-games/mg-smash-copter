@@ -565,7 +565,7 @@ func _build_maps(world: ScGame) -> void:
 			maps.rotation_file_name = new_value.strip_edges()
 			var _read := maps.load_rotation()
 			if vote != null:
-				vote.refresh_layouts()
+				vote.refresh_maps()
 	)
 	var _loaded := maps.load_rotation()
 
@@ -607,7 +607,7 @@ func _build_vote(world: ScGame) -> void:
 func _bind_vote_hooks(world: ScGame) -> void:
 	# Nothing to vote on when the operator turned the per-round draw off: they asked for one
 	# layout all evening.
-	vote.layouts_fn = func() -> Array:
+	vote.maps_fn = func() -> Array:
 		var out: Array = []
 
 		if not world.config.vary_layout:
@@ -683,7 +683,7 @@ func _follow_vote_rounds(world: ScGame) -> void:
 	# Every layout laid is a world_rebuilt, the warmup's included, and each is one play.
 	world.world_rebuilt.connect(func() -> void:
 		if vote != null and world.layout != null:
-			vote.note_layout(world.layout.id)
+			vote.note_map(world.layout.id)
 	)
 	world.match_node.round_ended.connect(func(_number: int, _winner: int, _outcome: int) -> void:
 		if vote != null:

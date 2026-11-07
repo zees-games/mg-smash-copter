@@ -368,7 +368,7 @@ func _test_map_rotation_file() -> void:
 			drew_full = true
 	_check(not drew_full, "100 draws never choose a layout outside the rotation")
 
-	vote.call("refresh_layouts")
+	vote.call("refresh_maps")
 	var ids: Array = []
 	for choice: DotVoteChoice in (vote.get("source") as DotVoteListSource).entries:
 		ids.append(String(choice.id))
@@ -407,7 +407,7 @@ func _test_map_rotation_file() -> void:
 		all_in = all_in and def.in_rotation
 	_check(all_in, "with no file every layout is in rotation again")
 	_check(module._rotation_commands().is_empty(), "and no command is renamed")
-	vote.call("refresh_layouts")
+	vote.call("refresh_maps")
 	_finished()
 
 
