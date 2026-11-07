@@ -617,7 +617,9 @@ func _arm(player: ScPlayer, team: int, seat: int) -> void:
 		var first := rig.arsenal.catalogue.get_def(given[0])
 
 		if first != null:
-			var _selected := rig.arsenal.select(first.slot, _tick)
+			# equip, not select: select refuses while the arsenal is disabled (a spawn freeze).
+			if not rig.arsenal.equip(first.slot):
+				var _selected := rig.arsenal.select(first.slot, _tick)
 
 		player_armed.emit(player.player_id, given[0])
 
