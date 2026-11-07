@@ -471,7 +471,21 @@ func retune(p_active: ScSpecials.Active) -> void:
 	if controller == null:
 		return
 
+	# The layers the body rules chose live on the tunables the motor is moving by (`controller.tunables` may already be a later object that never got them), so they are read from there and carried to the new one.
+	var mask := -1
+	if controller.motor != null and controller.motor.tunables != null:
+		mask = controller.motor.tunables.collision_mask
+	elif controller.tunables != null:
+		mask = controller.tunables.collision_mask
+
 	controller.tunables = tunables_for(config, active)
+
+	if mask >= 0:
+		controller.set_collision_mask(mask)
+
+	# The motor keeps the tunables it was built with, so without this the special's run speed, gravity and grip never reached the movement: only the controller's field was replaced.
+	if controller.motor != null:
+		controller.motor.tunables = controller.tunables
 
 	if sampler != null:
 		sampler.tunables = controller.tunables
