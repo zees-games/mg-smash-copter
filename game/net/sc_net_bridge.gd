@@ -140,20 +140,6 @@ func open_link(parent: Node) -> void:
 	DotGameLink.attach(link, parent, self, ScNetLink.NODE_NAME)
 
 
-## How every dot-net message reaches a peer.
-## Routed by DELIVERY, not by kind: snapshots are unreliable and go on the snapshot call; everything else is reliable, and which call depends on the sender (the server has events, the client has requests). Events from a client are silently dropped.
-func _send(peer_id: int, payload: PackedByteArray, delivery: int) -> void:
-	if link == null:
-		return
-
-	if delivery == DotNetMessage.Delivery.UNRELIABLE:
-		link.send_snapshot(peer_id, payload)
-	elif net.is_server:
-		link.send_event(peer_id, payload)
-	else:
-		link.send_request(payload)
-
-
 ## Puts a connected peer into the game. What [DotGameRoster] calls.
 func add_player(peer_id: int, session_id: int, display_name: String) -> DotResult:
 	if net == null or not net.is_server:
