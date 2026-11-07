@@ -356,7 +356,7 @@ func _adopt(candidate: ScPlayer) -> void:
 		player.command_stamp = _stamp
 
 	if settings != null:
-		settings.bind_camera(camera)
+		settings.bind_camera(self, &"base_fov")
 		# Offline the player samples for themselves, from their controller's own tunables.
 		_follow_look()
 
@@ -556,6 +556,10 @@ func _start_remote_workbench() -> void:
 
 
 func _suspend_input(suspended: bool) -> void:
+	if suspended:
+		# The button's release goes to the menu, so the aim is let go here or it sticks up.
+		_aiming = false
+
 	if _sampler != null:
 		_sampler.suspended = suspended
 
@@ -591,7 +595,7 @@ func _physics_process(delta: float) -> void:
 		if not net.clock.is_synced():
 			continue
 
-		bridge.client_tick(net.clock.input_tick() - (ticks - 1 - i), move, _slot)
+		bridge.client_tick(net.clock.input_tick() - (ticks - 1 - i), move, _slot, _aim_sent())
 
 	_drive_view_model(move)
 
@@ -608,6 +612,7 @@ func _drive_offline(_delta: float) -> void:
 	if pending != null:
 		_stamp(pending)
 		player.wanted_slot = _slot
+		player.aiming = _aim_sent()
 
 	_drive_view_model(pending)
 
@@ -636,6 +641,8 @@ func _process(delta: float) -> void:
 
 	if camera == null or player == null:
 		return
+
+	_present_aim()
 
 	# [b]Before the rig, and instead of it.[/b] The rig below hangs the camera off the
 	# player's own node, and a player who is out is a body at the kill height.

@@ -13,6 +13,10 @@ const ScVote := preload("../game/sc_vote.gd")
 # No `const CHANNEL`: this is a command-line tool, and what it says is its output (`print`),
 # not a record for an operator's log.
 
+## `--gun=<id>` (with `--view=hands`): the local player is handed this weapon too. `--aim`: the Aim key held for the frame.
+var _gun := &""
+var _aim := false
+
 
 func _ready() -> void:
 	_run.call_deferred()
@@ -42,6 +46,10 @@ func _run() -> void:
 			ballot = true
 		elif arg == "--workshop":
 			workshop = true
+		elif arg == "--aim":
+			_aim = true
+		elif arg.begins_with("--gun="):
+			_gun = StringName(arg.substr(6))
 
 	# A subscribed pack map, standing in for the Workshop's: a fixture document registered in
 	# the shared index as solo, before the client follows it.
@@ -170,11 +178,50 @@ func _stage_view(client: Node, game: ScGame, view: String, seconds: float) -> vo
 		var waited_hands := 0.0
 		while waited_hands < 60.0 and game.phase != ScGame.Phase.SHOWDOWN:
 			waited_hands += get_process_delta_time()
+			_keep_alive(client)
 			await get_tree().process_frame
 		for _i in range(60):
+			_keep_alive(client)
 			await get_tree().process_frame
+		await _hands_aim(client, game)
 	elif view != "eyes":
 		await _place_camera(game, view)
+
+
+## `--view=hands --gun=<id> --aim`: the local player is handed this weapon too and holds it, then the Aim key goes down. Prints what the command said and what the body and rig made of it.
+## The stand-ins shoot the local player in the showdown, and an out player aims nothing: for the picture, nothing hurts them.
+func _keep_alive(client: Node) -> void:
+	var me: Node = client.get("player")
+	var health: Variant = me.get("health") if me != null else null
+	if health != null:
+		health.invulnerable = true
+
+
+func _hands_aim(client: Node, game: ScGame) -> void:
+	var me: Node = client.get("player")
+	if me == null:
+		return
+	var rig: ZeeWeaponRig = me.get("weapons")
+	if _gun != &"" and rig != null:
+		var _given := rig.give(_gun)
+		client.call("_give_locally", _gun)
+		for def in ZeeWeaponPack.weapons():
+			if def.id == _gun:
+				me.set("wanted_slot", def.slot)
+				client.set("_slot", def.slot)
+		for _i in range(90):
+			_keep_alive(client)
+			await get_tree().process_frame
+	if _aim:
+		# The pointer is never captured under xvfb; the client aims only while it is.
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		client.set("_aiming", true)
+		for _i in range(90):
+			_keep_alive(client)
+			await get_tree().process_frame
+		var camera: Camera3D = client.get("camera")
+		print("aim bit: sent %s, body %s, rig pace %.2f, fov %.1f" % [client.call("_aim_sent"), me.get("aiming"),
+			rig.ads_move_scale() if rig != null else 1.0, camera.fov])
 
 
 ## `--action <kind> <id>` (`--action emote dance`): the local player, in third person, playing an

@@ -119,7 +119,7 @@ func _build_camera() -> void:
 
 	camera = Camera3D.new()
 	camera.name = "Eye"
-	camera.fov = 92.0
+	camera.fov = base_fov
 	camera.current = true
 
 		# Other players and stand-ins: hidden when one is at the lens, faded in third person when between camera and you. Handed the figures rather than looked up by a query: a hull is off while mp_solidplayers is 0, exactly when a body walks through you.
@@ -252,11 +252,38 @@ func _stamp(command: DotFpsCommand) -> void:
 	command.set_button(ScNetCommand.BUTTON_RELOAD, _reloading)
 
 
+## Whether the sights may come up: on foot (never in a chopper), first person, the pointer ours, alive, not watching and not under the cover.
+func _aim_allowed() -> bool:
+	return _pointer_ours() and not third_person and not is_spectating() and not _covered() \
+		and player != null and player.is_alive() and not player.riding
+
+
+## What the command says about the sights: the view model's own state (a toggle in the rules reaches the server's spread and pace as it does the
+## picture), and nothing when the sights may not come up.
+func _aim_sent() -> bool:
+	var hands := view_model if view_model != null and is_instance_valid(view_model) else null
+	return _aim_allowed() and (hands.is_aim_held() if hands != null else _aiming)
+
+
+## The sights on the picture, once a frame: the view model's aim and the lens zoom from the base field of view.
+func _present_aim() -> void:
+	var hands := view_model if view_model != null and is_instance_valid(view_model) else null
+
+	if hands != null:
+		hands.aim_input(_aiming and _aim_allowed())
+
+	camera.fov = base_fov * (hands.aim_fov_scale() if hands != null and not is_spectating() else 1.0)
+
+	if hud != null:
+		hud.follow_hands(hands if hands != null and not is_spectating() else null)
+
+
 func _drive_view_model(command: DotFpsCommand) -> void:
 	if weapons == null or player == null:
 		return
 
 	var weapon_command := DotWeaponCommand.new()
+	weapon_command.set_button(DotWeaponCommand.BUTTON_AIM, _aim_sent())
 
 	if command != null:
 		weapon_command.set_button(

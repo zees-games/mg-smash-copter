@@ -123,6 +123,92 @@ func _test_a_weapon_crosses() -> void:
 
 	_finished()
 
+var _client_peak := 0.0
+
+
+## The claim: the aim bit a client sends is the server body's `aiming`, the rig's `BUTTON_AIM` and the pace of the motor on both ends.
+## Armed: with `ensure_game_ticked` not copying `last_aim` onto the body, the aimed checks fail.
+func _test_the_aim_bit_crosses() -> void:
+	_section("the aim bit crosses the wire, slows the player and the prediction agrees")
+	var key := ScNetBridge.player_key(SESSION)
+	var server_me: ScPlayer = _server_game.players.get(key)
+	var mine: ScPlayer = _client_game.players.get(key)
+	var rig: ZeeWeaponRig = server_me.weapons if server_me != null else null
+	var armed := rig != null and rig.current_def() != null and mine != null
+	_check(armed, "the server's player holds a gun (from the section before)")
+	if not armed:
+		_finished()
+		return
+
+	var paced := _server_game.ads_rules.move_speed_for(rig.current_def().id)
+	# The client's own drawn gun, as the client builds it when the player is armed (`_arm_locally`): a rig under the predicted player, no authority,
+	# driven with the aim button every tick, which is what the prediction's pace reads (`step_controller`).
+	var drawn := ZeeWeaponRig.new()
+	drawn.name = "Weapons"
+	drawn.role = ZeeWeaponRig.Role.SERVER
+	drawn.authority = false
+	drawn.tick_rate = _client_game.tick_rate
+	drawn.player_ref = DotNodeRef.of_path(mine.get_path())
+	drawn.ads_rules = _client_game.ads_rules
+	mine.add_child(drawn)
+	var drawn_ready := drawn.setup()
+	var _drawn_given := drawn.give(rig.current_def().id)
+	_check(drawn_ready.ok, "the client's drawn rig sets up", "" if drawn_ready.ok else drawn_ready.error.message)
+	var drawn_tick := 500000
+	var aim_step := func(command: DotFpsCommand, aim: bool) -> void:
+		drawn_tick += 1
+		var weapon_command := DotWeaponCommand.new()
+		weapon_command.set_button(DotWeaponCommand.BUTTON_AIM, aim)
+		var _o := drawn.simulate_tick(weapon_command, drawn_tick)
+		await _step(command, aim)
+	var start := server_me.global_position
+
+	var run := func(direction: Vector2, aim: bool) -> float:
+		var walk := DotFpsCommand.new()
+		walk.move = direction
+		server_me.place_at(start, 0.0)
+		for _i in range(INPUT_LEAD + 8):
+			await aim_step.call(null, false)
+		var peak := 0.0
+		var client_peak := 0.0
+		for _i in range(SERVER_TICK_RATE / 2):
+			await aim_step.call(walk, aim)
+			var v := server_me.controller.state.velocity
+			peak = maxf(peak, Vector2(v.x, v.z).length())
+			var cv := mine.controller.state.velocity
+			client_peak = maxf(client_peak, Vector2(cv.x, cv.z).length())
+		_client_peak = client_peak
+		return peak
+	var best := Vector2.ZERO
+	var hip_run := 0.0
+	for direction: Vector2 in [Vector2(0.0, 1.0), Vector2(1.0, 0.0), Vector2(-1.0, 0.0), Vector2(0.0, -1.0)]:
+		var reach: float = await run.call(direction, false)
+		if reach > hip_run:
+			hip_run = reach
+			best = direction
+	_check(not server_me.aiming and rig.ads_move_scale() == 1.0, "unaimed, the server's body is not aiming and not slowed")
+
+	var aimed_run: float = await run.call(best, true)
+	var forward := DotFpsCommand.new()
+	forward.move = best
+	_check(server_me.aiming and mine.aiming and absf(rig.ads_move_scale() - paced) < 0.001,
+		"aimed, the server's body and the client's both are, and the rig is at the rules' pace",
+		"server %s client %s scale %.2f of %.2f" % [server_me.aiming, mine.aiming, rig.ads_move_scale(), paced])
+	_check(hip_run > 0.5 and absf(aimed_run / hip_run - paced) < 0.1,
+		"and the server's body walks at that pace", "hip %.2f m/s aimed %.2f m/s, ratio %.2f of %.2f" % [hip_run, aimed_run, aimed_run / maxf(hip_run, 0.001), paced])
+	_check(absf(_client_peak - aimed_run) < 0.3, "the prediction, slowed alike, tops out where the server does",
+		"client %.2f m/s, server %.2f m/s" % [_client_peak, aimed_run])
+
+	for _i in range(INPUT_LEAD + 8):
+		await aim_step.call(forward, false)
+	_check(not server_me.aiming and rig.ads_move_scale() == 1.0, "let go, the pace comes back")
+	mine.remove_child(drawn)
+	drawn.queue_free()
+	server_me.place_at(start, 0.0)
+	await _steps(INPUT_LEAD + 8)
+	_finished()
+
+
 
 ## The weapon-feel pass's wire half (`ScGame.hit_landed` -> HIT -> `hit_received`, and the owner-only magazine `ScClient.correct_drawn` adopts).
 ## `headless_run` proves only the offline half. Armed: without the bridge's HIT send the first check fails; sent with `_broadcast` the second does.

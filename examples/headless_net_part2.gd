@@ -9,6 +9,36 @@ extends "headless_net_part1.gd"
 func _test_the_wire() -> void:
 	_section("every message survives the trip")
 
+	# The command: the aim bit rides after the slot, alone and in a batch with commands that do not carry it.
+	var sent_commands: Array = []
+	for i in range(3):
+		var sent := ScNetCommand.new()
+		sent.tick = 40 + i
+		sent.delta = 1.0 / 64.0
+		sent.slot = 2 + i
+		sent.aim = i != 1
+		sent.move.yaw = 10.0 * float(i)
+		sent.move.move = Vector2(0.0, 1.0)
+		sent.move.set_button(ScNetCommand.BUTTON_FIRE, i == 2)
+		sent_commands.append(sent)
+	var writer := DotNetWriter.new()
+	DotNetInput.write_batch(writer, sent_commands)
+	var got := DotNetInput.read_batch(writer.to_reader(), func() -> DotNetInput: return ScNetCommand.new())
+	var round_trip := got.size() == 3
+	for i in range(mini(got.size(), 3)):
+		var back_cmd := got[i] as ScNetCommand
+		round_trip = round_trip and back_cmd != null and back_cmd.aim == (i != 1) and back_cmd.slot == 2 + i \
+			and back_cmd.move.is_pressed(ScNetCommand.BUTTON_FIRE) == (i == 2) and absf(back_cmd.move.yaw - 10.0 * float(i)) < 1.0
+	_check(round_trip, "a batch of commands keeps each one's aim bit, slot and buttons", "%d back" % got.size())
+	var plain := ScNetCommand.new()
+	var bits_plain := DotNetWriter.new()
+	plain._write(bits_plain)
+	plain.aim = true
+	var bits_aim := DotNetWriter.new()
+	plain._write(bits_aim)
+	_check(bits_plain.to_bytes().size() == bits_aim.to_bytes().size() and plain._equals(plain) and not plain._equals(ScNetCommand.new()),
+		"the bit costs no byte, and a command with it is not equal to one without", "%d bytes" % bits_aim.to_bytes().size())
+
 	var hello := ScEvents.read_hello(_reader(
 		ScEvents.write_hello(SESSION, 128, 9001, 5, 150.0, 75.0, 3.5)
 	))

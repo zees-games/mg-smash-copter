@@ -223,21 +223,21 @@ func _exchange() -> void:
 ## One tick on both ends, with a real physics frame between them: rigid bodies move only on
 ## it, so a tight loop would move no prop and every replication assertion would pass with
 ## nothing replicated.
-func _step(command: DotFpsCommand = null) -> void:
+func _step(command: DotFpsCommand = null, aim: bool = false) -> void:
 	_tick += 1
 	var _ticks := _client_net.clock.advance(1.0 / float(maxi(_client_game.tick_rate, 1)))
 	_server_bridge.server_tick(_tick)
 	_flush()
 	_client_bridge.client_tick(
-		_tick + INPUT_LEAD, command if command != null else DotFpsCommand.new()
+		_tick + INPUT_LEAD, command if command != null else DotFpsCommand.new(), 0, aim
 	)
 	_flush()
 	await get_tree().physics_frame
 
 
-func _steps(count: int, command: DotFpsCommand = null) -> void:
+func _steps(count: int, command: DotFpsCommand = null, aim: bool = false) -> void:
 	for _i in range(count):
-		await _step(command)
+		await _step(command, aim)
 
 
 ## How many times the predictor has had to correct this client: off the predictor, not

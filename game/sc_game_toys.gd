@@ -120,6 +120,7 @@ func weapon_command_for(player: ScPlayer) -> DotWeaponCommand:
 	command.set_button(
 		DotWeaponCommand.BUTTON_RELOAD, pending.is_pressed(DotFpsCommand.BUTTON_USER_2)
 	)
+	command.set_button(DotWeaponCommand.BUTTON_AIM, player.aiming)
 	command.yaw = pending.yaw
 	command.pitch = pending.pitch
 	command.slot = player.wanted_slot

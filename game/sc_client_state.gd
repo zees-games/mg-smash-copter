@@ -127,6 +127,11 @@ var _rig_height: float = 0.0
 var _firing: bool = false
 var _alt: bool = false
 var _reloading: bool = false
+## The aim button, held (`ScBindings.AIM`); what goes on the wire is `_aim_sent`.
+var _aiming: bool = false
+
+## The field of view the menu sets (bound in `_adopt`); the lens zooms from it while aimed, never compounding.
+var base_fov: float = 92.0
 var _slot: int = 0
 var _wheel: DotWeaponWheel
 

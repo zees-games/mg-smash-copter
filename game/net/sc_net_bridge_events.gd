@@ -296,6 +296,7 @@ func ensure_game_ticked(tick: int) -> void:
 				and behaviour.identity.owner_peer_id > 0:
 			behaviour.player.controller.apply_command(behaviour.last_move.duplicate_command())
 			behaviour.player.wanted_slot = behaviour.last_slot
+			behaviour.player.aiming = behaviour.last_aim
 
 	game.tick_once(tick)
 

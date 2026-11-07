@@ -3,7 +3,7 @@ extends "sc_net_bridge_events.gd"
 ## Part of [code]sc_net_bridge.gd[/code] (split for size): the client half: applying layouts, platforms, seats and the clock. Never used on its own.
 
 
-func client_tick(tick: int, command: DotFpsCommand, slot: int = 0) -> void:
+func client_tick(tick: int, command: DotFpsCommand, slot: int = 0, aim: bool = false) -> void:
 	if net == null or net.is_server or game == null:
 		return
 
@@ -14,6 +14,7 @@ func client_tick(tick: int, command: DotFpsCommand, slot: int = 0) -> void:
 	packet.delta = net.clock.tick_duration()
 	packet.move = command if command != null else DotFpsCommand.new()
 	packet.slot = slot
+	packet.aim = aim
 
 	# Into the local history BEFORE predicting: reconciliation replays it.
 	net.local_inputs().push(packet)
@@ -26,9 +27,11 @@ func client_tick(tick: int, command: DotFpsCommand, slot: int = 0) -> void:
 	if mine != null:
 		mine.last_move = packet.move
 		mine.last_slot = slot
+		mine.last_aim = aim
 
 		if mine.player != null:
 			mine.player.wanted_slot = slot
+			mine.player.aiming = aim
 
 	if link != null:
 		var payload := net.encode_ack()

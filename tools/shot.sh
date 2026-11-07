@@ -22,6 +22,7 @@
 #   tools/shot.sh --view=spectate --sc-spectate-camera=0   # ...when it allows anybody
 #   tools/shot.sh --workshop --view=field   # a fixture pack map, chosen as the M menu would
 #   tools/shot.sh --ballot            # the layout vote's ballot over the frame, mid-vote
+#   tools/shot.sh --view=hands --gun=marksman --aim --sc-survival-seconds=3   # down the sights with a chosen weapon, and the aim bit the command sent
 #   tools/shot.sh --view=walk         # a CONNECTED client running its own player, measured
 #   tools/shot.sh --action emote dance   # the local player in third person playing an avatar action (action_a/_b.png)
 #   tools/shot.sh --view=field --seconds=20 --out=res://screenshots/late.png
@@ -48,7 +49,7 @@ for arg in "$@"; do
         --seconds=*) seconds="${arg#*=}" ;;
         --out=*)     out="${arg#*=}" ;;
         --sc-*)      config+=("$arg") ;;
-        --ballot|--workshop) config+=("$arg") ;;
+        --ballot|--workshop|--aim|--gun=*) config+=("$arg") ;;
         *)           echo "unknown argument: $arg" >&2; exit 2 ;;
     esac
 done

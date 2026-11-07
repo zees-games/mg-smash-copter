@@ -16,6 +16,8 @@ extends RefCounted
 
 const BOARD := &"sc_board"
 const RELOAD := &"sc_reload"
+## Aim down the sights, held, on foot. The right button is the bash here, so the sights are on the middle one.
+const AIM := &"sc_aim"
 const VIEW := &"sc_view"
 const SCOREBOARD := &"sc_scoreboard"
 ## The spectator's free camera, on and off (`mp_freeroam`). Its flying keys are the movement keys.
@@ -42,6 +44,7 @@ static func make() -> DotMenuBindings:
 	var _wheel := keys.add_wheel_weapons()
 	keys.add(BOARD, &"bind_board", "Get into or out of the chopper", "E", "Hands")
 	keys.add(RELOAD, &"bind_reload", "Reload (in the showdown)", "R", "Hands")
+	keys.add(AIM, &"bind_aim", "Aim down the sights (hold, in the showdown)", "Mouse 3", "Hands")
 	for i in range(SLOTS.size()):
 		keys.add(SLOTS[i], StringName("bind_slot_%d" % (i + 1)), "Weapon slot %d (in the showdown)" % (i + 1), str(i + 1), "Hands")
 	keys.add(FLASHLIGHT, &"bind_flashlight", "Flashlight", "F", "Hands")

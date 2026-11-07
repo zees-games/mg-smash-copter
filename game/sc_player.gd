@@ -88,6 +88,10 @@ var standing_on: int = -1
 ## Here, not in [DotFpsCommand]: widening it would break every game for a field only this one's second half has. [ScNetCommand] carries it.
 var wanted_slot: int = 0
 
+## The aim button, held, as the last command said it (the server: from the wire; offline and the predicting client: from the sights). On foot only: the client never sends it
+## in a chopper. The rig takes it as `BUTTON_AIM`, and its aimed pace scales the motor (`step_controller`).
+var aiming: bool = false
+
 ## Metres this player has been carried by a platform this round.
 var carried_metres: float = 0.0
 
@@ -286,7 +290,25 @@ func simulate(tick: int, delta: float) -> void:
 	if riding:
 		return
 
+	step_controller(tick, delta)
+
+
+## The motor's tick at the weapon's ADS pace while the rig says it is aimed. The server, offline and a predicting client all come through here
+## and read the same rig rule, so the prediction agrees. The top speed is scaled for the one tick and put back (the tunables are shared).
+func step_controller(tick: int, delta: float) -> void:
+	var rig := _rig()
+	# The motor's own tunables, not `controller.tunables`: `retune` replaces that object at a special without rebuilding the motor, which keeps the one it was built with.
+	var tunables: DotFpsTunables = controller.motor.tunables if controller.motor != null else controller.tunables
+	var scale := rig.ads_move_scale() if rig != null else 1.0
+
+	if tunables == null or scale >= 1.0:
+		controller.simulate_tick(tick, delta)
+		return
+
+	var kept := tunables.max_speed
+	tunables.max_speed = kept * clampf(scale, 0.05, 1.0)
 	controller.simulate_tick(tick, delta)
+	tunables.max_speed = kept
 
 
 ## After the move, which is the only place the carry can go.

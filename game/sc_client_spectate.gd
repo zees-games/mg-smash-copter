@@ -319,6 +319,10 @@ func _handle_key(event: InputEvent) -> bool:
 		_reloading = event.is_pressed()
 		return true
 
+	if event.is_action(ScBindings.AIM):
+		_aiming = event.is_pressed()
+		return true
+
 	if event.is_action_pressed(ScBindings.FLASHLIGHT) and player != null and player.is_alive() and not is_spectating():
 		if flash != null:
 			var _asked := flash.toggle()
@@ -361,6 +365,8 @@ func _handle_pointer(event: InputEvent) -> bool:
 
 	if button.button_index == MOUSE_BUTTON_LEFT:
 		_firing = button.pressed
+	elif button.is_action(ScBindings.AIM):
+		_aiming = button.pressed
 	elif button.button_index == MOUSE_BUTTON_RIGHT:
 		_alt = button.pressed
 
