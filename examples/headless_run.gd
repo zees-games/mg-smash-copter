@@ -1,4 +1,4 @@
-extends "headless_run_part6.gd"
+extends "headless_run_part7.gd"
 
 
 ## Proves the platforms, the cannon, the round and the chopper all actually work.
@@ -19,7 +19,7 @@ extends "headless_run_part6.gd"
 ## `set_physics_process(false)` goes on first and every section advances the world itself.
 
 ## Sections entered, against sections that ran to their last line.
-const SECTIONS := 51
+const SECTIONS := 52
 
 ## And the total this counter cannot be.
 ##
@@ -27,7 +27,7 @@ const SECTIONS := 51
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 409
+const CHECKS := 419
 
 
 func _ready() -> void:
@@ -83,6 +83,7 @@ func _run() -> void:
 	await _test_blind_and_beacon_drawn()
 	await _test_somebody_out_watches()
 	await _test_free_roam()
+	await _test_the_flashlight()
 	await _test_the_game_makes_a_noise()
 	await _test_what_a_player_keeps()
 	await _test_a_swing_is_drawn()

@@ -1,4 +1,4 @@
-extends "sc_client_round.gd"
+extends "sc_client_flashlight.gd"
 
 ## One local player, a camera and a HUD over an [ScGame], offline or against a server.
 ##
@@ -513,11 +513,17 @@ func _add_noblock_and_workbench() -> void:
 	if game.config_binder != null:
 		for set: DotProfileSet in game.config_binder.profile_sets():
 			wb.add_set(set, "Game settings: %s" % set.rel_path.trim_prefix("config_"))
+	var _fl := game.flashlight_conf()
+	if game.flashlight_binder != null:
+		for set: DotProfileSet in game.flashlight_binder.profile_sets():
+			wb.add_set(set, "Flashlight")
 	add_child(wb)
 	var started := wb.start()
 	DotLog.result(CHANNEL, "the workbench", started)
 	if started.ok and game.config_binder != null:
 		game.config_binder.attach(wb.api.runtime)
+	if started.ok and game.flashlight_binder != null and wb.api != null:
+		game.flashlight_binder.attach(wb.api.runtime as DotProfileRuntime)
 	platform.add_workbench(wb)
 
 
@@ -533,6 +539,10 @@ func _start_remote_workbench() -> void:
 	if game.config_binder != null:
 		for set: DotProfileSet in game.config_binder.profile_sets():
 			wb.add_set(set, "Game settings: %s" % set.rel_path.trim_prefix("config_"))
+	var _fl := game.flashlight_conf()
+	if game.flashlight_binder != null:
+		for set: DotProfileSet in game.flashlight_binder.profile_sets():
+			wb.add_set(set, "Flashlight")
 	add_child(wb)
 	var started := wb.start(game.ensure_runtime())
 	DotLog.result(CHANNEL, "the remote workbench", started)
@@ -673,6 +683,8 @@ func _process(delta: float) -> void:
 
 
 func _present_effects(delta: float) -> void:
+	_present_flashlights(delta)
+
 	# The ears are wherever the eyes are, which for somebody who is out is the spectator
 	# camera — so a player watching a team-mate hears what that team-mate hears.
 	if audio != null:
@@ -683,3 +695,8 @@ func _present_effects(delta: float) -> void:
 	if game.effects != null:
 		game.effects.viewer_position = camera.global_position
 		game.effects.advance(delta)
+
+
+## Whether the camera is this player's own eye (first person, not watching anybody).
+func _eye_is_ours() -> bool:
+	return not third_person and not is_spectating()

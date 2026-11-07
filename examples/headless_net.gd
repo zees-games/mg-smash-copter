@@ -5,8 +5,8 @@ extends "headless_net_part4.gd"
 ##
 ## Run: `godot --headless --path . res://examples/headless_net.tscn`. Everything is the real path minus the socket (`ScNetLink.loopback` stands in for the RPC), so encoders, seal, snapshots, prediction and reconciliation run; Godot's own RPC routing is for `dedicated.gd`. The client lives in its own [World3D] (else mirrors sit where the server's bodies are and push them) and on a different tick rate and field than the server, so HELLO and LAYOUT must correct it rather than agree by construction.
 
-const SECTIONS := 26
-const CHECKS := 259
+const SECTIONS := 27
+const CHECKS := 263
 
 
 func _ready() -> void:
@@ -41,6 +41,7 @@ func _run() -> void:
 		await _test_chat_crosses()
 		await _test_a_lossy_link()
 		await _test_blind_and_beacon()
+		await _test_the_flashlight_crosses()
 		await _test_what_is_heard_arrives()
 		await _test_somebody_out_watches()
 		await _test_free_roam_crosses()
@@ -409,3 +410,23 @@ class EngineErrors extends Logger:
 		var out := _seen.duplicate()
 		_lock.unlock()
 		return out
+
+
+func _test_the_flashlight_crosses() -> void:
+	_section("the flashlight is asked for, and the server's state comes back to everybody")
+	var key := ScNetBridge.player_key(SESSION)
+	var server_me: ScPlayer = _server_game.players[key]
+	var mine: ScPlayer = _client_game.players[key]
+	var was := server_me.flashlight
+	_client_bridge.ask_flashlight()
+	await _steps(8)
+	_check(server_me.flashlight != was, "the server switched it")
+	_check(mine.flashlight == server_me.flashlight, "and the owner is told")
+	var theirs: ScPlayer = _client_game.players[_stand_in.player_id]
+	_stand_in.flashlight = true
+	await _steps(8)
+	_check(theirs.flashlight, "and the others' flag is the server's")
+	_client_bridge.ask_flashlight()
+	await _steps(8)
+	_check(server_me.flashlight == was and mine.flashlight == was, "the next ask switches it back")
+	_finished()

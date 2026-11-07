@@ -39,6 +39,12 @@ const CHASE_UP := 2.1
 @export var third_person: bool = false
 
 var game: ScGame = null
+
+## The flashlight on the eye and the others' beams (sc_client_flashlight.gd).
+var flash: DotFlashlight = null
+var flash_crowd: DotFlashlightCrowd = null
+var _flash_msec := -100000
+var _flash_retain := 0.0
 ## Asks a server whether this player may edit it (sv_workbench_remote); null offline.
 var workbench_remote: DotGameWorkbenchRemoteClient = null
 ## The tuning panel's host: F9 solo, the admin's remote panel on a server that allows it.

@@ -71,6 +71,8 @@ enum Ask {
 	SPECTATE,
 	## I am out: take me into the free camera, or back onto a player from it.
 	ROAM,
+	## Switch my flashlight.
+	FLASHLIGHT,
 }
 
 ## Every decoder returns an `ok` beside its fields, and every caller checks it.
