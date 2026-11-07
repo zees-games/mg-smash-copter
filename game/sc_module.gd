@@ -151,6 +151,9 @@ func _bind_family_cvars(world: ScGame) -> void:
 	var _ragdolls := world.ragdoll_rules.bind_cvars(add_cvar, flags)
 	var _toys := world.toy_rules.bind_cvars(add_cvar, flags)
 
+	# zee_ads_rules: spread and pace while aimed are part of the prediction, so the numbers cross as one JSON cvar.
+	var _ads := world.ads_rules.bind_cvars(add_cvar, flags)
+
 	# mp_forcecamera, mp_freeroam: each client flies its own spectator camera under them.
 	for made: Object in world.spectate_rules.bind_cvars(add_cvar, flags):
 		if str(made.get(&"name")) == DotSpectatorRules.CVAR_FORCE_CAMERA:

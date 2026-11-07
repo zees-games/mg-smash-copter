@@ -511,6 +511,8 @@ func _test_the_phases() -> void:
 
 	var theirs: ScPlayer = _server_game.players.get(ScNetBridge.player_key(SESSION))
 	_check(theirs != null and theirs.weapons != null, "the survivor was armed on the server")
+	_check(theirs.weapons.ads_rules == _server_game.ads_rules and _server_game.ads_rules.wire_hash() == _client_game.ads_rules.wire_hash(),
+		"its rig takes the game's zee_ads_rules, which the client follows")
 
 	var corner := _server_game.arena.corner_point(
 		theirs.team - 1, _server_game.config.team_count

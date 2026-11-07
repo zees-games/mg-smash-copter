@@ -210,6 +210,8 @@ func _follow_server_cvars() -> void:
 		var _bodies := game.ragdoll_rules.follow_cvars(link)
 		# And sv_toys*: a client hides the toys a server took away.
 		var _toys := game.toy_rules.follow_cvars(link)
+		# And zee_ads_rules: this end predicts the server's aimed pace and spread.
+		var _ads := game.ads_rules.follow_cvars(link)
 		# The server's mp_forceview and mp_solidplayers: this end places its own camera and
 		# predicts its own player.
 		var _view := game.view_rules.follow_cvars(link)

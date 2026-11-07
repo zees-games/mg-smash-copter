@@ -578,6 +578,7 @@ func _arm(player: ScPlayer, team: int, seat: int) -> void:
 	rig.tick_rate = tick_rate
 	rig.wall_extra_mask = player.controller.tunables.collision_mask if player.controller != null else 0
 	rig.player_ref = DotNodeRef.of_path(player.get_path())
+	rig.ads_rules = ads_rules
 	player.add_child(rig)
 
 	var ready_now := rig.setup()
