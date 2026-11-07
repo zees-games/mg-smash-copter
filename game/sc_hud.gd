@@ -59,6 +59,7 @@ var weapon_icon: DotWeaponIconPlate = null
 var weapons_fn: Callable = Callable()
 
 ## Four ticks round the crosshair for a hit the server confirmed. See [method confirm_hit].
+var hit_fx: DotHitFeedback = null
 var hit_marker: DotHitMarker = null
 
 ## The clock with the phase line under it: dot-ui's [DotScoreStrip], clock alone (the
@@ -240,11 +241,8 @@ func _build_hand() -> void:
 	weapon_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(weapon_icon)
 
-	hit_marker = DotHitMarker.new()
-	hit_marker.name = "HitMarker"
-	hit_marker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	hit_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.add_child(hit_marker)
+	hit_fx = DotHitFeedback.mount(_root)
+	hit_marker = hit_fx.marker
 
 
 ## The one instrument in the game: how far over the floor you are standing on has gone.
