@@ -1,4 +1,4 @@
-extends DotMenuSettings
+extends DotMenuGameSettings
 
 const ScBindings := preload("sc_bindings.gd")
 
@@ -15,7 +15,7 @@ const ScBindings := preload("sc_bindings.gd")
 ## settings.open()                     # Escape does this in the client
 ## [/codeblock]
 ##
-## [b]dot-menu's `DotMenuSettings` with this game's schema[/b] (2026-10-09). It was a 250-line
+## [b]dot-menu's `DotMenuGameSettings` with this game's spec[/b] (2026-10-09). It was a 250-line
 ## copy of mg-wipeout's file — a manager, a `match` over four keys and a bare settings
 ## screen — and the same copy was in five other games. What is left here is what is this
 ## game's: where the document lives, and the stock keys it has nothing to apply to.
@@ -44,47 +44,26 @@ const NOT_APPLIED: Array[StringName] = [
 
 
 func _init() -> void:
-	name = "Settings"
-	directory = SETTINGS_DIR
-	app_namespace = APP_NAMESPACE
-	schema = schema_for()
-	config = DotMenuConfig.new()
-	config.brand_name = "Smash Copter"
-	# Help and Leave are dot-menu's stock: H opens help, Leave leaves the server or quits a
-	# solo game. Every game in the family has both (the first play test found this one without
-	# them). The keys are a table now ([ScBindings]), so the help screen lists them.
-	bindings = ScBindings.make()
-	var _layered := config.load_layered()
+	super(spec_for())
 
 
-## The document: this game's field of view first, so it keeps its own default, then the
-## stock settings it applies.
-static func schema_for() -> DotSettingsSchema:
-	var s := DotSettingsSchema.new()
-	s.version = SCHEMA_VERSION
-	s.add(DotSettingsDef.integer(&"field_of_view", DEFAULT_FOV, 70, 120, &"video").with_scope(
-		DotSettingsDef.Scope.SERVER_CLAMPED
-	))
-	s.add(DotSettingsDef.boolean(&"reduce_motion", false, &"accessibility").with_scope(DotSettingsDef.Scope.ACCOUNT)
-		.with_description("The end-of-round announcement appears at once, with nothing sliding, rising or bursting."))
-	s.add(DotSettingsDef.boolean(&"ambient", true, &"audio").with_description("Quiet sounds under the sky."))
-	s.add(DotSettingsDef.number(&"ambient_volume", 1.0, 0.0, 1.0, &"audio"))
-	return DotMenuStock.declare(s, DotMenuStock.DEFAULT_GROUPS, null, NOT_APPLIED)
-
-
-func setup(store: DotSettingsStore = null, with_menu: bool = true) -> DotResult:
-	var made := super.setup(store, with_menu)
-	if menu != null:
-		var general := menu.page(&"general")
-		if general != null:
-			general.section("Comfort").add(DotMenuRow.toggle(&"reduce_motion", "Reduce motion",
-				"The end-of-round announcement appears at once."))
-	return made
-
-
-## The help screen's goal and rules; the keys come from [ScBindings].
-func _fill_help(help: DotMenuHelp) -> void:
-	help.about = "Two to six teams stand on platforms balanced on pillars forty metres up while a cannon in the middle throws props at them. A platform leans toward whoever stands on it, and past sixteen degrees it comes off and takes everybody down. Stay up."
-	help.add_text("Staying up", "Shift is a brake, not a sprint: running leans a platform about three times as far as standing, so slow down to cross one somebody else is on. When you fall you are out until the next round, watching somebody on your side.")
-	help.add_text("The fight", "The last ninety seconds put everybody still standing on a corner pad in the sky with random weapons. The last team standing wins. Some layouts park a chopper: the pilot flies it with the movement keys and drops crates, and the passenger can shoot.")
-	help.add_section("Mouse", [["Left", "Fire in the fight; drop a crate from the chopper; watch the next player while out"], ["Right", "Alternate fire; watch the one before while out"]], &"keys")
+## The game's settings as data: names, field of view, extra settings, keys and the help screen's goal and rules.
+static func spec_for() -> DotMenuGameSpec:
+	var s := DotMenuGameSpec.new()
+	s.schema_version = SCHEMA_VERSION
+	s.brand_name = "Smash Copter"
+	s.settings_dir = SETTINGS_DIR
+	s.app_namespace = APP_NAMESPACE
+	s.default_fov = DEFAULT_FOV
+	s.reduce_motion_text = "The end-of-round announcement appears at once, with nothing sliding, rising or bursting."
+	s.comfort_row_text = "The end-of-round announcement appears at once."
+	s.ambient_text = "Quiet sounds under the sky."
+	s.not_applied = NOT_APPLIED
+	s.bindings_maker = func() -> DotMenuBindings: return ScBindings.make()
+	s.help_about = "Two to six teams stand on platforms balanced on pillars forty metres up while a cannon in the middle throws props at them. A platform leans toward whoever stands on it, and past sixteen degrees it comes off and takes everybody down. Stay up."
+	s.help_cards = [
+		["Staying up", "Shift is a brake, not a sprint: running leans a platform about three times as far as standing, so slow down to cross one somebody else is on. When you fall you are out until the next round, watching somebody on your side."],
+		["The fight", "The last ninety seconds put everybody still standing on a corner pad in the sky with random weapons. The last team standing wins. Some layouts park a chopper: the pilot flies it with the movement keys and drops crates, and the passenger can shoot."],
+	]
+	s.help_sections = [["Mouse", [["Left", "Fire in the fight; drop a crate from the chopper; watch the next player while out"], ["Right", "Alternate fire; watch the one before while out"]], &"keys"]]
+	return s
