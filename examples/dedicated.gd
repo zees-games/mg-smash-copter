@@ -254,15 +254,15 @@ func _test_the_layout_vote() -> void:
 func _vote_sleeps_with_the_server(vote: Node, director: DotVoteDirector) -> void:
 	_check(server.hibernation_changed.is_connected(director.set_hibernating),
 		"the vote follows the server's hibernation without a line of this game's")
-	vote.set("_opened_this_layout", true)
+	vote.set("_opened_this_map", true)
 	server.console.execute("sv_hibernate_when_empty 1")
 	_check(server.is_hibernating() and director.hibernating, "an empty server sleeps, and the vote with it",
 		server.state_name())
-	var on_layout: float = vote.get("_on_layout_sec")
+	var on_layout: float = vote.get("_on_map_sec")
 	vote.call("advance", 600.0)
-	_check(is_equal_approx(vote.get("_on_layout_sec"), on_layout), "ten minutes asleep do not count towards the ballot")
+	_check(is_equal_approx(vote.get("_on_map_sec"), on_layout), "ten minutes asleep do not count towards the ballot")
 	server.console.execute("sv_hibernate_when_empty 0")
-	_check(is_zero_approx(vote.get("_on_layout_sec")) and not vote.get("_opened_this_layout") and not director.hibernating,
+	_check(is_zero_approx(vote.get("_on_map_sec")) and not vote.get("_opened_this_map") and not director.hibernating,
 		"waking wakes the vote, and the layout ballot is owed again from the top")
 
 
@@ -314,8 +314,8 @@ func _vote_nominate_and_cast(vote: Node, director: DotVoteDirector) -> String:
 
 	_check(_said(_run_command("nominate %s" % wanted), "Nominated"), "a player nominates a layout", wanted)
 
-	vote.set("_on_layout_sec", 0.0)
-	vote.set("_opened_this_layout", false)
+	vote.set("_on_map_sec", 0.0)
+	vote.set("_opened_this_map", false)
 	vote.call("advance", float(vote.get("open_after_sec")) + 0.1)
 	var options: Array[StringName] = director.ballot.option_ids() if director.is_voting() else ([] as Array[StringName])
 	_check(director.is_voting() and options.has(StringName(wanted)),
