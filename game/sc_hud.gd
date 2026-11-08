@@ -1,5 +1,7 @@
 extends CanvasLayer
 
+const ScText := preload("sc_text.gd")
+
 const ScGame := preload("sc_game.gd")
 const ScPlayer := preload("sc_player.gd")
 const ScWeaponIcons := preload("sc_weapon_icons.gd")
@@ -344,9 +346,9 @@ func _process(delta: float) -> void:
 
 	_draw_ammo()
 
-	_field.text = "%d up   %d left   %d sides" % [
-		game.standing_platforms(), game.alive_count(), game.teams_alive(),
-	]
+	_field.text = ScText.t("sc.hud.field", "{up} up   {left} left   {sides} sides", {
+		"up": game.standing_platforms(), "left": game.alive_count(), "sides": game.teams_alive(),
+	})
 
 	_draw_tilt()
 
@@ -377,19 +379,19 @@ func is_blind() -> bool:
 
 func _phase_line() -> String:
 	if not game.sides_are_playable():
-		return "waiting for players"
+		return ScText.t("sc.hud.phase.waiting", "waiting for players")
 
 	match game.phase:
 		ScGame.Phase.SURVIVAL:
 			if player != null and player.riding:
-				return "flying"
-			return "stay on something"
+				return ScText.t("sc.hud.phase.flying", "flying")
+			return ScText.t("sc.hud.phase.survival", "stay on something")
 		ScGame.Phase.HANDOVER:
-			return "hold — weapons hot shortly"
+			return ScText.t("sc.hud.phase.handover", "hold — weapons hot shortly")
 		ScGame.Phase.SHOWDOWN:
-			return "last team standing"
+			return ScText.t("sc.hud.phase.showdown", "last team standing")
 		_:
-			return "between rounds"
+			return ScText.t("sc.hud.phase.between", "between rounds")
 
 
 ## The tilt bar, from the platform the player is actually on.

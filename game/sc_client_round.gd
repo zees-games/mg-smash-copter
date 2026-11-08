@@ -127,15 +127,15 @@ func _on_round(number: int, began: bool, winner: int) -> void:
 		var _heard := audio.on_round(began)
 
 	if began:
-		hud.shout("ROUND %d" % number, 2.4)
+		hud.shout(ScText.t("sc.hud.round", "ROUND {number}", {"number": number}), 2.4)
 		return
 
-	var team := "Nobody"
+	var team := ScText.t("sc.hud.nobody", "Nobody")
 
 	if winner >= 1 and winner <= ScGame.TEAM_NAMES.size():
 		team = ScGame.TEAM_NAMES[winner - 1]
 
-	hud.shout("%s wins" % team, 4.0)
+	hud.shout(ScText.t("sc.hud.wins", "{team} wins", {"team": team}), 4.0)
 
 
 func _round_presentation(number: int, began: bool, winner: int) -> void:

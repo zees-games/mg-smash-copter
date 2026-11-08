@@ -377,12 +377,12 @@ func _on_phase(phase: int) -> void:
 
 	match phase:
 		ScGame.Phase.HANDOVER:
-			hud.shout("CORNERS — hold your fire", 3.0)
+			hud.shout(ScText.t("sc.hud.corners", "CORNERS — hold your fire"), 3.0)
 			_arm_locally()
 		ScGame.Phase.SHOWDOWN:
-			hud.shout("GO", 1.6)
+			hud.shout(ScText.t("sc.hud.go", "GO"), 1.6)
 		ScGame.Phase.SURVIVAL:
-			hud.shout("STAY UP", 2.2)
+			hud.shout(ScText.t("sc.hud.stay_up", "STAY UP"), 2.2)
 			_disarm_locally()
 
 
