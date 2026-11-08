@@ -118,6 +118,11 @@ func _game_load() -> DotResult:
 			world.config.killcam_seconds = clampf(new_value.to_float(), 0.0, 30.0)
 			world.apply_intermission())
 
+	# REPLICATED: where the clients' killcam camera sits (0 the killer's eye, 1 behind the killer).
+	var _camera := add_cvar("mp_killview_camera", "0",
+		"Killcam camera: 0 the killer's eye, 1 behind the killer (dot-replay DotKillcamFraming)",
+		DotConVar.FLAG_ARCHIVE | DotConVar.FLAG_NOTIFY | DotConVar.FLAG_REPLICATED)
+
 	var configured := _bind_config(world)
 	if not configured.ok:
 		return configured

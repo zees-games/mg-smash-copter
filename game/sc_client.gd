@@ -219,6 +219,7 @@ func _follow_server_cvars() -> void:
 		var _ambient := game.ambient_rules.follow_cvars(link)
 		if link.has_method(&"replicated_cvar"):
 			_on_killcam_cvar("mp_killcam_time", String(link.call(&"replicated_cvar", "mp_killcam_time", "")))
+			_on_killcam_cvar("mp_killview_camera", String(link.call(&"replicated_cvar", "mp_killview_camera", "")))
 			if link.has_signal(&"replicated_cvar_changed"):
 				link.connect(&"replicated_cvar_changed", _on_killcam_cvar)
 		# And mp_forcecamera / mp_freeroam*: this end flies the spectator's free camera.

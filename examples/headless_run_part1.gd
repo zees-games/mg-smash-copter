@@ -582,6 +582,14 @@ func _killcam_icon(client: ScClient, game: ScGame, victim: ScPlayer) -> void:
 		kc.skip()
 		kc.buffer.clear()
 	client.killcam = null
+	kc.camera_mode_fn = func() -> int: return client._killcam_camera
+	_check(kc.camera_mode_fn.call() == DotKillViewRules.Camera.EYE, "the killcam camera is the eye until the server says")
+	client._on_killcam_cvar("mp_killview_camera", "1")
+	_check(kc.camera_mode_fn.call() == DotKillViewRules.Camera.BEHIND, "mp_killview_camera 1 puts the killcam camera behind the killer")
+	var framing := DotKillcamFraming.new(null, 1)
+	var eye := Transform3D(Basis.IDENTITY, Vector3(0, 1.6, 0))
+	var placed: Dictionary = framing.place(DotKillViewRules.Camera.BEHIND, eye, 75.0, Vector3(0, 1.2, -20))
+	_check((placed["transform"] as Transform3D).origin.z > 1.0, "the behind camera sits behind the killer's eye")
 	kc.free()
 
 
