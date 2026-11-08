@@ -1,5 +1,7 @@
 extends "sc_client_hearing.gd"
 
+const ScText := preload("sc_text.gd")
+
 ## The client's local player half: the camera and view model, and the hands armed offline or by the server. [ScClient] wires it to the world.
 
 
@@ -196,7 +198,10 @@ func toggle_view() -> void:
 		var _heard := audio.click()
 
 	if hud != null:
-		hud.shout("third person" if third_person else "first person", 1.2)
+		hud.shout(
+			ScText.t("sc.hud.view.third", "third person") if third_person
+			else ScText.t("sc.hud.view.first", "first person"), 1.2
+		)
 
 
 ## Everybody but this player, for the camera fade.
