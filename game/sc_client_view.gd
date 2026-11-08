@@ -199,8 +199,8 @@ func toggle_view() -> void:
 
 	if hud != null:
 		hud.shout(
-			ScText.t("sc.hud.view.third", "third person") if third_person
-			else ScText.t("sc.hud.view.first", "first person"), 1.2
+			ScText.t("hud.view.third", "third person") if third_person
+			else ScText.t("hud.view.first", "first person"), 1.2
 		)
 
 

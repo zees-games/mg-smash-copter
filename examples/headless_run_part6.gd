@@ -216,8 +216,8 @@ func _hud_chat_and_theme(hud: ScHud) -> void:
 
 	# The HUD's fixed sentences come out of the shipped catalogue, and a missing key still reads English.
 	ScText.reset()
-	_check(ScText.t("sc.hud.round", "x {number}", {"number": 3}) == "ROUND 3", "a HUD sentence is read from locales/en/hud.json", ScText.t("sc.hud.round", "x {number}", {"number": 3}))
-	_check(ScText.t("sc.hud.no_such_key", "{a} up", {"a": 2}) == "2 up", "an unknown HUD key falls back to the English given")
+	_check(ScText.t("hud.round", "x {number}", {"number": 3}) == "ROUND 3", "a HUD sentence is read from locales/en/hud.json", ScText.t("hud.round", "x {number}", {"number": 3}))
+	_check(ScText.t("hud.no_such_key", "{a} up", {"a": 2}) == "2 up", "an unknown HUD key falls back to the English given")
 
 	# Christian's first play test: a darker HUD by default, restyled live by the menu's theme.
 	var settings := ScSettings.new()

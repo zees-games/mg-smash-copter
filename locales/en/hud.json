@@ -1,25 +1,21 @@
 {
-  "sc": {
-    "hud": {
-      "phase": {
-        "waiting": "waiting for players",
-        "flying": "flying",
-        "survival": "stay on something",
-        "handover": "hold — weapons hot shortly",
-        "showdown": "last team standing",
-        "between": "between rounds"
-      },
-      "field": "{up} up   {left} left   {sides} sides",
-      "round": "ROUND {number}",
-      "wins": "{team} wins",
-      "nobody": "Nobody",
-      "corners": "CORNERS — hold your fire",
-      "go": "GO",
-      "stay_up": "STAY UP",
-      "view": {
-        "third": "third person",
-        "first": "first person"
-      }
-    }
+  "phase": {
+    "waiting": "waiting for players",
+    "flying": "flying",
+    "survival": "stay on something",
+    "handover": "hold — weapons hot shortly",
+    "showdown": "last team standing",
+    "between": "between rounds"
+  },
+  "field": "{up} up   {left} left   {sides} sides",
+  "round": "ROUND {number}",
+  "wins": "{team} wins",
+  "nobody": "Nobody",
+  "corners": "CORNERS — hold your fire",
+  "go": "GO",
+  "stay_up": "STAY UP",
+  "view": {
+    "third": "third person",
+    "first": "first person"
   }
 }
