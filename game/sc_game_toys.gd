@@ -42,7 +42,7 @@ func build_toys() -> void:
 		var off := Vector3(deck.half * 0.45, 0.0, -deck.half * 0.45).rotated(Vector3.UP, float(index) * PI * 0.5)
 		var at := deck.centre + off
 		placements.append({"toy": "beach_ball", "at": [at.x, at.y, at.z]})
-	toys = DotPropToyBox.new()
+	toys = DotPropBodyBox.new()
 	toys.name = "Toys"
 	toys.authoritative = authoritative
 	toys.rules = toy_rules

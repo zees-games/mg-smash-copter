@@ -183,16 +183,16 @@ var physics: DotPhysicsLayout = null
 var ragdoll_rules: DotPlayerRagdollRules = DotPlayerRagdollRules.new()
 
 ## dot-props' `sv_toys*`, bound by the module (REPLICATED) and followed by a client.
-var toy_rules: DotPropToyRules = DotPropToyRules.new()
+var toy_rules: DotPropBodyRules = DotPropBodyRules.new()
 
 ## Aim-down-sights numbers (`zee_ads_rules`, REPLICATED): the server's cfg over the shipped defaults, handed to every weapon
 ## rig. Bound by the module and followed by a client, so its prediction agrees. Nothing sets the aim bit yet.
 var ads_rules: ZeeAdsRules = ZeeAdsRules.load_config()
 
-## The field's toys (dot-props' [DotPropToyBox]): a beach ball on every platform, which rides a leaning deck,
+## The field's toys (dot-props' [DotPropBodyBox]): a beach ball on every platform, which rides a leaning deck,
 ## rolls off it at the edge, and is knocked flying by what the cannon throws. Placed from the layout on both
 ## ends, in deck order (see [method build_toys]). Null between fields.
-var toys: DotPropToyBox = null
+var toys: DotPropBodyBox = null
 
 ## The field's toys are about to go, on both ends: what the bridge releases their entities on.
 signal toys_clearing()
