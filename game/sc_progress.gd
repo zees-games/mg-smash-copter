@@ -66,11 +66,15 @@ const FALLS := &"sc.falls"
 const PLATFORMS_TIPPED := &"sc.platforms_tipped"
 ## Things the cannon landed on their own platform that missed them.
 const PROPS_DODGED := &"sc.props_dodged"
+## The published skill figure the site orders by (dot-stats' DotStatsRank).
+const RANK_SCORE := &"rank_score"
 
 ## Somebody earned something. [param player_id] is theirs; the world tells them.
 signal earned(player_id: StringName, title: String, points: int)
 
 var stats: DotStatsTracker = null
+## The skill rank: weighted lifetime figures, filed when a round ends.
+var rank: DotStatsRank = null
 var achievements: DotAchievementTracker = null
 var link: DotAchievementStatsLink = null
 ## Kills and hits by body zone, through dot-stats' event feed; ids are combat entity ids.
@@ -129,6 +133,7 @@ static func schema() -> DotStatsSchema:
 	_add(out, FALLS, DotStatsDef.Kind.COUNTER, "Falls", "falls", true)
 	_add(out, PLATFORMS_TIPPED, DotStatsDef.Kind.COUNTER, "Platforms tipped", "platforms", true)
 	_add(out, PROPS_DODGED, DotStatsDef.Kind.COUNTER, "Props dodged", "props", true)
+	DotStatsRank.declare(out, RANK_SCORE, "Rank score")
 	return out
 
 
@@ -288,6 +293,19 @@ func setup(directory: String, report: bool) -> DotResult:
 	link.stats = stats
 	add_child(link)
 
+	rank = DotStatsRank.new()
+	rank.stat_id = RANK_SCORE
+	rank.terms = [
+		{"stat": String(ROUNDS_SURVIVED), "weight": 1.0},
+		{"stat": String(ROUNDS_WON), "weight": 2.0},
+		{"stat": String(SHOWDOWN_WINS), "weight": 2.0},
+		{"stat": String(SHOWDOWN_KILLS), "weight": 1.0},
+		{"stat": String(FALLS), "weight": -0.1},
+		{"stat": String(DEATHS), "weight": -0.05},
+	]
+	rank.record_fn = func(who: Variant, stat: StringName, value: float) -> void: record(StringName(str(who)), stat, value)
+	rank.key_fn = func(who: Variant) -> StringName: return _key(StringName(str(who)))
+
 	return link.start().wrap("smash-copter's stats-to-achievements link")
 
 
@@ -320,11 +338,25 @@ func record(player_id: StringName, stat: StringName, value: float = 1.0) -> void
 		})
 
 
+## Reads the player's stored lifetime totals before this session's figures are flushed into the store (reading later would count them twice). The file store answers without suspending.
+func _load_baseline(player_id: StringName) -> void:
+	if rank != null and stats.store != null:
+		rank.load_baseline(stats.store, player_id)
+
+
+## Files the player's rank_score on their lifetime baseline plus this session.
+func _publish_rank(player_id: StringName) -> void:
+	if rank == null or rank.mode != DotStatsRank.MODE_WEIGHTED or stats == null or not stats.has_player(_key(player_id)):
+		return
+	var _s := rank.publish_lifetime(player_id, session_values(player_id), stats.schema)
+
+
 ## Begins a person's tracking on first sight and returns their key.
 func _ensure(player_id: StringName, body: ScPlayer) -> StringName:
 	var key := _key(player_id)
 
 	if not stats.has_player(key):
+		_load_baseline(player_id)
 		stats.begin(key, body.display_name)
 		_begin(key)
 
@@ -412,6 +444,8 @@ func leave(player_id: StringName) -> void:
 		return
 
 	var _values := stats.end(key)
+	if rank != null:
+		rank.forget(player_id)
 	link.forget(String(key))
 	_end(key)
 
@@ -468,6 +502,8 @@ func on_round_over(winner: int) -> void:
 
 		if kills > 0:
 			record(id, BEST_ROUND_KILLS, float(kills))
+
+		_publish_rank(id)
 
 	_in_round.clear()
 	_round_kills.clear()
