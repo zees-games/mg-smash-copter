@@ -18,7 +18,7 @@ const ScTestPorts := preload("test_ports.gd")
 ## No socket opens to a client except the still-loading section.
 
 const SECTIONS := 17
-const CHECKS := 175
+const CHECKS := 177
 
 ## Everything this run writes, deleted on the way in and out: a suite that writes to `user://` makes its result depend on the last run (`docs/testing.md`).
 const SERVER_DIR := "user://sc_dedicated"
@@ -335,6 +335,13 @@ func _test_stats_report() -> void:
 	_check(not progress.stats.report_to_backbone, "off stops it again")
 	DotRegistry.unregister_instance(&"dot_backbone_client", client)
 	client.free()
+
+	_check(progress.stats.schema.has(&"rank_score") and progress.rank != null, "rank_score is declared and the rank is set up")
+	var _held := DotStatsValues.new()
+	_held.values = {"sc.rounds_won": 10.0}
+	progress.rank.seed_baseline(&"sc-rank", _held)
+	var _life: float = progress.rank.publish_lifetime(&"sc-rank", DotStatsValues.new(), progress.stats.schema)
+	_check(_life == 20.0, "a stored lifetime baseline (10 wins) is what the published rank is built on")
 
 
 ## Config cvars, the workbench's sync into a hand-written cvar, and dot-team's block rules through dot-game's DotGameNoblock.
