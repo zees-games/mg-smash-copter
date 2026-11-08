@@ -93,6 +93,9 @@ var killcam: ScKillcam = null
 var winner_reveal: DotWinnerReveal = null
 ## The server's `mp_killcam_time`; -1 until it has said, so the config's number stands.
 var _killcam_sec: float = -1.0
+
+## The server's `mp_killview_camera` ([enum DotKillViewRules.Camera]); the eye until it has said.
+var _killcam_camera: int = DotKillViewRules.Camera.EYE
 var _round_ending: bool = false
 var _round_end_winner: int = 0
 var _round_end_number: int = 0

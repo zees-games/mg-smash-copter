@@ -33,6 +33,8 @@ func _build_killcam() -> void:
 	killcam.colour_fn = func(p: ScPlayer) -> Color: return _team_colour(game.team_of(p.player_id))
 	killcam.seconds_fn = func() -> float: return _killcam_sec if _killcam_sec >= 0.0 else game.config.killcam_seconds
 	killcam.hide_while_playing = [hud, chat.window if chat != null else null]
+	killcam.camera_mode_fn = func() -> int: return _killcam_camera
+	killcam.world_mask = _level_mask()
 	killcam.over.connect(func(_skipped: bool) -> void: _reveal_round())
 	add_child(killcam)
 	winner_reveal = DotWinnerReveal.new()
@@ -51,6 +53,8 @@ func _team_colour(team: int) -> Color:
 func _on_killcam_cvar(cvar_name: String, value: String) -> void:
 	if cvar_name == "mp_killcam_time" and value.strip_edges().is_valid_float():
 		_killcam_sec = clampf(value.to_float(), 0.0, 30.0)
+	elif cvar_name == "mp_killview_camera" and value.strip_edges().is_valid_float():
+		_killcam_camera = DotKillViewRules.Camera.BEHIND if value.to_float() >= 0.5 else DotKillViewRules.Camera.EYE
 
 
 func _begin_round_end(number: int, winner: int) -> void:
