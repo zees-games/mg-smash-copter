@@ -569,6 +569,7 @@ func _arm(player: ScPlayer, team: int, seat: int) -> void:
 		return
 
 	var rig := ZeeWeaponRig.new()
+	rig.catalogue = ScPlayer.weapon_catalogue()
 	rig.name = "Weapons"
 	# SERVER on a server, and the role only decides what is DRAWN. A rig that thought it
 	# was local on a headless process would try to build a view model out of art the server
