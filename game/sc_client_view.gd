@@ -33,6 +33,7 @@ func _arm_locally() -> void:
 	camera.add_child(view_model)
 
 	weapons = ZeeWeaponRig.new()
+	weapons.catalogue = ScPlayer.weapon_catalogue()
 	weapons.name = "Weapons"
 	weapons.role = ZeeWeaponRig.Role.LOCAL
 	weapons.authority = false
