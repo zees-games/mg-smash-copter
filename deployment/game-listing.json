@@ -1,0 +1,15 @@
+{
+  "format": "tmc-game-listing",
+  "version": 1,
+  "listing": {
+    "name": "Smash Copter",
+    "description": "Players spawn on top of platforms balanced on single pillars while a cannon in the middle shoots props up into the air that may knock them off. Players must survive in teams or individually to win (depending on server setup).",
+    "tags": ["3D", "Multiplayer", "Minigame"],
+    "platforms": ["PLATFORM_WEB"],
+    "graphicsType": "THREE_D",
+    "tmcKind": "MINIGAME"
+  },
+  "pack": {
+    "id": "gamemann/mg-smash-copter"
+  }
+}
