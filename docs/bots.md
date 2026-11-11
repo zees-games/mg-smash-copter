@@ -23,7 +23,7 @@
 
 ## Measured
 
-`tools/bot_difficulty.sh` plays two stand-ins at a preset against two reference stand-ins pinned to an ordinary player's numbers (game-arena's `headless_bots` reference), 20 showdowns per preset (cannon off, five seconds of platforms). Measured 2026-10-12:
+`tools/bot_difficulty.sh` plays two stand-ins at a preset against two reference stand-ins pinned to an ordinary player's numbers (game-fatal-contact's `headless_bots` reference), 20 showdowns per preset (cannon off, five seconds of platforms). Measured 2026-10-12:
 
 | Preset | One rifle each: rounds won, K/D | The server's weapon draw: rounds won, K/D | First shot after sight (setting) |
 | --- | --- | --- | --- |
@@ -32,4 +32,4 @@
 | hard | 18-2, 2.38 | 15-5, 1.50 | 0.22 s (0.21) |
 | nightmare | 17-3, 3.17 | 16-3, 2.11 | 0.12 s (0.12) |
 
-Medium is an even match for the reference, as in game-arena. `--full` plays whole rounds with the cannon: most end in the first half when a platform goes over, which the preset does not touch, so its numbers move little between presets. `headless_run`'s "a stand-in turns, waits and then hits" holds the turn to `bot_turn_rate` and the first shot to `bot_reaction` in the game (armed against the old snap and held trigger).
+Medium is an even match for the reference, as in game-fatal-contact. `--full` plays whole rounds with the cannon: most end in the first half when a platform goes over, which the preset does not touch, so its numbers move little between presets. `headless_run`'s "a stand-in turns, waits and then hits" holds the turn to `bot_turn_rate` and the first shot to `bot_reaction` in the game (armed against the old snap and held trigger).

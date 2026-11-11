@@ -30,7 +30,7 @@ const ScPlayer := preload("../game/sc_player.gd")
 ## that moves with the preset), how many on each side fell, and the stand-ins' measured
 ## first-shot reaction against the preset's `bot_reaction`.
 ##
-## The reference is an ordinary player, the same numbers game-arena's `headless_bots` pins
+## The reference is an ordinary player, the same numbers game-fatal-contact's `headless_bots` pins
 ## (reacts in 0.35 s, opens 4 degrees off and settles to 1.5, turns at 450 deg/s), on medium's
 ## view cone and range. Side 1 is the preset, side 2 the reference; the layouts vary by round.
 
