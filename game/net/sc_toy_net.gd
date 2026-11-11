@@ -3,7 +3,7 @@ extends DotNetBehaviour
 ## One of the map's toys on the wire (dot-props' [DotPropBody]): where its moving part is and
 ## how it is turned, whether it is on, and how often it has been used.
 ##
-## [b]The server's physics, never predicted[/b], for the reason game-arena's ArenaProps gives: Godot's
+## [b]The server's physics, never predicted[/b], for the reason game-fatal-contact's ArenaProps gives: Godot's
 ## rigid-body solver is not the same on two machines. The client's toy is frozen and posed from
 ## these ([method DotPropBody.show_state]), so a see-saw a person stands on there is the plank the
 ## server tipped, an interpolation behind, and a roundabout's spin is measured from the poses.
@@ -14,7 +14,7 @@ extends DotNetBehaviour
 ## [b]A use count, not a use event[/b]: a honk, a switch and a bounce each move
 ## [member net_count] by one, and a client plays the sound when it sees it move, so a joiner and
 ## a lost packet cost nothing but a late sound. Eight bits; it wraps. game-hide-n-seek's
-## HsToyNet, game-playground's PlaygroundToyNet and game-arena's arena_toy_net.gd are the same file.
+## HsToyNet, game-playlot's PlaygroundToyNet and game-fatal-contact's arena_toy_net.gd are the same file.
 
 var toy: DotPropBody = null
 

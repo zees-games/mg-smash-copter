@@ -528,7 +528,7 @@ func _test_blind_and_beacon() -> void:
 		not mine.blinded and not mine.beacon and not theirs.beacon,
 		"and turning both off reaches the client"
 	)
-	# game-arena turns relevance off with the beacon. Here that would take the player out of
+	# game-fatal-contact turns relevance off with the beacon. Here that would take the player out of
 	# everybody's snapshot — see `ScPlayerNet._register_net_vars`.
 	_check(
 		server_identity != null and server_identity.always_relevant,
