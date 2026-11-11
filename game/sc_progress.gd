@@ -123,6 +123,7 @@ static func ids() -> Array[StringName]:
 static func schema() -> DotStatsSchema:
 	var out := DotStatsSchema.new()
 	var _zones := DotStatsHitzones.declare(out)
+	DotStatsPenetration.declare_walls(out)
 	_add(out, ROUNDS_PLAYED, DotStatsDef.Kind.COUNTER, "Rounds played", "rounds", false)
 	_add(out, ROUNDS_SURVIVED, DotStatsDef.Kind.COUNTER, "Rounds survived", "rounds", true)
 	_add(out, ROUNDS_WON, DotStatsDef.Kind.COUNTER, "Rounds won", "rounds", true)
@@ -381,6 +382,12 @@ func _feed_key(entity_id: Variant) -> StringName:
 func report_damage(damage: DotDamage) -> void:
 	if feed != null and stats != null:
 		var _filed := DotStatsDamage.report(feed, damage)
+
+
+## Every wall a resolved shot crossed, for the site's Penetration cost panel (the shape is dot-stats').
+func report_shot(shot: DotShot) -> void:
+	if feed != null and stats != null:
+		var _walls := DotStatsDamage.report_shot(feed, shot)
 
 
 ## A player kill for the head-to-head table; world deaths and suicides are refused by the feed.

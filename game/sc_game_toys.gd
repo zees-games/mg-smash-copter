@@ -355,6 +355,8 @@ func _on_player_died(player: ScPlayer, damage: DotDamage) -> void:
 func _note_hits(shooter: ScPlayer, shot: DotShot) -> void:
 	if not authoritative or shot == null or shooter == null:
 		return
+	if progress != null:
+		progress.report_shot(shot)
 	for damage: DotDamage in shot.damages:
 		if damage == null or damage.refused or damage.health_lost <= 0.0 or damage.victim == shooter.entity_id:
 			continue
