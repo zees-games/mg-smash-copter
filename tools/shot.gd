@@ -68,6 +68,10 @@ func _run() -> void:
 	if workshop:
 		await _choose_workshop_map(client)
 
+	# Past the load cover (slow on a cold GPU box) before any timing starts; capped, so a stuck cover cannot hang the shot.
+	if not await DotShotGate.wait_lifted(get_tree(), client.get("platform")):
+		printerr("shot: load cover still up after the wait; shooting anyway")
+
 	# --view=killcam spends --seconds after the round ends, not before.
 	var lead := 4.0 if view == "killcam" else seconds
 	while elapsed < lead:
