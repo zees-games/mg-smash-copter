@@ -2,16 +2,18 @@ This is a game to demonstrate the capabilities of the [**Dot collection**](https
 
 ![Preview](https://github.com/zees-games/mg-smash-copter/blob/main/images/preview.gif?raw=true)
 
-*Play on my test server [here](https://moddingcommunity.com/godot/s/smash01/play)!*
+*Play on the test server [here](https://moddingcommunity.com/godot/s/smash01/play).*
+
+A server holds 24 players by default (`max_players` in `game.yml`).
 
 **This project and the assets under it are COMPLETELY OPEN SOURCE**. You are free to use, modify, and distribute them under the terms of the MIT license. The only thing not open source is the back-end web infrastructure. So if you opt into using your own authentication backend instead of integrating with TMC, you will need to build and integrate your own back-end infrastructure.
 
-**Please treat this as partially tested.** The game was built with Claude Code. Its headless test suite passes, but little of it has been in front of real players. Please report anything you run into.
+This game was built with Claude Code and has had little testing with real players, so please report anything odd you run into.
 
 ## How it plays
 A round has two halves.
 
-**The first two minutes are about keeping your footing.** Two to six teams stand on platforms balanced on single pillars, forty metres up. Nobody can hurt anybody. A platform leans toward whoever is standing on it, and past sixteen degrees it comes off its pillar and takes everybody on it down to the floor. Meanwhile a cannon in the middle aims at the platforms that are still up and throws props at them, getting heavier as the round goes on:
+**The first two minutes are about keeping your footing.** Two teams by default (a server can set two to six) stand on platforms balanced on single pillars, 40 metres up. Nobody can hurt anybody. A platform leans toward whoever is standing on it, and past about 16 degrees it comes off its pillar and takes everybody on it down to the floor. Meanwhile a cannon in the middle aims at the platforms that are still up and throws props at them, getting heavier as the round goes on:
 
 | Tier | Props | What it does to a platform |
 | --- | --- | --- |
@@ -22,11 +24,11 @@ A round has two halves.
 
 **Shift is a brake, not a sprint.** Running is the default speed, and running is what tips a platform. A running player leans it about three times as far as a standing one, so the way to cross a platform somebody else is standing on is to slow down.
 
-**The last ninety seconds are a fight.** Everybody still standing is teleported to a corner pad in the sky with random weapons from [zee-dot-weapons](https://github.com/zees-games/zee-dot-weapons). Catwalks join the corners to a ring in the middle. The last team standing wins.
+**The last 90 seconds are a fight.** Everybody still standing is teleported to a corner pad in the sky with random weapons from [zee-dot-weapons](https://github.com/zees-games/zee-dot-weapons). Catwalks join the corners to a ring in the middle. The last team standing wins.
 
-A third of rounds are **special rounds**, which change the rules for a while: `barrage`, `heavy`, `feather` (low gravity), `slick` (ice), `gale` (wind), `quake`, `jelly` (loose pillars), `downpour` and `rush`. Two can overlap.
+About a third of rounds (34% by default) are **special rounds**, which change the rules for a while: `barrage`, `heavy`, `feather` (low gravity), `slick` (ice), `gale` (wind), `quake`, `jelly` (loose pillars), `downpour` and `rush`. Two can overlap.
 
-The field is re-rolled every round from eleven **layouts**, from the full grid down to two islands: `full`, `checker`, `islands`, `spine`, `airfield`, `gauntlet`, `broadside`, `hollow`, and three bigger ones with more than one flat level, `terraces` (stepped ramps), `ring` (a ring of decks round the tube, with corner towers) and `watchtowers` (two towers joined by bridges). Every piece is a platform, a bridge or a tower and falls the way platforms do. You can stand on the chopper and be carried by it. The layouts are listed and voted through [dot-map](https://github.com/modcommunity/dot-map) like the other games (M). Two of them park a **chopper**: the pilot flies it with the movement keys and drops crates on whatever is underneath, and the passenger can shoot.
+The field is re-rolled every round from 11 **layouts**, from the full grid down to two islands: `full`, `checker`, `islands`, `spine`, `airfield`, `gauntlet`, `broadside`, `hollow`, and three bigger ones with more than one flat level, `terraces` (stepped ramps), `ring` (a ring of decks round the tube, with corner towers) and `watchtowers` (two towers joined by bridges). Every piece is a platform, a bridge or a tower and falls the way platforms do. You can stand on the chopper and be carried by it. The layouts are listed and voted through [dot-map](https://github.com/modcommunity/dot-map) like the other games (M). Two of them park a **chopper**: the pilot flies it with the movement keys and drops crates on whatever is underneath, and the passenger can shoot.
 
 When you fall, you are out until the next round and watch somebody on your own side who is still up.
 
@@ -80,9 +82,9 @@ On Windows, run `bootstrap.ps1` instead and open the project in Godot.
 Settings are cvars (or environment variables like `SC_LAYOUT_IDS`). Set them in the server's config, on the command line, or live from the console. Most of them take effect straight away.
 
 ```
-sc_survival_seconds 120     // length of the first half
+sc_survival_seconds 120     // length of the first half (default 120)
 sc_showdown_seconds 90      // length of the fight
-sc_teams 2                  // number of sides (up to six)
+sc_teams 2                  // number of sides (default 2; the setting accepts 2 to 6)
 sc_stiffness 7.0            // lower is wobblier
 sc_motion_gain 2.0          // how much more a running player tips a platform than a walking one
 sc_cannon_interval 1.9      // seconds between shots
@@ -132,11 +134,6 @@ The server counts rounds survived, showdowns won, people knocked out in the corn
 | `dedicated` | A real server: boots, loads the game, runs its commands |
 
 [`CLAUDE.md`](CLAUDE.md) has the design decisions and the reasoning behind them.
-
-## Known gaps
-- Other players' guns aren't drawn in their hands yet (yours is).
-- There is no settings menu, so volume, mouse sensitivity and field of view can't be changed yet.
-- The sounds are generated stand-ins. Dropping a file such as `audio/cannon_fire.ogg` in replaces one.
 
 ## Credits
 
