@@ -42,7 +42,7 @@
 # --- The chopper
 # Whether any layout may carry a chopper.
 # chopper_enabled: true
-# How many choppers a layout that has one gets. [1..6]
+# How many choppers a layout that has one gets. [1..]
 # chopper_count: 1
 # Metres above the deck a chopper is parked at when the round begins. [0.0..200.0]
 # chopper_pad_height: 6.0

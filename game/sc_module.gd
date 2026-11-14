@@ -253,8 +253,14 @@ func _add_tunables(world: ScGame) -> void:
 func _add_round_tunables(world: ScGame) -> void:
 	var config := world.config
 
-	_tunable("sc_teams", float(config.team_count), "How many sides play, two to six",
-		func(value: float) -> void: config.team_count = clampi(int(value), 2, 6))
+	_tunable("sc_teams", float(config.team_count),
+		"How many sides play: two or more, as many as fit round sc_corner_distance",
+		func(value: float) -> void: config.team_count = int(value))
+	# Refused at the console, with the distance that would fit, rather than taken and then
+	# refused by the next round's validate().
+	var teams_cvar := console.find_cvar("sc_teams") if console != null else null
+	if teams_cvar != null:
+		var _v := teams_cvar.with_validator(_teams_fit.bind(config))
 	_tunable("sc_columns", float(config.columns), "Platforms along each row, next round",
 		func(value: float) -> void: config.columns = clampi(int(value), 2, 12))
 	_tunable("sc_rows", float(config.rows), "Rows of platforms, next round",
@@ -303,7 +309,7 @@ func _add_round_tunables(world: ScGame) -> void:
 	_tunable("sc_min_players", float(config.minimum_players),
 		"Deprecated, sets bot_quota. How many players the server keeps in a round with stand-ins",
 		func(value: float) -> void:
-			config.minimum_players = clampi(int(value), 0, 24)
+			config.minimum_players = maxi(int(value), 0)
 			if _quota != null and _quota.quota_cvar != null:
 				var _set := _quota.quota_cvar.set_value(str(config.minimum_players)))
 
@@ -413,18 +419,43 @@ func _on_config_field(key: String, _value: Variant, source: String) -> void:
 ##
 ## The default is the value the world was built with: a literal default would be a second copy of what `defaults < JSON < environment < argv` decided, and would reset an operator's `SC_SURVIVAL_SECONDS=240` when written back.
 func _tunable(
-	cvar_name: String, current: float, description: String, apply: Callable
+	cvar_name: String, current: float, description: String, apply: Callable, at_least: float = NAN
 ) -> void:
 	var cvar := add_cvar(cvar_name, _number(current), description)
 
 	if cvar == null:
 		return
 
+	# A count typed below what the game can play is refused with the reason, not clamped.
+	if not is_nan(at_least):
+		var _v := cvar.with_validator(_at_least.bind(cvar_name, at_least))
+
 	# The handler must not capture `cvar`: it would be a reference cycle the engine never frees.
 	cvar.changed.connect(func(_old: String, new_value: String) -> void:
 		apply.call(new_value.to_float())
 		log_info("a tunable changed", {"cvar": cvar_name, "now": new_value})
 	)
+
+
+static func _teams_fit(value: String, config: ScConfig) -> DotResult:
+	if not value.is_valid_float() or value.to_float() < 2.0:
+		return DotResult.fail(DotError.CODE_INVALID, "sc_teams is %s; it takes two sides or more." % value)
+	var room := config.corner_distance_for(int(value.to_float()))
+	if is_inf(room):
+		return DotResult.fail(DotError.CODE_INVALID,
+			"sc_teams %s is more catwalks than the ring has room for; raise sc_corner_size first." % value)
+	if config.corner_distance < room:
+		return DotResult.fail(DotError.CODE_INVALID,
+			"sc_teams %s does not fit round the corners; set sc_corner_distance to %.0f or more first."
+				% [value, ceilf(room)])
+	return DotResult.success(value)
+
+
+static func _at_least(value: String, cvar_name: String, least: float) -> DotResult:
+	if not value.is_valid_float() or value.to_float() < least:
+		return DotResult.fail(DotError.CODE_INVALID,
+			"%s is %s; it takes a number of %s or more." % [cvar_name, value, _number(least)])
+	return DotResult.success(value)
 
 
 ## Nothing to undo: [DotModule] removes the commands and [DotGameModule] tears down netcode, bridge and roster in reverse. The world is not this module's to free, since `module reload` must not make the map go away.

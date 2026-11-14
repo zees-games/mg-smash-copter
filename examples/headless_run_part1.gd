@@ -11,8 +11,16 @@ func _test_config() -> void:
 
 	# Armed: each of these is a real contradiction the game cannot run.
 	var teams := ScConfig.new()
-	teams.team_count = 9
-	_check(not teams.validate().ok, "nine sides is refused")
+	teams.team_count = 12
+	var crowded := teams.validate()
+	_check(not crowded.ok and crowded.error.message.contains("corner_distance to"),
+		"twelve sides that do not fit round the corners are refused, saying the distance that fits")
+	teams.corner_distance = ceilf(teams.corner_distance_for(12))
+	_check(teams.validate().ok, "and fit once the corners are that far out: no ceiling on sides")
+	teams.team_count = 1
+	_check(not teams.validate().ok, "one side is refused")
+	_check(ScGame.team_name(6) == "Team 7" and ScGame.team_colour(6) != ScGame.team_colour(5)
+		and ScGame.team_colour(7) != ScGame.team_colour(6), "past six sides, names and colours are made")
 
 	var overlapping := ScConfig.new()
 	overlapping.column_pitch = overlapping.platform_size - 1.0

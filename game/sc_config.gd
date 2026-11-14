@@ -32,8 +32,12 @@ extends DotConfig
 
 ## How many teams the server plays with. Two is red against blue.
 ##
-## Up to six, a design ceiling: past the map's six corners the showdown becomes a free-for-all. [ScConfig.validate] refuses more.
-@export_range(2, 6, 1) var team_count: int = 2
+## Any count of two or more (default 2): each team gets a corner pad on a circle of
+## [member corner_distance], with a perch between neighbours. [method validate] refuses a count
+## whose pads, perches or catwalks would overlap at this [member corner_distance] and
+## [member corner_size], and says the distance that would fit it. Past six the colours and
+## names are generated ([method ScGame.team_colour]).
+@export_range(2, 6, 1, "or_greater") var team_count: int = 2
 
 ## Whether players may pick their own side.
 @export var allow_team_choice: bool = true
@@ -266,7 +270,7 @@ extends DotConfig
 @export var chopper_enabled: bool = true
 
 ## How many choppers a layout that has one gets.
-@export_range(1, 6, 1) var chopper_count: int = 1
+@export_range(1, 6, 1, "or_greater") var chopper_count: int = 1
 
 ## Metres above the deck a chopper is parked at when the round begins.
 @export_range(0.0, 200.0, 0.5) var chopper_pad_height: float = 6.0
@@ -334,7 +338,7 @@ extends DotConfig
 ## How many players the server keeps in the round by adding stand-ins.
 ##
 ## Zero on a busy server, four on an empty one: a lone player has no opponent, so the round would end instantly for ever.
-@export_range(0, 24, 1) var minimum_players: int = 4
+@export_range(0, 24, 1, "or_greater") var minimum_players: int = 4
 
 ## How far a stand-in will walk toward the nearest enemy in the showdown, in metres.
 ##
@@ -453,10 +457,24 @@ func _validate_world() -> DotResult:
 			DotError.CODE_INVALID, "Both phases of a round have to last some time."
 		)
 
-	if team_count < 2 or team_count > 6:
+	if team_count < 2:
 		return DotResult.fail(
 			DotError.CODE_INVALID,
-			"team_count is %d; this game plays with two to six sides." % team_count,
+			"team_count is %d; this game plays with two sides or more." % team_count,
+		)
+
+	var room := corner_distance_for(team_count)
+	if is_inf(room):
+		return DotResult.fail(
+			DotError.CODE_INVALID,
+			"team_count %d is more catwalks than the showdown ring's edge has room for at a corner_size of %.1f m; set corner_size higher."
+				% [team_count, corner_size],
+		)
+	if corner_distance < room:
+		return DotResult.fail(
+			DotError.CODE_INVALID,
+			"team_count %d does not fit round a corner_distance of %.0f m: the pads, perches and catwalks would overlap. Set corner_distance to %.0f or more, or corner_size lower."
+				% [team_count, corner_distance, ceilf(room)],
 		)
 
 	# A platform wider than the gap between two of them is two platforms sharing a volume,
@@ -532,6 +550,30 @@ func _validate_rules() -> DotResult:
 		)
 
 	return DotResult.success(null)
+
+
+## How wide a flank perch is (the small pad between two teams' pads); [ScArena] builds it.
+const PERCH_SIZE := 8.0
+
+## How wide a catwalk is; [ScArena] builds them.
+const CATWALK_WIDTH := 3.4
+
+
+## The least [member corner_distance] that [param teams] corner pads fit round at this
+## [member corner_size]: a pad and the perch beside it must not touch (their half-diagonals,
+## plus a catwalk's width between them), and the catwalks into the ring must leave the ring's
+## edge apart (the ring is [member corner_size] * 0.85 from its middle to an edge).
+func corner_distance_for(teams: int) -> float:
+	var sides := maxi(teams, 2)
+	var pad_to_perch := (corner_size + PERCH_SIZE) * 0.5 * sqrt(2.0) + CATWALK_WIDTH
+	# A pad and its neighbouring perch are TAU / (2 * sides) apart round the circle.
+	var need := pad_to_perch / (2.0 * sin(PI / float(2 * sides)))
+	# The ring's catwalks: two neighbours at the ring's edge are 2 r sin(PI / sides) apart.
+	var ring := corner_size * 0.85
+	if 2.0 * ring * sin(PI / float(sides)) <= CATWALK_WIDTH * 1.5:
+		# The ring is too small for that many catwalks at any distance: none fits.
+		return INF
+	return need
 
 
 func describe() -> Dictionary:

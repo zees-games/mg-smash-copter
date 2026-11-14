@@ -234,8 +234,8 @@ static func present_frame(
 		var team := p_game.team_of(key)
 		var colour := Color.WHITE
 
-		if team >= 1 and team <= ScGame.TEAM_COLOURS.size():
-			colour = ScGame.TEAM_COLOURS[team - 1]
+		if team >= 1:
+			colour = ScGame.team_colour(team - 1)
 
 		# And whoever a spectator is looking out of: a camera inside somebody's head draws the
 		# inside of their head.

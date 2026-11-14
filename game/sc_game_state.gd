@@ -46,6 +46,25 @@ const TEAM_NAMES: Array[String] = [
 	"Red", "Blue", "Green", "Yellow", "Violet", "Orange",
 ]
 
+
+## Team [param index]'s colour (0 is team id 1). The table's six first, then as many more as the
+## server plays with, spread round the hue circle by the golden ratio so neighbours differ.
+static func team_colour(index: int) -> Color:
+	if index < 0:
+		return Color(0.7, 0.7, 0.72)
+	if index < TEAM_COLOURS.size():
+		return TEAM_COLOURS[index]
+	return Color.from_hsv(fposmod(0.11 + float(index) * 0.618034, 1.0), 0.62, 0.86)
+
+
+## Team [param index]'s name (0 is team id 1): the table's, then "Team 7", "Team 8" and on.
+static func team_name(index: int) -> String:
+	if index < 0:
+		return "Nobody"
+	if index < TEAM_NAMES.size():
+		return TEAM_NAMES[index]
+	return "Team %d" % (index + 1)
+
 ## Which half of the round it is.
 enum Phase {
 	## Between rounds, or waiting for enough people to start one.

@@ -8,6 +8,7 @@ const ScAmbience := preload("sc_ambience.gd")
 const AMBIENT_KIND := "ambience"
 
 const ScGame := preload("sc_game.gd")
+const ScConfig := preload("sc_config.gd")
 const ScLayouts := preload("sc_layouts.gd")
 const ScPlayer := preload("sc_player.gd")
 const ScSpecials := preload("sc_specials.gd")

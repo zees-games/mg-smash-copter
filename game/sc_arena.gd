@@ -557,7 +557,7 @@ const RING_COVER_OUT := 0.5
 
 
 ## How wide a perch is: the small pad on the flank between two teams' pads.
-const PERCH_SIZE := 8.0
+const PERCH_SIZE := ScConfig.PERCH_SIZE
 
 ## How far a flank catwalk's surface sits under the pads it joins, in metres.
 ##

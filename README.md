@@ -13,7 +13,7 @@ This game was built with Claude Code and has had little testing with real player
 ## How it plays
 A round has two halves.
 
-**The first two minutes are about keeping your footing.** Two teams by default (a server can set two to six) stand on platforms balanced on single pillars, 40 metres up. Nobody can hurt anybody. A platform leans toward whoever is standing on it, and past about 16 degrees it comes off its pillar and takes everybody on it down to the floor. Meanwhile a cannon in the middle aims at the platforms that are still up and throws props at them, getting heavier as the round goes on:
+**The first two minutes are about keeping your footing.** Two teams by default (a server can set any number, as many as fit round the corners) stand on platforms balanced on single pillars, 40 metres up. Nobody can hurt anybody. A platform leans toward whoever is standing on it, and past about 16 degrees it comes off its pillar and takes everybody on it down to the floor. Meanwhile a cannon in the middle aims at the platforms that are still up and throws props at them, getting heavier as the round goes on:
 
 | Tier | Props | What it does to a platform |
 | --- | --- | --- |
@@ -84,7 +84,7 @@ Settings are cvars (or environment variables like `SC_LAYOUT_IDS`). Set them in 
 ```
 sc_survival_seconds 120     // length of the first half (default 120)
 sc_showdown_seconds 90      // length of the fight
-sc_teams 2                  // number of sides (default 2; the setting accepts 2 to 6)
+sc_teams 2                  // number of sides (default 2, any value of 2 or more that fits round sc_corner_distance; past six the colours are generated)
 sc_stiffness 7.0            // lower is wobblier
 sc_motion_gain 2.0          // how much more a running player tips a platform than a walking one
 sc_cannon_interval 1.9      // seconds between shots

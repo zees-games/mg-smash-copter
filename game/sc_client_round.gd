@@ -46,7 +46,7 @@ func _build_killcam() -> void:
 
 
 func _team_colour(team: int) -> Color:
-	return ScGame.TEAM_COLOURS[team - 1] if team >= 1 and team <= ScGame.TEAM_COLOURS.size() else Color(0.7, 0.7, 0.72)
+	return ScGame.team_colour(team - 1)
 
 
 ## `mp_killcam_time`, from the server's replicated cvar.
@@ -88,7 +88,7 @@ func _reveal_round() -> void:
 		return
 	winner_reveal.reduced_motion = settings != null and settings.settings != null and settings.settings.get_bool(&"reduce_motion", false)
 	var shown := winner_reveal.present(entries, {"title": "ROUND %d" % _round_end_number,
-		"subtitle": "%s wins" % ScGame.TEAM_NAMES[winner - 1], "hint": "Jump to skip"})
+		"subtitle": "%s wins" % ScGame.team_name(winner - 1), "hint": "Jump to skip"})
 	if not shown.ok:
 		_open_round_board()
 		return
@@ -136,8 +136,8 @@ func _on_round(number: int, began: bool, winner: int) -> void:
 
 	var team := ScText.t("hud.nobody", "Nobody")
 
-	if winner >= 1 and winner <= ScGame.TEAM_NAMES.size():
-		team = ScGame.TEAM_NAMES[winner - 1]
+	if winner >= 1:
+		team = ScGame.team_name(winner - 1)
 
 	hud.shout(ScText.t("hud.wins", "{team} wins", {"team": team}), 4.0)
 
@@ -241,7 +241,7 @@ func _prepare_board(snap: Dictionary) -> void:
 		snap["header"] = {"Layout": game.layout.display_name}
 	var sides: Array = []
 	for index in range(game.config.team_count):
-		sides.append({"id": index + 1, "name": ScGame.TEAM_NAMES[index], "color": ScGame.TEAM_COLOURS[index]})
+		sides.append({"id": index + 1, "name": ScGame.team_name(index), "color": ScGame.team_colour(index)})
 	snap["teams"] = sides
 
 

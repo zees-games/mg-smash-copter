@@ -13,7 +13,7 @@ const CHANNEL := "sc.arena"
 var _showdown: Node3D = null
 
 ## How wide a catwalk between a corner pad and the middle of the showdown ring is.
-const CATWALK_WIDTH := 3.4
+const CATWALK_WIDTH := ScConfig.CATWALK_WIDTH
 
 ## How high the lip around a corner pad and the ring is.
 ##

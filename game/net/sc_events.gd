@@ -96,8 +96,9 @@ const POS_BITS := 24
 const CLOCK_MAX := 1800.0
 const CLOCK_BITS := 15
 
-## Team ids are 1..6 and zero is "no side", so three bits and one to spare.
-const TEAM_BITS := 3
+## Team ids (and team counts) go as varints: one byte up to 127 teams, and any count past that
+## still goes, since the server may play with as many sides as fit round the corners. Zero is
+## "no side".
 
 ## Up to 255 platforms in a field, which is twenty times what any layout builds.
 const PLATFORM_BITS := 8
@@ -131,7 +132,7 @@ static func write_hello(
 	w.write_varint(player_id)
 	w.write_uint(tick_rate, 9)
 	w.write_varint(server_tick)
-	w.write_uint(clampi(team_count, 1, 7), TEAM_BITS)
+	w.write_varint(maxi(team_count, 1))
 	w.write_float_range(survival_seconds, 0.0, CLOCK_MAX, CLOCK_BITS)
 	w.write_float_range(showdown_seconds, 0.0, CLOCK_MAX, CLOCK_BITS)
 	w.write_float_range(handover_seconds, 0.0, 120.0, 10)
@@ -142,7 +143,7 @@ static func read_hello(r: DotNetReader) -> Dictionary:
 	var player_id := r.read_varint()
 	var tick_rate := r.read_uint(9)
 	var server_tick := r.read_varint()
-	var team_count := r.read_uint(TEAM_BITS)
+	var team_count := r.read_varint()
 	var survival := r.read_float_range(0.0, CLOCK_MAX, CLOCK_BITS)
 	var showdown := r.read_float_range(0.0, CLOCK_MAX, CLOCK_BITS)
 	var handover := r.read_float_range(0.0, 120.0, 10)
@@ -309,7 +310,7 @@ static func write_join(
 	w.write_varint(player_id)
 	w.write_varint(net_id)
 	w.write_string(display_name, NAME_BYTES)
-	w.write_uint(clampi(team, 0, 7), TEAM_BITS)
+	w.write_varint(maxi(team, 0))
 	w.write_string(JSON.stringify(avatar.to_dict()) if avatar != null else "", AVATAR_BYTES)
 	return w.to_bytes()
 
@@ -318,7 +319,7 @@ static func read_join(r: DotNetReader) -> Dictionary:
 	var player_id := r.read_varint()
 	var net_id := r.read_varint()
 	var display_name := r.read_string(NAME_BYTES)
-	var team := r.read_uint(TEAM_BITS)
+	var team := r.read_varint()
 	var text := r.read_string(AVATAR_BYTES)
 	var avatar: DotAvatar = null
 
@@ -356,13 +357,13 @@ static func read_player(r: DotNetReader) -> int:
 static func write_team(player_id: int, team: int) -> PackedByteArray:
 	var w := _w()
 	w.write_varint(player_id)
-	w.write_uint(clampi(team, 0, 7), TEAM_BITS)
+	w.write_varint(maxi(team, 0))
 	return w.to_bytes()
 
 
 static func read_team(r: DotNetReader) -> Dictionary:
 	var player_id := r.read_varint()
-	var team := r.read_uint(TEAM_BITS)
+	var team := r.read_varint()
 	return {"player_id": player_id, "team": team, "ok": r.ok()}
 
 
@@ -478,7 +479,7 @@ static func write_clock(
 	w.write_uint(clampi(phase, 0, 3), 2)
 	w.write_uint(clampi(standing, 0, (1 << PLATFORM_BITS) - 1), PLATFORM_BITS)
 	w.write_uint(clampi(alive, 0, 255), 8)
-	w.write_uint(clampi(teams_alive, 0, 7), TEAM_BITS)
+	w.write_varint(maxi(teams_alive, 0))
 	w.write_bool(playable)
 	return w.to_bytes()
 
@@ -489,7 +490,7 @@ static func read_clock(r: DotNetReader) -> Dictionary:
 	var phase := r.read_uint(2)
 	var standing := r.read_uint(PLATFORM_BITS)
 	var alive := r.read_uint(8)
-	var teams_alive := r.read_uint(TEAM_BITS)
+	var teams_alive := r.read_varint()
 	var playable := r.read_bool()
 	return {
 		"round": round_number,
@@ -507,14 +508,14 @@ static func write_round(number: int, began: bool, winner: int) -> PackedByteArra
 	var w := _w()
 	w.write_varint(number)
 	w.write_bool(began)
-	w.write_uint(clampi(winner, 0, 7), TEAM_BITS)
+	w.write_varint(maxi(winner, 0))
 	return w.to_bytes()
 
 
 static func read_round(r: DotNetReader) -> Dictionary:
 	var number := r.read_varint()
 	var began := r.read_bool()
-	var winner := r.read_uint(TEAM_BITS)
+	var winner := r.read_varint()
 	return {"round": number, "began": began, "winner": winner, "ok": r.ok()}
 
 
@@ -652,12 +653,12 @@ static func write_board() -> PackedByteArray:
 
 static func write_ask_team(team: int) -> PackedByteArray:
 	var w := _w()
-	w.write_uint(clampi(team, 0, 7), TEAM_BITS)
+	w.write_varint(maxi(team, 0))
 	return w.to_bytes()
 
 
 static func read_ask_team(r: DotNetReader) -> Dictionary:
-	var team := r.read_uint(TEAM_BITS)
+	var team := r.read_varint()
 	return {"team": team, "ok": r.ok()}
 
 

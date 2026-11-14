@@ -16,7 +16,7 @@
 # warmup_seconds: 12.0
 
 # --- Sides
-# How many teams the server plays with. Two is red against blue. [2..6]
+# How many teams the server plays with. Two is red against blue. [2..]
 # team_count: 2
 # Whether players may pick their own side.
 # allow_team_choice: true
@@ -42,7 +42,7 @@
 # kill_height: 1.5
 
 # --- Bots
-# How many players the server keeps in the round by adding stand-ins. [0..24]
+# How many players the server keeps in the round by adding stand-ins. [0..]
 # minimum_players: 4
 # How far a stand-in will walk toward the nearest enemy in the showdown, in metres. [5.0..400.0]
 # bot_advance_metres: 200.0

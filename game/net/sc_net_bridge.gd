@@ -529,7 +529,7 @@ func _apply_hello(reader: DotNetReader) -> void:
 	var rtt := float(rtt_source.call()) if rtt_source.is_valid() else 0.0
 	net.clock.sync_from_server(int(hello["server_tick"]), maxf(0.0, rtt))
 
-	game.config.team_count = clampi(int(hello["team_count"]), 2, 6)
+	game.config.team_count = maxi(int(hello["team_count"]), 2)
 	game.config.survival_seconds = float(hello["survival_seconds"])
 	game.config.showdown_seconds = float(hello["showdown_seconds"])
 	game.config.showdown_warmup_seconds = float(hello["handover_seconds"])

@@ -18,7 +18,7 @@ const ScTestPorts := preload("test_ports.gd")
 ## No socket opens to a client except the still-loading section.
 
 const SECTIONS := 17
-const CHECKS := 177
+const CHECKS := 179
 
 ## Everything this run writes, deleted on the way in and out: a suite that writes to `user://` makes its result depend on the last run (`docs/testing.md`).
 const SERVER_DIR := "user://sc_dedicated"
@@ -435,12 +435,17 @@ func _test_the_tunables() -> void:
 	_check(config.team_count == 4, "the number of sides can be changed between rounds",
 		"%d" % config.team_count)
 
-	# Clamped in the cvar's own handler rather than left to `validate()`, because an
-	# operator typing a number at a live console should get the nearest legal one rather
-	# than a server that refuses to start its next round.
-	_run_command("sc_teams 99")
-	_check(config.team_count == 6, "and is clamped to what this game can play",
-		"%d" % config.team_count)
+	# No ceiling: any count that fits round the corners is taken...
+	_run_command("sc_teams 8")
+	_check(config.team_count == 8, "and takes more than six sides", "%d" % config.team_count)
+	# ...and one that does not is refused at the console, saying why, rather than taken and
+	# then refused by the next round's validate().
+	var refused := _run_command("sc_teams 99")
+	_check(config.team_count == 8 and str(refused).contains("sc_corner_"),
+		"a count that does not fit is refused with the corner setting to raise, not clamped",
+		"%d: %s" % [config.team_count, str(refused)])
+	_run_command("sc_teams 1")
+	_check(config.team_count == 8, "and so is one side", "%d" % config.team_count)
 	_run_command("sc_teams 2")
 
 	_run_command("sc_cannon_max_tier 2")
