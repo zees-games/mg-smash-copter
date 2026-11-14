@@ -59,6 +59,8 @@ static func spec_for() -> DotMenuGameSpec:
 	s.comfort_row_text = "The end-of-round announcement appears at once."
 	s.ambient_text = "Quiet sounds under the sky."
 	s.not_applied = NOT_APPLIED
+	# The touch Menu button sits top left, clear of the field-count line and the thumbs.
+	s.menu_button_corner = &"top_left"
 	s.bindings_maker = func() -> DotMenuBindings: return ScBindings.make()
 	s.help_about = "Two to six teams stand on platforms balanced on pillars forty metres up while a cannon in the middle throws props at them. A platform leans toward whoever stands on it, and past sixteen degrees it comes off and takes everybody down. Stay up."
 	s.help_cards = [
