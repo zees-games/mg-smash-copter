@@ -36,50 +36,9 @@ func _test_a_special_reaches_the_motor() -> void:
 
 	var mask := runner.controller.motor.tunables.collision_mask
 
-	var peak := func(direction: Vector2, aim: bool) -> float:
-		runner.place_at(start, 0.0)
-		runner.controller.state.velocity = Vector3.ZERO
-		runner.aiming = aim
-		var command := DotFpsCommand.new()
-		command.move = direction
-		await _step(game, 4)
-		var top := 0.0
-		for i in range(TICK_RATE / 2):
-			runner.controller.apply_command(command)
-			runner.aiming = aim
-			await _step(game, 1)
-			var v := runner.controller.state.velocity
-			top = maxf(top, Vector2(v.x, v.z).length())
-		runner.aiming = false
-		return top
-
-	# The best of four directions (the arena is small), from the same spot.
-	var best_peak := func(aim: bool) -> float:
-		var most := 0.0
-		for direction: Vector2 in [Vector2(0.0, 1.0), Vector2(1.0, 0.0), Vector2(-1.0, 0.0), Vector2(0.0, -1.0)]:
-			var reach: float = await peak.call(direction, aim)
-			most = maxf(most, reach)
-		return most
-
-	# The vertical speed after a fall of a third of a second, and the horizontal speed left after a glide with no key down.
-	var fall := func() -> float:
-		runner.place_at(start + Vector3.UP * 6.0, 0.0)
-		runner.controller.state.velocity = Vector3.ZERO
-		await _step(game, TICK_RATE / 3)
-		return -runner.controller.state.velocity.y
-	var glide := func() -> float:
-		runner.place_at(start, 0.0)
-		runner.controller.state.velocity = Vector3.ZERO
-		await _step(game, 6)
-		runner.controller.state.velocity = Vector3(4.0, 0.0, 0.0)
-		runner.controller.apply_command(DotFpsCommand.new())
-		await _step(game, 6)
-		var v := runner.controller.state.velocity
-		return Vector2(v.x, v.z).length()
-
-	var base_run: float = await best_peak.call(false)
-	var base_fall: float = await fall.call()
-	var base_glide: float = await glide.call()
+	var base_run: float = await _retune_best_peak(game, runner, start, false)
+	var base_fall: float = await _retune_fall(game, runner, start)
+	var base_glide: float = await _retune_glide(game, runner, start)
 
 	runner.retune(special)
 	var motor := runner.controller.motor
@@ -88,9 +47,9 @@ func _test_a_special_reaches_the_motor() -> void:
 	_check(runner.controller.tunables.collision_mask == mask and motor.tunables.collision_mask == mask,
 		"and the body rules' collision mask survived the new object", "%d, was %d" % [motor.tunables.collision_mask, mask])
 
-	var fast_run: float = await best_peak.call(false)
-	var light_fall: float = await fall.call()
-	var slick_glide: float = await glide.call()
+	var fast_run: float = await _retune_best_peak(game, runner, start, false)
+	var light_fall: float = await _retune_fall(game, runner, start)
+	var slick_glide: float = await _retune_glide(game, runner, start)
 	_check(base_run > 1.0 and fast_run > base_run * 1.25 and fast_run < base_run * 1.6,
 		"the special's run speed is the speed they run at", "%.2f m/s against %.2f, a x1.5 special (the half second and the small arena stop short of the full ratio)" % [fast_run, base_run])
 	_check(base_fall > 1.0 and absf(light_fall / base_fall - 0.5) < 0.1,
@@ -101,7 +60,7 @@ func _test_a_special_reaches_the_motor() -> void:
 	# The aim pace scales the motor's own tunables for the tick, so it must work under the special too, and leave them as they were.
 	var paced := game.ads_rules.move_speed_for(runner.weapons.current_def().id)
 	var kept_speed := motor.tunables.max_speed
-	var aimed_run: float = await best_peak.call(true)
+	var aimed_run: float = await _retune_best_peak(game, runner, start, true)
 	_check(absf(aimed_run / fast_run - paced) < 0.1 and is_equal_approx(motor.tunables.max_speed, kept_speed),
 		"aimed under a special, the pace scales the special's speed and puts it back",
 		"%.2f of %.2f m/s, ratio %.2f of %.2f, top speed %.2f from %.2f" % [aimed_run, fast_run, aimed_run / maxf(fast_run, 0.001), paced, motor.tunables.max_speed, kept_speed])
@@ -109,11 +68,59 @@ func _test_a_special_reaches_the_motor() -> void:
 	runner.retune(plain)
 	_check(motor.tunables == runner.controller.tunables and is_equal_approx(motor.tunables.max_speed, ScPlayer.tunables_for(game.config, plain).max_speed),
 		"when it ends the motor is back on the ordinary numbers")
-	var back_run: float = await best_peak.call(false)
-	var back_fall: float = await fall.call()
-	var back_glide: float = await glide.call()
+	var back_run: float = await _retune_best_peak(game, runner, start, false)
+	var back_fall: float = await _retune_fall(game, runner, start)
+	var back_glide: float = await _retune_glide(game, runner, start)
 	_check(absf(back_run - base_run) < 0.1 and absf(back_fall - base_fall) < 0.1 and absf(back_glide - base_glide) < 0.1,
 		"and they run, fall and stop as they did before", "run %.2f/%.2f, fall %.2f/%.2f, glide %.2f/%.2f" % [back_run, base_run, back_fall, base_fall, back_glide, base_glide])
 
 	await _dispose(game)
 	_finished()
+
+
+## The fastest [param runner] gets in half a second from [param start] walking [param direction], sights up or down.
+func _retune_peak(game: ScGame, runner: ScPlayer, start: Vector3, direction: Vector2, aim: bool) -> float:
+	runner.place_at(start, 0.0)
+	runner.controller.state.velocity = Vector3.ZERO
+	runner.aiming = aim
+	var command := DotFpsCommand.new()
+	command.move = direction
+	await _step(game, 4)
+	var top := 0.0
+	for i in range(TICK_RATE / 2):
+		runner.controller.apply_command(command)
+		runner.aiming = aim
+		await _step(game, 1)
+		var v := runner.controller.state.velocity
+		top = maxf(top, Vector2(v.x, v.z).length())
+	runner.aiming = false
+	return top
+
+
+## The best of four directions (the arena is small), from the same spot.
+func _retune_best_peak(game: ScGame, runner: ScPlayer, start: Vector3, aim: bool) -> float:
+	var most := 0.0
+	for direction: Vector2 in [Vector2(0.0, 1.0), Vector2(1.0, 0.0), Vector2(-1.0, 0.0), Vector2(0.0, -1.0)]:
+		var reach: float = await _retune_peak(game, runner, start, direction, aim)
+		most = maxf(most, reach)
+	return most
+
+
+## The vertical speed after a fall of a third of a second.
+func _retune_fall(game: ScGame, runner: ScPlayer, start: Vector3) -> float:
+	runner.place_at(start + Vector3.UP * 6.0, 0.0)
+	runner.controller.state.velocity = Vector3.ZERO
+	await _step(game, TICK_RATE / 3)
+	return -runner.controller.state.velocity.y
+
+
+## The horizontal speed left after a glide with no key down.
+func _retune_glide(game: ScGame, runner: ScPlayer, start: Vector3) -> float:
+	runner.place_at(start, 0.0)
+	runner.controller.state.velocity = Vector3.ZERO
+	await _step(game, 6)
+	runner.controller.state.velocity = Vector3(4.0, 0.0, 0.0)
+	runner.controller.apply_command(DotFpsCommand.new())
+	await _step(game, 6)
+	var v := runner.controller.state.velocity
+	return Vector2(v.x, v.z).length()

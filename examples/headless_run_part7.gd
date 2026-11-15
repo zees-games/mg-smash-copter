@@ -120,6 +120,13 @@ func _test_the_aim_button() -> void:
 	_check(up.is_pressed(DotWeaponCommand.BUTTON_AIM) and not down.is_pressed(DotWeaponCommand.BUTTON_AIM),
 		"the body's flag is the weapon command's aim button")
 
+	_aim_closes_the_spread(rig, held, rules, paced)
+	await _dispose(game)
+	_finished()
+
+
+## With the sights up a held trigger's first shots spread less, and the raised rig is at the rules' pace.
+func _aim_closes_the_spread(rig: ZeeWeaponRig, held: DotWeaponDef, rules: ZeeAdsRules, paced: float) -> void:
 	# The spread: first shots of a held trigger with the sights down, then up for longer than they take to rise.
 	var spreads := func(aim: bool) -> float:
 		var command := DotWeaponCommand.new()
@@ -146,5 +153,3 @@ func _test_the_aim_button() -> void:
 		"and the sights close the spread", "hip %.3f, aimed %.3f degrees, rule %.2f" % [hip_spread, aimed_spread, rules.spread_for(held.id)])
 	_check(rig.ads_progress() > 0.99 and rig.ads_move_scale() == paced, "fully raised, the rig is at full progress and the rules' pace",
 		"%.2f, %.2f" % [rig.ads_progress(), rig.ads_move_scale()])
-	await _dispose(game)
-	_finished()

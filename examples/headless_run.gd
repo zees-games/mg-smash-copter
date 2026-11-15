@@ -1,4 +1,4 @@
-extends "headless_run_part8.gd"
+extends "headless_run_part9.gd"
 
 
 ## Proves the platforms, the cannon, the round and the chopper all actually work.

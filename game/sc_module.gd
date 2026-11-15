@@ -1,4 +1,4 @@
-extends "sc_module_base.gd"
+extends "sc_module_vote.gd"
 
 
 ## This game, as a module a dedicated server loads.
@@ -609,11 +609,6 @@ func _build_maps(world: ScGame) -> void:
 	var _loaded := maps.load_rotation()
 
 
-## maps.yml's `commands:` block (prefix and names), or empty with no file.
-func _rotation_commands() -> Dictionary:
-	return maps.commands_spec() if maps != null else {}
-
-
 func _build_vote(world: ScGame) -> void:
 	vote = ScVote.new()
 	vote.name = "LayoutVote"
@@ -641,75 +636,6 @@ func _build_vote(world: ScGame) -> void:
 		(menu_half as Object).set(&"rows_fn", func(_rows: Array) -> Array: return world.layout_rows())
 
 	_follow_vote_rounds(world)
-
-
-func _bind_vote_hooks(world: ScGame) -> void:
-	# Nothing to vote on when the operator turned the per-round draw off: they asked for one
-	# layout all evening.
-	vote.maps_fn = func() -> Array:
-		var out: Array = []
-
-		if not world.config.vary_layout:
-			return out
-
-		# From the catalogue dot-map lists, so the ballot and `maps` can never disagree.
-		for def in maps.catalogue.available() if maps != null else []:
-			out.append([def.id, def.display_name])
-
-		return out
-	vote.apply_fn = func(id: StringName) -> DotResult:
-		world.next_layout_id = id
-		return DotResult.success(id)
-	# People only: a stand-in is not a voter, and a ballot it could swing is not the players'.
-	vote.voters_fn = func() -> Array:
-		var out: Array = []
-
-		for id: Variant in world.players:
-			var player: ScPlayer = world.players[id]
-
-			if player == null or player.is_bot:
-				continue
-
-			var userid := ScNetBridge.session_of(StringName(str(id)))
-
-			if userid > 0:
-				out.append(StringName(str(userid)))
-
-		return out
-	vote.announce_fn = func(line: String) -> void:
-		var chat: Object = services.get("chat") if services != null else null
-
-		if chat != null:
-			var _said: Variant = chat.call("announce", line, ScServices.CH_ALL)
-		elif server != null:
-			server.broadcast_message(line)
-	vote.is_admin_fn = func(voter: StringName) -> bool:
-		var session := server.session_by_userid(String(voter).to_int()) if server != null else null
-		return session != null and session.has_permission(DotAdminFlags.CHANGEMAP)
-	vote.ballot_fn = func(state: Dictionary) -> void:
-		if server == null:
-			return
-
-		for session in server.playing_sessions():
-			var data := state.duplicate()
-			data["you"] = str(session.userid)
-			server.send_notice(session, DotNotice.make(
-				&"", "", float(state.get("seconds", -1.0)), LAYOUT_BALLOT_TOPIC, data
-			))
-	vote.people_fn = func(voter: StringName) -> Dictionary:
-		var session := server.session_by_userid(String(voter).to_int()) if server != null else null
-
-		if session == null:
-			return {}
-
-		var avatar: Variant = session.identity.get("avatar_url") if session.identity != null else ""
-		return {"name": session.display_name, "avatar": avatar if avatar is String else ""}
-
-	# Whether a round is live, for `time_up: finish_round`: warmup and the gap between rounds
-	# have nothing to play out, so a limit that runs out there changes at once. No match is
-	# "cannot tell", which holds as before.
-	vote.round_in_progress_fn = func() -> bool:
-		return world.match_node == null or world.match_node.is_live()
 
 
 func _follow_vote_rounds(world: ScGame) -> void:

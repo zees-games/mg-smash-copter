@@ -96,6 +96,11 @@ func _run() -> void:
 			list.append([layout.id, layout.display_name])
 		await _show_ballot(list, game.layout.id if game.layout != null else &"")
 
+	await _save_and_quit(game, out, elapsed, view)
+
+
+## Saves the frame to [param out], records the sequence, prints the world's state and quits.
+func _save_and_quit(game: ScGame, out: String, elapsed: float, view: String) -> void:
 	await RenderingServer.frame_post_draw
 
 	var image := get_viewport().get_texture().get_image()
