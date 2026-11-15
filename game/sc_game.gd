@@ -459,7 +459,7 @@ func _step(delta: float) -> void:
 	match_node.tick(_tick)
 
 
-# --- The flashlight --------------------------------------------------------------
+# The flashlight
 
 ## The flashlight config, made on first use.
 func flashlight_conf() -> DotFlashlightConfig:

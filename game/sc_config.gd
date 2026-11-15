@@ -30,13 +30,9 @@ extends DotConfig
 
 @export_group("Sides")
 
-## How many teams the server plays with. Two is red against blue.
-##
-## Any count of two or more (default 2): each team gets a corner pad on a circle of
-## [member corner_distance], with a perch between neighbours. [method validate] refuses a count
-## whose pads, perches or catwalks would overlap at this [member corner_distance] and
-## [member corner_size], and says the distance that would fit it. Past six the colours and
-## names are generated ([method ScGame.team_colour]).
+## How many teams the server plays with. Two is red against blue. Any count of two or more (default 2): each team gets a corner pad on a circle of
+## [member corner_distance], with a perch between neighbours. [method validate] refuses a count whose pads, perches or catwalks would overlap at this [member corner_distance] and
+## [member corner_size], and says the distance that would fit it. Past six the colours and names are generated ([method ScGame.team_colour]).
 @export_range(2, 6, 1, "or_greater") var team_count: int = 2
 
 ## Whether players may pick their own side.
@@ -559,10 +555,8 @@ const PERCH_SIZE := 8.0
 const CATWALK_WIDTH := 3.4
 
 
-## The least [member corner_distance] that [param teams] corner pads fit round at this
-## [member corner_size]: a pad and the perch beside it must not touch (their half-diagonals,
-## plus a catwalk's width between them), and the catwalks into the ring must leave the ring's
-## edge apart (the ring is [member corner_size] * 0.85 from its middle to an edge).
+## The least [member corner_distance] that [param teams] corner pads fit round at this [member corner_size]: a pad and the perch beside it must not touch (their half-diagonals,
+## plus a catwalk's width between them), and the catwalks into the ring must leave the ring's edge apart (the ring is [member corner_size] * 0.85 from its middle to an edge).
 func corner_distance_for(teams: int) -> float:
 	var sides := maxi(teams, 2)
 	var pad_to_perch := (corner_size + PERCH_SIZE) * 0.5 * sqrt(2.0) + CATWALK_WIDTH

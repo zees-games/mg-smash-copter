@@ -4,12 +4,9 @@ const ScConfig := preload("../game/sc_config.gd")
 const ScSpecials := preload("../game/sc_specials.gd")
 const ScPlayer := preload("../game/sc_player.gd")
 
-## A player's motor in dot-sim ([member DotFpsMotor.native_tick], on by default since dot-player-controller API 27) moves
-## exactly as the script motor does: the same seeded inputs with this game's movement tunables, on a floor, ramp, step,
-## wall and pillar, give the same bytes every tick, for the whole tick in one call and for its two halves. A web client
-## runs the script while a native server and native clients run the library, so they must agree without a correction.
-## Hit registration and lag compensation are not touched. With no library the native half is skipped;
-## [code]DOT_SIM_REQUIRE_NATIVE=1[/code] (CI) fails instead.
+## A player's motor in dot-sim ([member DotFpsMotor.native_tick], on by default since dot-player-controller API 27) moves exactly as the script motor does: the same seeded inputs with this game's movement tunables, on a floor, ramp, step,
+## wall and pillar, give the same bytes every tick, for the whole tick in one call and for its two halves. A web client runs the script while a native server and native clients run the library, so they must agree without a correction.
+## Hit registration and lag compensation are not touched. With no library the native half is skipped; [code]DOT_SIM_REQUIRE_NATIVE=1[/code] (CI) fails instead.
 
 const SECTIONS := 3
 const CHECKS := 7
