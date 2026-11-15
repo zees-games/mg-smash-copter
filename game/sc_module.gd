@@ -345,6 +345,7 @@ func _bind_config(world: ScGame) -> DotResult:
 		return DotResult.success(null)
 	workbench = DotGameWorkbench.new()
 	workbench.name = "Workbench"
+	workbench.lazy_panel = true
 	workbench.dedicated = DisplayServer.get_name() == "headless"
 	workbench.listen_host_fn = func() -> bool: return DisplayServer.get_name() != "headless"
 	workbench.permit_fn = func(actor: Variant, flag: String) -> bool:
