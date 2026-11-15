@@ -1,5 +1,7 @@
 extends "sc_module_vote.gd"
 
+const ScContent := preload("sc_content.gd")
+
 
 ## This game, as a module a dedicated server loads.
 ##
@@ -284,7 +286,7 @@ func _add_round_tunables(world: ScGame) -> void:
 		func(value: float) -> void: config.cannon_interval_ramp = value)
 	_tunable("sc_cannon_max_tier", float(config.cannon_max_tier),
 		"The biggest prop the cannon may fire, 1 to 4",
-		func(value: float) -> void: config.cannon_max_tier = clampi(int(value), 1, 4))
+		func(value: float) -> void: config.cannon_max_tier = int(value), 1.0, float(ScContent.TIERS))
 	_tunable("sc_special_chance", config.special_round_chance,
 		"Chance in a hundred that a round is a special one",
 		func(value: float) -> void: config.special_round_chance = value)
@@ -299,12 +301,12 @@ func _add_round_tunables(world: ScGame) -> void:
 	_tunable("sc_spectate_camera", float(config.spectate_camera),
 		"Deprecated, sets mp_forcecamera. Who somebody who is out may watch: 0 anybody, 1 their own side, 2 nobody",
 		func(value: float) -> void:
-			config.spectate_camera = clampi(int(value), 0, 2)
+			config.spectate_camera = int(value)
 			# Through the cvar, so what `mp_forcecamera` reports is what is in force.
 			if _force_camera_cvar != null:
 				var _set: Variant = _force_camera_cvar.set_value(str(config.spectate_camera))
 			elif world.spectate != null:
-				world.spectate.set_force_camera(config.spectate_camera))
+				world.spectate.set_force_camera(config.spectate_camera), 0.0, 2.0)
 	# [b]Deprecated: the count is `bot_quota` now[/b], and this forwards to it. Kept rather than
 	# removed because every shipped server config sets it; left as its own number it would be
 	# a second cvar deciding the same count, and whichever was read last would win.
@@ -422,7 +424,8 @@ func _on_config_field(key: String, _value: Variant, source: String) -> void:
 ##
 ## The default is the value the world was built with: a literal default would be a second copy of what `defaults < JSON < environment < argv` decided, and would reset an operator's `SC_SURVIVAL_SECONDS=240` when written back.
 func _tunable(
-	cvar_name: String, current: float, description: String, apply: Callable, at_least: float = NAN
+	cvar_name: String, current: float, description: String, apply: Callable, at_least: float = NAN,
+	at_most: float = NAN
 ) -> void:
 	var cvar := add_cvar(cvar_name, _number(current), description)
 
@@ -431,7 +434,7 @@ func _tunable(
 
 	# A count typed below what the game can play is refused with the reason, not clamped.
 	if not is_nan(at_least):
-		var _v := cvar.with_validator(_at_least.bind(cvar_name, at_least))
+		var _v := cvar.with_validator(_between.bind(cvar_name, at_least, INF if is_nan(at_most) else at_most))
 
 	# The handler must not capture `cvar`: it would be a reference cycle the engine never frees.
 	cvar.changed.connect(func(_old: String, new_value: String) -> void:
@@ -451,6 +454,15 @@ static func _teams_fit(value: String, config: ScConfig) -> DotResult:
 		return DotResult.fail(DotError.CODE_INVALID,
 			"sc_teams %s does not fit round the corners; set sc_corner_distance to %.0f or more first."
 				% [value, ceilf(room)])
+	return DotResult.success(value)
+
+
+## Refuses (with the reason) a value outside [param least]..[param most] (most may be infinite). Never clamps.
+static func _between(value: String, cvar_name: String, least: float, most: float) -> DotResult:
+	if not value.is_valid_float() or value.to_float() < least or value.to_float() > most:
+		var want := "a number of %s or more" % _number(least) if is_inf(most) \
+			else "a number from %s to %s" % [_number(least), _number(most)]
+		return DotResult.fail(DotError.CODE_INVALID, "%s is %s; it takes %s." % [cvar_name, value, want])
 	return DotResult.success(value)
 
 

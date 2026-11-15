@@ -18,7 +18,7 @@ const ScTestPorts := preload("test_ports.gd")
 ## No socket opens to a client except the still-loading section.
 
 const SECTIONS := 17
-const CHECKS := 179
+const CHECKS := 180
 
 ## Everything this run writes, deleted on the way in and out: a suite that writes to `user://` makes its result depend on the last run (`docs/testing.md`).
 const SERVER_DIR := "user://sc_dedicated"
@@ -461,7 +461,9 @@ func _test_the_tunables() -> void:
 		"who somebody out may watch is a cvar, and it reaches the running policy"
 	)
 	_run_command("sc_spectate_camera 9")
-	_check(game.spectate.manager.rules.force_camera == 2, "and is clamped to the three it has")
+	_check(game.spectate.manager.rules.force_camera == 0 and config.spectate_camera == 0, "and one of the three it has is all it takes: 9 is refused, not clamped")
+	_run_command("sc_cannon_max_tier 9")
+	_check(config.cannon_max_tier == 2, "a tier the content does not have is refused, not clamped")
 	_run_command("sc_spectate_camera 1")
 
 	# The module binds dot-spectate's rules on the world's own object, so a console change
