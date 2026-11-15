@@ -28,7 +28,7 @@ A round has two halves.
 
 About a third of rounds (34% by default) are **special rounds**, which change the rules for a while: `barrage`, `heavy`, `feather` (low gravity), `slick` (ice), `gale` (wind), `quake`, `jelly` (loose pillars), `downpour` and `rush`. Two can overlap.
 
-The field is re-rolled every round from 11 **layouts**, from the full grid down to two islands: `full`, `checker`, `islands`, `spine`, `airfield`, `gauntlet`, `broadside`, `hollow`, and three bigger ones with more than one flat level, `terraces` (stepped ramps), `ring` (a ring of decks round the tube, with corner towers) and `watchtowers` (two towers joined by bridges). Every piece is a platform, a bridge or a tower and falls the way platforms do. You can stand on the chopper and be carried by it. The layouts are listed and voted through [dot-map](https://github.com/modcommunity/dot-map) like the other games (M). Two of them park a **chopper**: the pilot flies it with the movement keys and drops crates on whatever is underneath, and the passenger can shoot.
+The field is re-rolled every round from 11 **layouts**, from the full grid down to two islands: `full`, `checker`, `islands`, `spine`, `airfield`, `gauntlet`, `broadside`, `hollow`, and three bigger ones with more than one flat level, `terraces` (stepped ramps), `ring` (a ring of decks round the tube, with corner towers) and `watchtowers` (two towers joined by bridges). Every piece is a platform, a bridge or a tower and falls the way platforms do. You can stand on the chopper and be carried by it. The layouts are listed and voted through [dot-map](https://github.com/gamespice-platform/map) like the other games (M). Two of them park a **chopper**: the pilot flies it with the movement keys and drops crates on whatever is underneath, and the passenger can shoot.
 
 When you fall, you are out until the next round and watch somebody on your own side who is still up.
 
@@ -52,10 +52,10 @@ When you fall, you are out until the next round and watch somebody on your own s
 While you are out: **Mouse 1** / **Mouse 2** watch the next or previous player, and **F5** switches between their eyes and behind them (if the server allows it).
 
 ## Getting started
-You need [Godot 4.7](https://godotengine.org/download). The game is built from many Dot addons, each in its own repository, so the easiest way to get everything is [dot-bootstrap](https://github.com/modcommunity/dot-bootstrap). It clones every project and links the addons into each one:
+You need [Godot 4.7](https://godotengine.org/download). The game is built from many Dot addons, each in its own repository, so the easiest way to get everything is [dot-bootstrap](https://github.com/gamespice-platform/bootstrap). It clones every project and links the addons into each one:
 
 ```bash
-git clone https://github.com/modcommunity/dot-bootstrap.git
+git clone https://github.com/gamespice-platform/bootstrap.git
 cd dot-bootstrap
 ./bootstrap.sh
 cd projects/mg-smash-copter
@@ -76,7 +76,7 @@ On Windows, run `bootstrap.ps1` instead and open the project in Godot.
 | `./game.sh shot` | Save a screenshot to `screenshots/`. `./game.sh shot --help` lists the views |
 | `./game.sh help` | All of the options |
 
-`online` and `server` use [dot-server-deploy](https://github.com/modcommunity/dot-server-deploy), which bootstrap clones next to this one. Run its `./setup.sh` once first.
+`online` and `server` use [dot-server-deploy](https://github.com/gamespice-platform/server-deploy), which bootstrap clones next to this one. Run its `./setup.sh` once first.
 
 ## Running a server
 Settings are cvars (or environment variables like `SC_LAYOUT_IDS`). Set them in the server's config, on the command line, or live from the console. Most of them take effect straight away.
@@ -106,7 +106,7 @@ mp_freeroam_speed 12        // metres per second of the free camera
 
 The bot count cvars are the family's shared ones (dot-server's `DotBotQuota`), and so are `bot_difficulty` and every `bot_*` setting (dot-bot; `bot_settings` lists them). `sc_min_players` still works and sets `bot_quota`, and `sc_bot_spread` sets `bot_aim_error`; both are deprecated. Solo, the same names are at the console, and `./game.sh -- --bot_difficulty hard` sets the preset at launch.
 
-Dead players fall as ragdolls ([dot-player-char](https://github.com/modcommunity/dot-player-char)); the server picks how each one goes down and everybody sees the same fall. `sv_ragdoll 0` makes it a quick fall with no physics, `sv_ragdoll_style` picks ragdoll, stiff, topple or hide, `sv_ragdoll_time` and `sv_ragdoll_max` say how long and how many, and `sv_ragdoll_reactions` weights the falls (`limp`, `face_plant`, `crumple`, `headshot_launch`, `power_launch`; 0 turns one off).
+Dead players fall as ragdolls ([dot-player-char](https://github.com/gamespice-platform/player-char)); the server picks how each one goes down and everybody sees the same fall. `sv_ragdoll 0` makes it a quick fall with no physics, `sv_ragdoll_style` picks ragdoll, stiff, topple or hide, `sv_ragdoll_time` and `sv_ragdoll_max` say how long and how many, and `sv_ragdoll_reactions` weights the falls (`limp`, `face_plant`, `crumple`, `headshot_launch`, `power_launch`; 0 turns one off).
 
 `mp_teammate_passthrough` is the family's shared one from dot-combat, live from the next shot. At 2 a team-mate in the line never stops a shot; splash still reaches them.
 
@@ -115,7 +115,7 @@ Dead players fall as ragdolls ([dot-player-char](https://github.com/modcommunity
 Console commands: `sc_status`, `sc_net`, `sc_layouts` and `sc_specials`.
 
 ### Admin commands
-These come from [dot-moderation](https://github.com/modcommunity/dot-moderation): `noclip`, `freeze`, `speed`, `gravity`, `god`, `buddha`, `hp`, `slay`, `slap`, `rename` and the teleports. `blind <player> [on|off|seconds]` blacks out that player's screen, and `beacon <player> [on|off]` puts a ring and a ping on them for everybody. `respawn`, `give` and `strip` are turned off, and `modtools` says why.
+These come from [dot-moderation](https://github.com/gamespice-platform/moderation): `noclip`, `freeze`, `speed`, `gravity`, `god`, `buddha`, `hp`, `slay`, `slap`, `rename` and the teleports. `blind <player> [on|off|seconds]` blacks out that player's screen, and `beacon <player> [on|off]` puts a ring and a ping on them for everybody. `respawn`, `give` and `strip` are turned off, and `modtools` says why.
 
 ### Stats and achievements
 The server counts rounds survived, showdowns won, people knocked out in the corners, falls, platforms you tipped, and props that landed on your platform and missed you. Achievements are built on those. They are kept in memory unless the server sets `SC_PROGRESS_DIRECTORY`, and only reported to the website with `SC_REPORT_PROGRESS` and a credential.
@@ -144,7 +144,7 @@ The server counts rounds survived, showdowns won, people knocked out in the corn
 | Chopper fuselage | Modified pod from Kenney's Space Kit; `art-src/build_copter.py`; rotors drawn in code | CC0 | `assets/models/CREDITS.md` |
 | Players | Quaternius, [Zombie Apocalypse Kit](https://quaternius.com/packs/zombieapocalypsekit.html) | CC0 1.0 | dot-player-char |
 | Weapons | [zee-dot-weapons](https://github.com/zees-games/zee-dot-weapons) | see that repo | that repo |
-| Toys | [dot-props](https://github.com/modcommunity/dot-props) beach balls, drawn in code; sounds by Kenney | CC0 | `addons/dot_props/toys/sounds/CREDITS.md` |
+| Toys | [dot-props](https://github.com/gamespice-platform/props) beach balls, drawn in code; sounds by Kenney | CC0 | `addons/dot_props/toys/sounds/CREDITS.md` |
 | Footsteps | Kenney, Impact Sounds | CC0 | `addons/dot_audio/stock/CREDITS.md` |
 | Ambience beds | Generated by dot-audio | CC0 | `addons/dot_audio/stock/CREDITS.md` |
 
