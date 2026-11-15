@@ -16,7 +16,7 @@
 # warmup_seconds: 12.0
 
 # --- Sides
-# How many teams the server plays with. Two is red against blue. [2..]
+# How many teams the server plays with. Two is red against blue. Any count of two or more (default 2): each t... [2..]
 # team_count: 2
 # Whether players may pick their own side.
 # allow_team_choice: true
