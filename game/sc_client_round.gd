@@ -46,13 +46,13 @@ func _build_killcam() -> void:
 
 
 func _team_colour(team: int) -> Color:
-	return ScGame.team_colour(team - 1)
+	return DotTeamSet.palette_colour(team - 1)
 
 
 ## `mp_killcam_time`, from the server's replicated cvar.
 func _on_killcam_cvar(cvar_name: String, value: String) -> void:
 	if cvar_name == "mp_killcam_time" and value.strip_edges().is_valid_float():
-		_killcam_sec = clampf(value.to_float(), 0.0, 30.0)
+		_killcam_sec = maxf(value.to_float(), 0.0)
 	elif cvar_name == "mp_killview_camera" and value.strip_edges().is_valid_float():
 		_killcam_camera = DotKillViewRules.Camera.BEHIND if value.to_float() >= 0.5 else DotKillViewRules.Camera.EYE
 
@@ -88,7 +88,7 @@ func _reveal_round() -> void:
 		return
 	winner_reveal.reduced_motion = settings != null and settings.settings != null and settings.settings.get_bool(&"reduce_motion", false)
 	var shown := winner_reveal.present(entries, {"title": "ROUND %d" % _round_end_number,
-		"subtitle": "%s wins" % ScGame.team_name(winner - 1), "hint": "Jump to skip"})
+		"subtitle": "%s wins" % DotTeamSet.palette_name(winner - 1), "hint": "Jump to skip"})
 	if not shown.ok:
 		_open_round_board()
 		return
@@ -137,7 +137,7 @@ func _on_round(number: int, began: bool, winner: int) -> void:
 	var team := ScText.t("hud.nobody", "Nobody")
 
 	if winner >= 1:
-		team = ScGame.team_name(winner - 1)
+		team = DotTeamSet.palette_name(winner - 1)
 
 	hud.shout(ScText.t("hud.wins", "{team} wins", {"team": team}), 4.0)
 
@@ -241,7 +241,7 @@ func _prepare_board(snap: Dictionary) -> void:
 		snap["header"] = {"Layout": game.layout.display_name}
 	var sides: Array = []
 	for index in range(game.config.team_count):
-		sides.append({"id": index + 1, "name": ScGame.team_name(index), "color": ScGame.team_colour(index)})
+		sides.append({"id": index + 1, "name": DotTeamSet.palette_name(index), "color": DotTeamSet.palette_colour(index)})
 	snap["teams"] = sides
 
 

@@ -40,9 +40,9 @@
 # platform_grip: 1.0
 
 # --- The layout
-# How many platforms there are along each row. [2..12]
+# How many platforms there are along each row. [2..]
 # columns: 5
-# How many rows of platforms there are. [1..6]
+# How many rows of platforms there are. [1..]
 # rows: 2
 # Whether the layout is re-rolled at the start of every round.
 # vary_layout: true
@@ -58,7 +58,7 @@
 # corner_size: 17.0
 # Metres above the deck the corner arenas sit at. [-50.0..200.0]
 # corner_rise: 9.0
-# How many weapons each survivor is given. [1..8]
+# How many weapons each survivor is given. [1..]
 # weapons_granted: 2
 # Which weapons may be drawn, by id from the pack. Empty means a sensible default set.
 # weapon_pool: []

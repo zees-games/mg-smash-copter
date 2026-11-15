@@ -22,7 +22,7 @@ extends DotConfig
 @export_range(0.0, 60.0, 1.0) var intermission_seconds: float = 8.0
 
 ## Seconds of the round's final killcam, added to the intermission (`mp_killcam_time`); 0 is off. Not added when the intermission is 0.
-@export_range(0.0, 30.0, 0.5) var killcam_seconds: float = 7.0
+@export_range(0.0, 30.0, 0.5, "or_greater") var killcam_seconds: float = 7.0
 
 ## Seconds of warmup before the first round. 0 starts immediately.
 @export_range(0.0, 300.0, 1.0) var warmup_seconds: float = 12.0
@@ -158,10 +158,10 @@ extends DotConfig
 @export_group("The layout")
 
 ## How many platforms there are along each row.
-@export_range(2, 12, 1) var columns: int = 5
+@export_range(2, 12, 1, "or_greater") var columns: int = 5
 
 ## How many rows of platforms there are.
-@export_range(1, 6, 1) var rows: int = 2
+@export_range(1, 6, 1, "or_greater") var rows: int = 2
 
 ## Whether the layout is re-rolled at the start of every round.
 ##
@@ -193,7 +193,7 @@ extends DotConfig
 @export_range(0.05, 4.0, 0.01) var cannon_interval_ramp: float = 0.42
 
 ## How many props one shot puts in the air.
-@export_range(1, 24, 1) var cannon_volley: int = 1
+@export_range(1, 24, 1, "or_greater") var cannon_volley: int = 1
 
 ## What that count is multiplied by by the end of the survival phase, rounded down.
 @export_range(1.0, 12.0, 0.1) var cannon_volley_ramp: float = 2.6
@@ -313,7 +313,7 @@ extends DotConfig
 @export_range(-50.0, 200.0, 0.5) var corner_rise: float = 9.0
 
 ## How many weapons each survivor is given.
-@export_range(1, 8, 1) var weapons_granted: int = 2
+@export_range(1, 8, 1, "or_greater") var weapons_granted: int = 2
 
 ## Which weapons may be drawn, by id from the pack. Empty means a sensible default set.
 ##
@@ -339,17 +339,17 @@ extends DotConfig
 ## How far a stand-in will walk toward the nearest enemy in the showdown, in metres.
 ##
 ## Two hundred does not bind: the corners are about 120 m apart, and a bot that will not leave its pad turns the showdown into two groups shooting past each other. Lower it so stand-ins hold a position; two thirds of bot-showdown deaths are falls.
-@export_range(5.0, 400.0, 1.0) var bot_advance_metres: float = 200.0
+@export_range(5.0, 400.0, 1.0, "or_greater") var bot_advance_metres: float = 200.0
 
 ## Degrees of lean a stand-in has to feel before it walks uphill (`sc_bot_lean_notice`).
 ##
 ## This game's own mistake on top of dot-bot's: raised, a platform tips further before the stand-in moves, as a person's would.
-@export_range(0.0, 15.0, 0.05) var bot_lean_notice_degrees: float = 1.15
+@export_range(0.0, 15.0, 0.05, "or_greater") var bot_lean_notice_degrees: float = 1.15
 
 ## How wide a miss, in metres, a stand-in accepts when it decides to fire (`sc_bot_spray`).
 ##
 ## A gun is worth firing out to where its spread lands within this of the aim point (see `ScGame._bot_weapon_reach`); raised, stand-ins spray from further and run dry sooner.
-@export_range(0.1, 5.0, 0.05) var bot_spray_metres: float = 0.6
+@export_range(0.1, 5.0, 0.05, "or_greater") var bot_spray_metres: float = 0.6
 
 @export_group("Impacts")
 

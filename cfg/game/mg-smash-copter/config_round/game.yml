@@ -10,7 +10,7 @@
 # showdown_warmup_seconds: 4.0
 # Seconds between rounds, for the platforms to be rebuilt. [0.0..60.0]
 # intermission_seconds: 8.0
-# Seconds of the round's final killcam, added to the intermission (`mp_killcam_time`); 0 is off. Not added wh... [0.0..30.0]
+# Seconds of the round's final killcam, added to the intermission (`mp_killcam_time`); 0 is off. Not added wh... [0.0..]
 # killcam_seconds: 7.0
 # Seconds of warmup before the first round. 0 starts immediately. [0.0..300.0]
 # warmup_seconds: 12.0
@@ -44,11 +44,11 @@
 # --- Bots
 # How many players the server keeps in the round by adding stand-ins. [0..]
 # minimum_players: 4
-# How far a stand-in will walk toward the nearest enemy in the showdown, in metres. [5.0..400.0]
+# How far a stand-in will walk toward the nearest enemy in the showdown, in metres. [5.0..]
 # bot_advance_metres: 200.0
-# Degrees of lean a stand-in has to feel before it walks uphill (`sc_bot_lean_notice`). [0.0..15.0]
+# Degrees of lean a stand-in has to feel before it walks uphill (`sc_bot_lean_notice`). [0.0..]
 # bot_lean_notice_degrees: 1.15
-# How wide a miss, in metres, a stand-in accepts when it decides to fire (`sc_bot_spray`). [0.1..5.0]
+# How wide a miss, in metres, a stand-in accepts when it decides to fire (`sc_bot_spray`). [0.1..]
 # bot_spray_metres: 0.6
 
 # --- Impacts

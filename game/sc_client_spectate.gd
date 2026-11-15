@@ -235,7 +235,7 @@ static func present_frame(
 		var colour := Color.WHITE
 
 		if team >= 1:
-			colour = ScGame.team_colour(team - 1)
+			colour = DotTeamSet.palette_colour(team - 1)
 
 		# And whoever a spectator is looking out of: a camera inside somebody's head draws the
 		# inside of their head.

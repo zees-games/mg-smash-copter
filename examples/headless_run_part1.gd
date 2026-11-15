@@ -19,8 +19,8 @@ func _test_config() -> void:
 	_check(teams.validate().ok, "and fit once the corners are that far out: no ceiling on sides")
 	teams.team_count = 1
 	_check(not teams.validate().ok, "one side is refused")
-	_check(ScGame.team_name(6) == "Team 7" and ScGame.team_colour(6) != ScGame.team_colour(5)
-		and ScGame.team_colour(7) != ScGame.team_colour(6), "past six sides, names and colours are made")
+	_check(DotTeamSet.palette_name(6) == "Team 7" and DotTeamSet.palette_colour(6) != DotTeamSet.palette_colour(5)
+		and DotTeamSet.palette_colour(7) != DotTeamSet.palette_colour(6), "past six sides, names and colours are made")
 
 	var overlapping := ScConfig.new()
 	overlapping.column_pitch = overlapping.platform_size - 1.0

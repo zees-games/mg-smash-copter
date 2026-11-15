@@ -103,7 +103,8 @@ func volley_at(elapsed: float, active: ScSpecials.Active) -> int:
 	var ramp := lerpf(1.0, config.cannon_volley_ramp, progress)
 	var wanted := float(config.cannon_volley) * ramp * maxf(active.cannon_volley_scale, 0.0)
 
-	return clampi(int(round(wanted)), 1, 24)
+	# At least one; no ceiling but the server's `cannon_volley`.
+	return maxi(int(round(wanted)), 1)
 
 
 ## One shot: a volley of props, each aimed at a platform of its own.

@@ -96,9 +96,9 @@ bot_quota 4                 // players a round is kept at with bots; each person
 bot_quota_mode fill         // fill (as above), fixed (that many bots), per_player (that many per person) or off
 sc_bots 1                   // 0 = no automatic bots at all
 bot_difficulty medium       // easy, medium, hard or nightmare: how bots turn, aim and react (every bot_* setting)
-sc_bot_advance 200          // how far a bot walks toward a fight in the showdown, metres
-sc_bot_lean_notice 1.15     // degrees of lean a bot feels before it walks uphill (higher is clumsier)
-sc_bot_spray 0.6            // metres of miss a bot accepts when it fires (higher sprays from further)
+sc_bot_advance 200          // how far a bot walks toward a fight in the showdown, metres (default 200, any value of 5 or more)
+sc_bot_lean_notice 1.15     // degrees of lean a bot feels before it walks uphill (higher is clumsier; default 1.15, any value of 0 or more)
+sc_bot_spray 0.6            // metres of miss a bot accepts when it fires (higher sprays from further; default 0.6, any value of 0.1 or more)
 mp_forcecamera 0            // who somebody out may watch: 0 = anybody, 1 = own side only, 2 = nobody (sc_spectate_camera is the old name)
 mp_freeroam 1               // 1 = somebody out may fly a free camera (G); any mp_forcecamera above 0 turns it off
 mp_freeroam_speed 12        // metres per second of the free camera

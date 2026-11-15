@@ -8,7 +8,7 @@
 # cannon_interval: 1.9
 # What that interval is multiplied by by the end of the survival phase. [0.05..4.0]
 # cannon_interval_ramp: 0.42
-# How many props one shot puts in the air. [1..24]
+# How many props one shot puts in the air. [1..]
 # cannon_volley: 1
 # What that count is multiplied by by the end of the survival phase, rounded down. [1.0..12.0]
 # cannon_volley_ramp: 2.6

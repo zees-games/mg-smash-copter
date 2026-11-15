@@ -312,7 +312,7 @@ func _build_match() -> void:
 
 	for index in range(config.team_count):
 		teams.append(DotTeam.make(
-			index + 1, team_name(index), team_colour(index)
+			index + 1, DotTeamSet.palette_name(index), DotTeamSet.palette_colour(index)
 		))
 
 	match_node.teams.teams = teams

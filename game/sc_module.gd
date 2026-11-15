@@ -114,8 +114,10 @@ func _game_load() -> DotResult:
 		"Seconds the killcam of a round's last moment plays, added to the intermission (0 for none)",
 		DotConVar.FLAG_ARCHIVE | DotConVar.FLAG_NOTIFY | DotConVar.FLAG_REPLICATED)
 	if killcam != null:
+		# Any length, 0 for none; below 0 is refused with the reason, not clamped.
+		var _v := killcam.with_validator(_at_least.bind("mp_killcam_time", 0.0))
 		killcam.changed.connect(func(_old: String, new_value: String) -> void:
-			world.config.killcam_seconds = clampf(new_value.to_float(), 0.0, 30.0)
+			world.config.killcam_seconds = new_value.to_float()
 			world.apply_intermission())
 
 	# REPLICATED: where the clients' killcam camera sits (0 the killer's eye, 1 behind the killer).
@@ -240,13 +242,13 @@ func _add_tunables(world: ScGame) -> void:
 	# much lean they feel before they walk uphill, and how wide a miss they fire at.
 	_tunable("sc_bot_advance", config.bot_advance_metres,
 		"How far a stand-in walks toward an enemy in the showdown, in metres",
-		func(value: float) -> void: config.bot_advance_metres = clampf(value, 5.0, 400.0))
+		func(value: float) -> void: config.bot_advance_metres = value, 5.0)
 	_tunable("sc_bot_lean_notice", config.bot_lean_notice_degrees,
 		"Degrees of lean a stand-in feels before it walks uphill. Higher is clumsier",
-		func(value: float) -> void: config.bot_lean_notice_degrees = clampf(value, 0.0, 15.0))
+		func(value: float) -> void: config.bot_lean_notice_degrees = value, 0.0)
 	_tunable("sc_bot_spray", config.bot_spray_metres,
 		"Metres of miss a stand-in accepts when it fires. Higher sprays from further",
-		func(value: float) -> void: config.bot_spray_metres = clampf(value, 0.1, 5.0))
+		func(value: float) -> void: config.bot_spray_metres = value, 0.1)
 	_add_round_tunables(world)
 
 
@@ -261,10 +263,10 @@ func _add_round_tunables(world: ScGame) -> void:
 	var teams_cvar := console.find_cvar("sc_teams") if console != null else null
 	if teams_cvar != null:
 		var _v := teams_cvar.with_validator(_teams_fit.bind(config))
-	_tunable("sc_columns", float(config.columns), "Platforms along each row, next round",
-		func(value: float) -> void: config.columns = clampi(int(value), 2, 12))
-	_tunable("sc_rows", float(config.rows), "Rows of platforms, next round",
-		func(value: float) -> void: config.rows = clampi(int(value), 1, 6))
+	_tunable("sc_columns", float(config.columns), "Platforms along each row, next round (2 or more)",
+		func(value: float) -> void: config.columns = int(value), 2.0)
+	_tunable("sc_rows", float(config.rows), "Rows of platforms, next round (1 or more)",
+		func(value: float) -> void: config.rows = int(value), 1.0)
 	_tunable("sc_stiffness", config.platform_stiffness,
 		"How hard a platform pushes itself level. Lower is wobblier",
 		func(value: float) -> void: config.platform_stiffness = value)
@@ -290,8 +292,8 @@ func _add_round_tunables(world: ScGame) -> void:
 		"Whether a layout may carry a chopper",
 		func(value: float) -> void: config.chopper_enabled = value > 0.5)
 	_tunable("sc_weapons", float(config.weapons_granted),
-		"How many weapons a survivor is handed",
-		func(value: float) -> void: config.weapons_granted = clampi(int(value), 1, 8))
+		"How many weapons a survivor is handed (1 or more)",
+		func(value: float) -> void: config.weapons_granted = int(value), 1.0)
 	_tunable("sc_gravity", config.gravity, "Metres per second squared, for everything",
 		func(value: float) -> void: config.gravity = value)
 	_tunable("sc_spectate_camera", float(config.spectate_camera),

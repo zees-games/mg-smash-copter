@@ -2,6 +2,7 @@
   "format": 1,
   "addons": {
     "dot_player_controller": 27,
+    "dot_team": 6,
     "dot_ui": 19
   }
 }
