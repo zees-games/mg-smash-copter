@@ -6,7 +6,7 @@ This is a game to demonstrate the capabilities of the [**Gamespice collection**]
 
 A server holds 24 players by default (`max_players` in `game.yml`).
 
-**This project and the assets under it are COMPLETELY OPEN SOURCE**. You are free to use, modify, and distribute them under the terms of the MIT license. The only thing not open source is the back-end web infrastructure. So if you opt into using your own authentication backend instead of integrating with TMC, you will need to build and integrate your own back-end infrastructure.
+**This project and the assets under it are COMPLETELY OPEN SOURCE**. You are free to use, modify, and distribute them under the terms of the MIT license. The only thing not open source is the back-end web infrastructure. So if you opt into using your own authentication backend instead of integrating with Gamespice, you will need to build and integrate your own back-end infrastructure.
 
 This game was built with Claude Code and has had little testing with real players, so please report anything odd you run into.
 
