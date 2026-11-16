@@ -1,4 +1,4 @@
-extends "headless_run_part6.gd"
+extends "headless_run_delivery_and_art.gd"
 
 ## The flashlight section of the headless_run suite (headless_run.gd extends this): the sky sets it, a player switches it, the out and a config may not.
 

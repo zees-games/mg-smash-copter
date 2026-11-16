@@ -1,4 +1,4 @@
-extends "headless_run_part5.gd"
+extends "headless_run_island_maps.gd"
 
 ## Sections of [code]headless_run.gd[/code], part 6: shared state and helpers are in the base.
 

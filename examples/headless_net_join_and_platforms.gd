@@ -1,4 +1,4 @@
-extends "headless_net_part1.gd"
+extends "headless_net_toys_and_workbench.gd"
 
 ## Sections of [code]headless_net.gd[/code], part 2: shared state and helpers are in the base.
 

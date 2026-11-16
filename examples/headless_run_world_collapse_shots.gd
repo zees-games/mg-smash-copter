@@ -1,4 +1,4 @@
-extends "headless_run_part3.gd"
+extends "headless_run_slopes_menus_weapon_art.gd"
 
 ## Sections of [code]headless_run.gd[/code], part 4: shared state and helpers are in the base.
 

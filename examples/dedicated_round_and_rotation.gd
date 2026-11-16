@@ -1,4 +1,4 @@
-extends "dedicated_part1.gd"
+extends "dedicated_module_and_commands.gd"
 
 ## Sections of [code]dedicated.gd[/code], part 2: shared state and helpers are in the base.
 

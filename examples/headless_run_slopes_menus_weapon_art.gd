@@ -1,4 +1,4 @@
-extends "headless_run_part2.gd"
+extends "headless_run_round_specials_maps.gd"
 
 ## Sections of [code]headless_run.gd[/code], part 3: shared state and helpers are in the base.
 

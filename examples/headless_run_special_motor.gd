@@ -1,4 +1,4 @@
-extends "headless_run_part7.gd"
+extends "headless_run_flashlight_and_aim.gd"
 
 ## The retune section of the headless_run suite (headless_run.gd extends this): a special's tunables reach the motor, not only the controller's field.
 

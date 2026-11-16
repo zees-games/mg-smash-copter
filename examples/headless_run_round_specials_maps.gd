@@ -1,4 +1,4 @@
-extends "headless_run_part1.gd"
+extends "headless_run_config_toys_platforms.gd"
 
 ## Sections of [code]headless_run.gd[/code], part 2: shared state and helpers are in the base.
 

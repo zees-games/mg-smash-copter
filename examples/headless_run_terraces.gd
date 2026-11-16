@@ -1,4 +1,4 @@
-extends "headless_run_part8.gd"
+extends "headless_run_special_motor.gd"
 
 ## The terraces section of the headless_run suite (headless_run.gd extends this): the layout's shape, its climb and what can be seen from it.
 

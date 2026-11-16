@@ -1,4 +1,4 @@
-extends "dedicated_part2.gd"
+extends "dedicated_round_and_rotation.gd"
 
 
 func _ready() -> void:
