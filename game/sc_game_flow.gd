@@ -652,6 +652,14 @@ func _weapon_pool() -> Array[StringName]:
 
 		return out
 
+	out.append_array(default_weapon_pool())
+
+	return out
+
+
+## The weapons a server deals when the configuration names none; the visual QA capture records each of them.
+static func default_weapon_pool() -> Array[StringName]:
+	var out: Array[StringName] = []
 	out.append_array([
 		ZeeWeaponIds.REVOLVER,
 		ZeeWeaponIds.MACHINE_PISTOL,
@@ -672,7 +680,6 @@ func _weapon_pool() -> Array[StringName]:
 		ZeeWeaponIds.HATCHET,
 		ZeeWeaponIds.MALLET,
 	])
-
 	return out
 
 

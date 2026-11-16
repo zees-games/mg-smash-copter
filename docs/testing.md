@@ -27,6 +27,17 @@ A client that predicted nothing passed "a client moves itself and the server agr
 
 `tools/shot.sh` is not `--headless` (the headless display driver renders nothing; a capture is a black PNG). Views: `--view=field`, `lean`, `copter`, `showdown`, `armed` (with `--sc-survival-seconds=10 --seconds=12`), `ring`, `flank`, `dais`, `junction` (`--sc-team-count=3`), `jump`, `bridge`, `beacon`, `blind`, `spectate` (and `--sc-spectate-camera=0`), `walk` (a connected client running: key to motion, corrections, eye speed per frame). Any `--sc-*` is config, so `--sc-layout-ids=<id>` picks a layout. `tools/audio_probe.sh` is the sound half: exit 0 means a speaker moved.
 
+## Visual QA: every figure, weapon, the copter and the props, frame by frame
+
+`tools/visual_qa.gd` (a `DotGameVisualQaCapture`, harness and rules in dot-game's `docs/visual-qa.md`) stages each item alone and records it at 60 fps: the six figure atlases (`person_<atlas>`: idle, walk, run, jump), every weapon a server deals by default (`weapon_<id>`, from `ScGameFlow.default_weapon_pool()`: the view model with arms in first person plus the figure holding it outside; idle, draw, fire, reload), the copter (`copter`: parked idle, and fly with the pilot's eye in the seat) and the cannon props (`prop_<id>`: turntable).
+
+```
+bash addons/dot_game/tools/dot_game_visual_qa.sh --shot tools/visual_qa_shot.sh --fresh all
+bash addons/dot_game/tools/dot_game_visual_qa.sh --shot tools/visual_qa_shot.sh --fresh copter -- --only copter --clips fly
+```
+
+Run it as gamedev (who holds the GPU box key). Output is `screenshots/visual_qa/` (ignored by git): `report.md` first, then the per-item sheets and clips. The numbers (foot slide, floor contact, bone pop) catch only part of it; a change to a figure, weapon, the copter or a prop is judged by looking at its sheets.
+
 ## The deployment
 
 None of the suites reaches a mounted pack; see [delivery.md](delivery.md).

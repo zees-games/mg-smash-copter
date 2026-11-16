@@ -68,6 +68,10 @@ var held: ZeeWorldModel = null
 ## The person, under this node.
 var person: DotHumanoidFigure = null
 
+## How much the weapon in the person's hand is scaled up. The addon's 1.7 left a launcher the
+## length of a forearm in these chibi fists (visual QA); read at [method build].
+var held_scale: float = 2.4
+
 ## dot-player-char API level that has DotHumanoidFigure.frame_delta.
 const FRAME_DELTA_LEVEL := 11
 
@@ -99,6 +103,7 @@ func build(height: float, atlas_path: String, colour: Color) -> void:
 		person.queue_free()
 	person = DotHumanoidFigure.new()
 	person.name = "Person"
+	person.held_scale = held_scale
 	add_child(person)
 	person.build(look, height)
 	from_art = person.from_art
