@@ -14,7 +14,7 @@ extends DotNetBehaviour
 ## [b]A use count, not a use event[/b]: a honk, a switch and a bounce each move
 ## [member net_count] by one, and a client plays the sound when it sees it move, so a joiner and
 ## a lost packet cost nothing but a late sound. Eight bits; it wraps. game-hide-n-seek's
-## HsToyNet, game-playlot's PlaygroundToyNet and game-fatal-contact's arena_toy_net.gd are the same file.
+## HsToyNet, game-playlot's PlaylotToyNet and game-fatal-contact's arena_toy_net.gd are the same file.
 
 var toy: DotPropBody = null
 
