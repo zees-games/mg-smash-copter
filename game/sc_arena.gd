@@ -29,6 +29,9 @@ const THROAT_CLEARANCE := 2.5
 
 
 var _floor_body: StaticBody3D = null
+## [method _field_reach]'s last answer and the [method _reach_key] it was taken for.
+var _reach := 0.0
+var _reach_for := ""
 
 
 func _ready() -> void:
@@ -140,6 +143,29 @@ func _build_floor() -> void:
 ##
 ## The field alone: [method showdown_centre] is placed from it, and a reach including the showdown would chase itself.
 func _field_reach() -> float:
+	# Bots ask for the showdown centre several times a tick, and building every layout to
+	# answer took most of a bot tick. The answer is kept until something it reads changes.
+	var key := _reach_key()
+
+	if key != _reach_for:
+		_reach = _field_reach_now()
+		_reach_for = key
+
+	return _reach
+
+
+## What [method _field_reach_now] reads: the grid's config and every layout that sizes its own field.
+func _reach_key() -> String:
+	var key := "%d|%d|%s|%s|%s" % [config.columns, config.rows, config.column_pitch, config.row_pitch, config.platform_size]
+
+	for id: Variant in ScLayouts.workshop:
+		var layout: ScLayouts.Layout = ScLayouts.workshop[id]
+		key += "|%s:%d:%d" % [layout.id, layout.columns, layout.rows]
+
+	return key
+
+
+func _field_reach_now() -> float:
 	# The widest of every layout, because this arena is built once and the layout changes
 	# under it every round. A reach taken from the configured grid alone puts the showdown
 	# inside the bigger maps' corner towers.
