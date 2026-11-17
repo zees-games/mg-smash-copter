@@ -74,6 +74,10 @@ class Deck extends RefCounted:
 	## Half the platform's side, in metres. Its footprint is a square about [member centre].
 	var half: float = 5.25
 
+	## Half its collider's box on X and Z, written when the box is made (it never changes size);
+	## negative until then. What [method ScPlatforms._footprint] answers without walking to the node.
+	var footprint := Vector2(-1.0, -1.0)
+
 	var state: int = State.STANDING
 
 	## Radians of lean. `x` tips the +X edge down, `y` tips the +Z edge down.

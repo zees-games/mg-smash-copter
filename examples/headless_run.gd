@@ -44,6 +44,7 @@ func _run() -> void:
 	_test_the_weapon_art_is_vendored()
 	await _test_zee_art_root()
 	_test_layouts()
+	_test_footprints_are_kept()
 	await _test_world_builds()
 	await _test_the_toys()
 	await _test_a_platform_leans()

@@ -409,8 +409,18 @@ func _surface_y_of(deck: Deck, x: float, z: float) -> float:
 	return deck.centre.y + deck.sink - (normal.x * offset.x + normal.z * offset.y) / normal.y
 
 
-## Half the platform's footprint on each axis, in metres.
+## Half the platform's footprint on each axis, in metres. The box's size as built, kept on the
+## deck: [method index_at] asks it of every deck for every prop every tick.
 func _footprint(deck: Deck) -> Vector2:
+	if deck.footprint.x >= 0.0:
+		return deck.footprint
+
+	return _footprint_of_collider(deck)
+
+
+## [method _footprint] from the collider node: a deck built without a box, and the twin a suite
+## holds the kept size to.
+func _footprint_of_collider(deck: Deck) -> Vector2:
 	var collider := deck.body.get_node_or_null(^"Collision") as CollisionShape3D
 
 	if collider == null:
