@@ -194,6 +194,13 @@ func _build_bottom(size: int) -> void:
 	# Above the chat box's FULL log, not its first line: ScClient.new_chat caps the box at six rows, so its log tops out 162 pixels off the bottom, under this plate's 170 (56 tall; checked in headless_run).
 	vitals.offset_top = -226.0
 	vitals.offset_bottom = -170.0
+	if DotPlatform.has_touch():
+		# The bottom-left corner is the thumbstick: the health plate goes top left, under the Menu button.
+		vitals.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+		vitals.offset_left = 16.0
+		vitals.offset_right = 16.0 + 340.0
+		vitals.offset_top = 56.0
+		vitals.offset_bottom = 112.0
 	_root.add_child(vitals)
 
 	_build_hand()

@@ -518,6 +518,9 @@ static func new_chat() -> DotGameChatClient:
 	# Six rows, not eight: a full log of eight reached the health number (ScHud puts it 170
 	# pixels off the bottom; six rows end 162 off it). A wrapped vote line takes two.
 	box.window_settings = {"max_lines": 6}
+	# A phone: three narrow rows in the corner, so a log line is not drawn across the thumbstick and the buttons.
+	if DotPlatform.has_touch():
+		box.window_settings = {"max_lines": 3, "width": 200.0, "margin_left": 12.0, "margin_bottom": 8.0}
 	return box
 
 
