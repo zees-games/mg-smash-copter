@@ -53,6 +53,33 @@ func _test_config() -> void:
 	_finished()
 
 
+func _test_footprints_are_kept() -> void:
+	_section("every deck keeps its collider's footprint, to the bit")
+
+	var config := ScConfig.new()
+	var decks := 0
+	var bad := PackedStringArray()
+
+	for layout in ScLayouts.all(config):
+		var platforms := ScPlatforms.new()
+		platforms.config = config
+		add_child(platforms)
+		platforms.build(layout)
+
+		for i in range(platforms.count()):
+			var deck := platforms.deck_at(i)
+			decks += 1
+
+			if deck.footprint.x < 0.0 or platforms._footprint(deck) != platforms._footprint_of_collider(deck):
+				bad.append("%s deck %d: kept %s, collider %s" % [layout.id, i, deck.footprint, platforms._footprint_of_collider(deck)])
+
+		remove_child(platforms)
+		platforms.free()
+
+	_check(decks > 0 and bad.is_empty(), "the kept footprint is the collider's on every layout",
+		"%d decks, %d differ: %s" % [decks, bad.size(), "; ".join(bad.slice(0, 4))])
+
+
 func _test_layouts() -> void:
 	_section("every layout describes a field somebody could play on")
 

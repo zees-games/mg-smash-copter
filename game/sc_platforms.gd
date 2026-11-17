@@ -231,6 +231,7 @@ func _build_deck(
 	var shape := BoxShape3D.new()
 	shape.size = size
 	collider.shape = shape
+	deck.footprint = Vector2(size.x, size.z) * 0.5
 	# Hung below the pivot, so the pivot is the SURFACE rather than the middle of the
 	# slab. Every offset in this file is measured on the plane a player stands on, and a
 	# pivot in the middle of a 0.6 m slab would put every one of them 30 cm out.
