@@ -193,6 +193,8 @@ var view_rules: DotPlayerViewRules = DotPlayerViewRules.new()
 var body_rules: DotPlayerBodyRules = DotPlayerBodyRules.new()
 ## The ambience cvars (`sc_ambient*`): bound by the module (REPLICATED), followed by a client through its link.
 var ambient_rules: DotAmbienceRules = ScAmbience.make_rules()
+## dot-mobile's touch cvars (`sv_mobile_*`, `sv_aim_assist*`, `sv_autofire*`): bound by the module (REPLICATED), followed by a client through its link. Auto-fire and aim assist stay off (their defaults) and the overlay gets no crosshair query, so an operator turning them on changes nothing here yet.
+var mobile_rules: DotMobileRules = DotMobileRules.new()
 
 ## The flashlight's config and binder, made on first use so a suite that builds a game by hand still has one; the layout the lights were last set for.
 var flashlight_config: DotFlashlightConfig = null

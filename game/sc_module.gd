@@ -171,6 +171,8 @@ func _bind_family_cvars(world: ScGame) -> void:
 	# mp_forceview and mp_solidplayers: the client places its camera and predicts its player under them.
 	var _views := world.view_rules.bind_cvars(add_cvar, flags)
 	var _bodies := world.body_rules.bind_cvars(add_cvar, flags)
+	# sv_mobile_*: a client shows its touch overlay under the server's say.
+	var _mobile := world.mobile_rules.bind_cvars(add_cvar, flags)
 	# sc_ambient*: each client plays its own ambience under the server's intent; the directory cvar stays local.
 	var _ambient := world.ambient_rules.bind_cvars(add_cvar, flags, DotConVar.FLAG_ARCHIVE | DotConVar.FLAG_NOTIFY)
 

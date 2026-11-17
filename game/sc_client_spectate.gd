@@ -272,6 +272,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _covered():
 		return
 
+	# The overlay forwards its own touches to the sampler, and the mouse Godot emulates from a touch would turn the view a second time.
+	if _touch != null and _touch.takes(event):
+		return
+
 	if event is InputEventScreenTouch or event is InputEventScreenDrag:
 		_on_screen_touch(event)
 		return
@@ -298,12 +302,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			_sampler.handle_event(event)
 
 
-## The phone's buttons over the HUD, on a touch device only. Fire and alt are the click's two buttons (out, they step who is watched); E asks to board; the arrows step the weapon wheel; TAB holds the scoreboard.
+## The phone's controls over the HUD (dot-mobile), on a touch device only. Fire and alt are the click's two buttons (out, they step who is watched); E asks to board; the arrows step the weapon wheel; TAB holds the scoreboard.
 func _build_touch() -> void:
 	if not DotPlatform.has_touch() or hud == null:
 		return
 	_touch = ScTouch.new()
-	var _built: Variant = _touch.build(self, _active_sampler, {
+	var _built: Variant = _touch.build(self, _active_sampler(), game.mobile_rules, {
 		ScTouch.FIRE: func(down: bool) -> void: _touch_pointer(true, down),
 		ScTouch.ALT: func(down: bool) -> void: _touch_pointer(false, down),
 		ScTouch.USE: func(down: bool) -> void:
@@ -321,7 +325,13 @@ func _build_touch() -> void:
 		ScTouch.CHAT: func(down: bool) -> void:
 			if down and chat != null and chat.window != null and not _covered():
 				chat.window.call(&"open"),
-	}, platform)
+	}, _touch_ignores, platform)
+
+
+## Every frame: the overlay follows the sampler in use and rests while a menu, the console, typing or the load gate has the screen.
+func _sync_touch() -> void:
+	if _touch != null:
+		_touch.sync(_active_sampler(), _covered() or platform.is_input_blocked(), not is_spectating() and not _covered())
 
 
 func _action_event(action: StringName) -> InputEventAction:
@@ -363,7 +373,8 @@ func _active_sampler() -> DotFpsSampler:
 
 
 func _touch_ignores(position: Vector2) -> bool:
-	return _touch != null and _touch.buttons != null and _touch.buttons.contains_point(position)
+	var menu: Button = settings.menu.menu_button if settings != null and settings.menu != null else null
+	return menu != null and menu.is_visible_in_tree() and menu.get_global_rect().has_point(position)
 
 
 ## A finger on the look or move half goes to the touch sampler.

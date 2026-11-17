@@ -218,6 +218,7 @@ func _follow_server_cvars() -> void:
 		var _view := game.view_rules.follow_cvars(link)
 		var _solid := game.body_rules.follow_cvars(link)
 		var _ambient := game.ambient_rules.follow_cvars(link)
+		var _mobile := game.mobile_rules.follow_cvars(link)
 		if link.has_method(&"replicated_cvar"):
 			_on_killcam_cvar("mp_killcam_time", String(link.call(&"replicated_cvar", "mp_killcam_time", "")))
 			_on_killcam_cvar("mp_killview_camera", String(link.call(&"replicated_cvar", "mp_killview_camera", "")))
@@ -640,6 +641,7 @@ func _on_hit(point: Vector3, killed: bool, headshot: bool) -> void:
 
 
 func _process(delta: float) -> void:
+	_sync_touch()
 	var _shown := present_frame(
 		net, game, player, not third_person, delta, -1.0, _watched_through_eyes()
 	)

@@ -1,8 +1,9 @@
 extends RefCounted
 
-## The on-screen buttons a phone needs for this game: fire and alt-fire (in the chopper's seat, the same two),
+## The phone's controls: dot-mobile's stick, drag-look and buttons over the HUD, driving the client's own [DotFpsTouchSampler].
+## The buttons are the ones this game always had (dot-game's fps preset, the use button labelled E): fire and alt-fire (in the chopper's seat, the same two),
 ## jump/up, crouch/down, get in or out of the chopper, reload, the showdown's weapon arrows, the held scoreboard and chat.
-## The look and move halves of the screen are [DotFpsTouchSampler]'s; [member buttons] tells it where a button is.
+## Auto-fire and aim assist are dot-mobile's and stay off: this is a team game of platforms where a gun is only the last round's, so the overlay is given no crosshair query.
 
 const FIRE := DotGameTouchLayout.FIRE
 const ALT := DotGameTouchLayout.ALT
@@ -23,34 +24,81 @@ static func touch_layout() -> DotGameTouchLayout:
 		return DotGameTouchLayout.custom()
 	return res.value
 
-var buttons: DotTouchButtons = null
+
+## The preset's rows for [DotMobileControls.setup]: jump and crouch hold their command bit on the sampler.
+static func layout() -> Array[Dictionary]:
+	var rows := touch_layout().buttons()
+	for row in rows:
+		if row["id"] == JUMP:
+			row["hold"] = DotFpsCommand.BUTTON_JUMP
+		elif row["id"] == CROUCH:
+			row["hold"] = DotFpsCommand.BUTTON_CROUCH
+	return rows
 
 
-## Builds the buttons on a CanvasLayer under [param parent] (a HUD layer is not a Control, and the buttons need a size) and routes them: jump and crouch to the sampler (read through the callable, the active one changes on JOIN), the rest to [param handlers], button id to a Callable taking `down: bool`.
-func build(parent: Node, sampler_fn: Callable, handlers: Dictionary, client: Object = null) -> DotTouchButtons:
-	buttons = DotTouchButtons.new()
-	buttons.name = "TouchButtons"
-	buttons.set_anchors_preset(Control.PRESET_FULL_RECT)
-	buttons.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	touch_layout().apply(buttons, client)
+var controls: DotMobileControls = null
+## dot-ui's buttons inside the overlay, for the shell's DPI fit.
+var buttons: DotTouchButtons:
+	get:
+		return controls.buttons if controls != null else null
+
+var _handlers: Dictionary = {}
+
+
+## Builds the overlay on a CanvasLayer under [param parent] (a HUD layer is not a Control, and the overlay needs a size), following [param rules] (the server's). [param handlers] is button id to a Callable taking `down: bool`, for every button but jump and crouch (the sampler's). [param ignore_fn] keeps a finger on the menu button off the sticks. [param client] fits the buttons to the screen when it can.
+func build(parent: Node, sampler: DotFpsSampler, rules: DotMobileRules, handlers: Dictionary, ignore_fn: Callable = Callable(), client: Object = null) -> DotMobileControls:
+	_handlers = handlers
+	controls = DotMobileControls.new()
+	controls.name = "TouchControls"
+	controls.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if rules != null:
+		controls.rules = rules
+	if ignore_fn.is_valid():
+		controls.ignore_fn = ignore_fn
+	controls.setup(sampler, layout())
+	controls.button_pressed.connect(func(id: StringName) -> void: _route(id, true))
+	controls.button_released.connect(func(id: StringName) -> void: _route(id, false))
 	var layer := CanvasLayer.new()
 	layer.name = "TouchLayer"
-	layer.add_child(buttons)
+	layer.add_child(controls)
 	parent.add_child(layer)
-	buttons.button_down.connect(func(id: StringName) -> void: route(id, true, sampler_fn, handlers))
-	buttons.button_up.connect(func(id: StringName) -> void: route(id, false, sampler_fn, handlers))
-	return buttons
+	if client != null and client.has_method(&"fit_touch_buttons") and controls.buttons != null:
+		client.call(&"fit_touch_buttons", controls.buttons, layout())
+	return controls
 
 
-static func route(id: StringName, down: bool, sampler_fn: Callable, handlers: Dictionary) -> void:
-	if id == JUMP or id == CROUCH:
-		var sampler: Variant = sampler_fn.call() if sampler_fn.is_valid() else null
-		if sampler != null and sampler.has_method(&"hold"):
-			var bit := DotFpsCommand.BUTTON_JUMP if id == JUMP else DotFpsCommand.BUTTON_CROUCH
-			sampler.call(&"hold", bit, down)
+func _route(id: StringName, down: bool) -> void:
+	if _handlers.has(id):
+		(_handlers[id] as Callable).call(down)
+
+
+## Called every frame by the client: follows the sampler in use (the player's own offline, the client's online), and pauses under a menu, the console, typing or the load gate.
+func sync(sampler: DotFpsSampler, busy: bool, live: bool) -> void:
+	if controls == null:
 		return
-	if handlers.has(id):
-		(handlers[id] as Callable).call(down)
+	if sampler != null and sampler != controls.sampler:
+		controls.setup(sampler, layout())
+	controls.paused = busy
+	controls.live_fn = func() -> bool: return live
+
+
+## True when the overlay forwards [param event] itself, or [param event] is the mouse Godot emulates from a touch, which would turn the view a second time.
+func takes(event: InputEvent) -> bool:
+	if controls == null or not controls.touch:
+		return false
+	return controls.takes(event) or (event is InputEventMouse and event.device == InputEvent.DEVICE_ID_EMULATION)
+
+
+func active() -> bool:
+	return controls != null and controls.touch
+
+
+func is_held(id: StringName) -> bool:
+	return controls != null and controls.is_held(id)
+
+
+func describe() -> Dictionary:
+	return controls.describe() if controls != null else {"built": false}
 
 
 ## A touch sampler where a phone is, the keyboard one otherwise; [param ignore_fn] keeps a button's finger off the stick (it may be assigned later); the caller registers the actions.
