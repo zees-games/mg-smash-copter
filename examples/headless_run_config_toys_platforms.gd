@@ -78,6 +78,7 @@ func _test_footprints_are_kept() -> void:
 
 	_check(decks > 0 and bad.is_empty(), "the kept footprint is the collider's on every layout",
 		"%d decks, %d differ: %s" % [decks, bad.size(), "; ".join(bad.slice(0, 4))])
+	_finished()
 
 
 func _test_layouts() -> void:

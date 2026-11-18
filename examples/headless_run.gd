@@ -19,7 +19,7 @@ extends "headless_run_terraces.gd"
 ## `set_physics_process(false)` goes on first and every section advances the world itself.
 
 ## Sections entered, against sections that ran to their last line.
-const SECTIONS := 54
+const SECTIONS := 55
 
 ## And the total this counter cannot be.
 ##
@@ -27,7 +27,7 @@ const SECTIONS := 54
 ## checks that already ran still print ok, the ones after it never happen, and the section
 ## counter is satisfied because the section announced itself on the way in. dot-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
-const CHECKS := 441
+const CHECKS := 442
 
 
 func _ready() -> void:
