@@ -31,7 +31,7 @@ const THROAT_CLEARANCE := 2.5
 var _floor_body: StaticBody3D = null
 ## [method _field_reach]'s last answer and the [method _reach_key] it was taken for.
 var _reach := 0.0
-var _reach_for := ""
+var _reach_for: Array = []
 
 
 func _ready() -> void:
@@ -155,12 +155,15 @@ func _field_reach() -> float:
 
 
 ## What [method _field_reach_now] reads: the grid's config and every layout that sizes its own field.
-func _reach_key() -> String:
-	var key := "%d|%d|%s|%s|%s" % [config.columns, config.rows, config.column_pitch, config.row_pitch, config.platform_size]
+##
+## The values themselves rather than a string of them: bots ask several times a tick, and formatting the floats cost
+## more than the answer it guarded.
+func _reach_key() -> Array:
+	var key: Array = [config.columns, config.rows, config.column_pitch, config.row_pitch, config.platform_size]
 
 	for id: Variant in ScLayouts.workshop:
 		var layout: ScLayouts.Layout = ScLayouts.workshop[id]
-		key += "|%s:%d:%d" % [layout.id, layout.columns, layout.rows]
+		key.append_array([layout.id, layout.columns, layout.rows])
 
 	return key
 
