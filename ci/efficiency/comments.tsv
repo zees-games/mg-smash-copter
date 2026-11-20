@@ -32,7 +32,6 @@ props/sc_copter_body.gd::long_block	4
 tools/audio_probe.gd::long_block	2
 tools/bot_difficulty.gd::long_block	1
 tools/camera_check.gd::long_block	3
-tools/load_probe.gd::long_block	1
 tools/net_shot.gd::history	1
 tools/net_shot.gd::long_block	2
 tools/render_cover.gd::long_block	1

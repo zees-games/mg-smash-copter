@@ -3,5 +3,4 @@
 game/sc_hud.gd::_process::string_build	1
 tools/audio_probe.gd::_build::string_build	4
 tools/audio_probe.gd::_sound::string_build	3
-tools/load_probe.gd::_process::string_build	2
 tools/net_shot.gd::_flush::duplicate	2
