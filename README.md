@@ -1,3 +1,5 @@
+![Smash Copter banner](https://raw.githubusercontent.com/zees-games/mg-smash-copter/main/docs/banner.png)
+
 This is a game to demonstrate the capabilities of the [**GameSpice collection**](https://gamespice.net) built on-top of [Godot 4](https://godotengine.org/) and [**GameSpice**](https://gamespice.net). In this 3D game, players spawn on top of platforms balanced on single pillars while a cannon in the middle shoots props up into the air that may knock them off. Players must survive in teams or individually to win (depending on server setup). This is heavily inspired off of a classic Counter-Strike: Source MiniGames map called [**mg_3k_smash_lego_copter**](https://gamebanana.com/mods/127650) ([gameplay video](https://www.youtube.com/watch?v=xZED7S1dfBY)).
 
 ![Preview](https://github.com/zees-games/mg-smash-copter/blob/main/images/preview.gif?raw=true)
