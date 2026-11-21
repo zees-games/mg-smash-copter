@@ -81,9 +81,9 @@ func _wire_commands() -> void:
 		sent.move.move = Vector2(0.0, 1.0)
 		sent.move.set_button(ScNetCommand.BUTTON_FIRE, i == 2)
 		sent_commands.append(sent)
-	var writer := DotNetWriter.new()
-	DotNetInput.write_batch(writer, sent_commands)
-	var got := DotNetInput.read_batch(writer.to_reader(), func() -> DotNetInput: return ScNetCommand.new())
+	var writer := GSNetWriter.new()
+	GSNetInput.write_batch(writer, sent_commands)
+	var got := GSNetInput.read_batch(writer.to_reader(), func() -> GSNetInput: return ScNetCommand.new())
 	var round_trip := got.size() == 3
 	for i in range(mini(got.size(), 3)):
 		var back_cmd := got[i] as ScNetCommand
@@ -91,10 +91,10 @@ func _wire_commands() -> void:
 			and back_cmd.move.is_pressed(ScNetCommand.BUTTON_FIRE) == (i == 2) and absf(back_cmd.move.yaw - 10.0 * float(i)) < 1.0
 	_check(round_trip, "a batch of commands keeps each one's aim bit, slot and buttons", "%d back" % got.size())
 	var plain := ScNetCommand.new()
-	var bits_plain := DotNetWriter.new()
+	var bits_plain := GSNetWriter.new()
 	plain._write(bits_plain)
 	plain.aim = true
-	var bits_aim := DotNetWriter.new()
+	var bits_aim := GSNetWriter.new()
 	plain._write(bits_aim)
 	_check(bits_plain.to_bytes().size() == bits_aim.to_bytes().size() and plain._equals(plain) and not plain._equals(ScNetCommand.new()),
 		"the bit costs no byte, and a command with it is not equal to one without", "%d bytes" % bits_aim.to_bytes().size())
@@ -115,8 +115,8 @@ func _wire_join_and_deaths() -> void:
 	face.set_part(ScAvatars.SLOT_SKIN, &"skin_k")
 	var faced := ScEvents.read_join(_reader(ScEvents.write_join(SESSION, 5, "Ada", 4, face)))
 	_check(
-		bool(faced["ok"]) and faced["avatar"] is DotAvatar
-			and (faced["avatar"] as DotAvatar).digest() == face.digest()
+		bool(faced["ok"]) and faced["avatar"] is GSAvatar
+			and (faced["avatar"] as GSAvatar).digest() == face.digest()
 			and int(faced["team"]) == 4,
 		"and a face, after the side rather than in front of it"
 	)
@@ -169,7 +169,7 @@ func _wire_props_and_seats() -> void:
 	_check(bool(copter["ok"]) and bool(copter["vehicle"]), "and a chopper says it is one")
 
 	var gone := ScEvents.read_prop_gone(_reader(
-		ScEvents.write_prop_gone(3, DotPropSpawner.REASON_CLEANUP)
+		ScEvents.write_prop_gone(3, GSPropSpawner.REASON_CLEANUP)
 	))
 	_check(bool(gone["ok"]) and int(gone["net_id"]) == 3, "a removal names what went")
 
@@ -255,20 +255,20 @@ func _wire_spectate_and_impact() -> void:
 	# `ScEvents.write_spectate`. A mirror without it puts the death camera in the cannon.
 	var drop := Vector3(-12.25, 44.0, 30.5)
 	var view := ScEvents.read_spectate(_reader(ScEvents.write_spectate(
-		SESSION, DotSpectatorView.Mode.DEATH_CAM, OTHER_SESSION, 0, drop
+		SESSION, GSSpectatorView.Mode.DEATH_CAM, OTHER_SESSION, 0, drop
 	)))
 	_check(
 		bool(view["ok"]) and int(view["viewer"]) == SESSION
-			and int(view["mode"]) == DotSpectatorView.Mode.DEATH_CAM
+			and int(view["mode"]) == GSSpectatorView.Mode.DEATH_CAM
 			and int(view["target"]) == OTHER_SESSION and int(view["killer"]) == 0
 			and (view["death_at"] as Vector3).distance_to(drop) < 0.01,
 		"a spectator's view decodes, with where they went down"
 	)
 
 	var roaming := ScEvents.read_spectate(_reader(ScEvents.write_spectate(
-		SESSION, DotSpectatorView.Mode.ROAMING, 0, 0, drop
+		SESSION, GSSpectatorView.Mode.ROAMING, 0, 0, drop
 	)))
-	_check(bool(roaming["ok"]) and int(roaming["mode"]) == DotSpectatorView.Mode.ROAMING
+	_check(bool(roaming["ok"]) and int(roaming["mode"]) == GSSpectatorView.Mode.ROAMING
 		and int(roaming["target"]) == 0, "a roaming view decodes with no target")
 	var ask := _reader(ScEvents.write_ask_roam())
 	_check(ask.read_uint(8) == 0 and ask.ok(), "and the roam request is a one-byte ask")
@@ -292,7 +292,7 @@ func _wire_spectate_and_impact() -> void:
 	_finished()
 func _check_wire_limits() -> void:
 		# A reader past its end returns plausible zeros: exhaustion was not sticky in dot-net, so a decoder skipping the `ok` check read a believable value after the overrun.
-	var truncated := ScEvents.read_hello(DotNetReader.new(PackedByteArray([1, 2])))
+	var truncated := ScEvents.read_hello(GSNetReader.new(PackedByteArray([1, 2])))
 	_check(not bool(truncated["ok"]), "and a truncated message says so rather than guessing")
 
 	# A kind goes out in a fixed field the writer masks without a word, so one past it aliases a
@@ -302,7 +302,7 @@ func _check_wire_limits() -> void:
 	_check(ScRequest.fits(), "every request kind fits the request's kind field",
 		"%d kinds in %d bits" % [ScEvents.Ask.size(), ScRequest.KIND_BITS])
 	_check(ScEvents.chat_kinds_fit(), "every chat kind fits the chat line's kind field",
-		"%d kinds in %d bits" % [DotChatMessage.KIND_NAMES.size(), ScEvents.CHAT_KIND_BITS])
+		"%d kinds in %d bits" % [GSChatMessage.KIND_NAMES.size(), ScEvents.CHAT_KIND_BITS])
 
 
 func _test_a_client_joins() -> void:
@@ -604,7 +604,7 @@ func _test_moving() -> void:
 
 	var started := mine.controller.state.position
 
-	var forward := DotFpsCommand.new()
+	var forward := GSFpsCommand.new()
 	forward.move = Vector2(0.0, 1.0)
 	forward.yaw = 0.0
 
@@ -627,7 +627,7 @@ func _test_moving() -> void:
 
 	# A game button, all the way across. The fire button is what the showdown is played with
 	# and it rides in the movement command rather than in a request, because it is held.
-	var firing := DotFpsCommand.new()
+	var firing := GSFpsCommand.new()
 	firing.set_button(ScNetCommand.BUTTON_FIRE, true)
 	await _steps(4, firing)
 
@@ -638,7 +638,7 @@ func _test_moving() -> void:
 
 	_check(
 		behaviour != null and (behaviour as Node).get("last_move") != null
-			and (behaviour.get("last_move") as DotFpsCommand).is_pressed(ScNetCommand.BUTTON_FIRE),
+			and (behaviour.get("last_move") as GSFpsCommand).is_pressed(ScNetCommand.BUTTON_FIRE),
 		"a button the client holds reaches the server"
 	)
 

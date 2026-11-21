@@ -26,14 +26,14 @@ const TUMBLE := 3.4
 @export var config: ScConfig = null
 
 ## Where props go. The world's own spawner, not a player's.
-var props: DotPropSpawner = null
+var props: GSPropSpawner = null
 
 var platforms: ScPlatforms = null
 var arena: ScArena = null
 
 ## The stream every one of this cannon's decisions is drawn from.
 ## A named stream rather than the global generator, which makes a round reproducible: two servers on one seed fire the same props at the same platforms at the same moments.
-var stream: DotRandomStream = null
+var stream: GSRandomStream = null
 
 ## Seconds until the next shot.
 var _cooldown: float = 0.0
@@ -122,13 +122,13 @@ func fire(elapsed: float, active: ScSpecials.Active) -> int:
 	return sent
 
 
-func _launch_one(elapsed: float, active: ScSpecials.Active) -> DotPropInstance:
+func _launch_one(elapsed: float, active: ScSpecials.Active) -> GSPropInstance:
 	if props.world_count() >= config.prop_budget:
 		# Quietly, on purpose: the budget is a ceiling on the physics, not a game rule, so a low one gives a quieter cannon rather than a warning a second.
 		# It is said once, on the edge, at INFO, for whoever tuned the budget.
 		if not _held_for_budget:
 			_held_for_budget = true
-			DotLog.info(CHANNEL, "the cannon is holding fire at the prop budget", {
+			GSLog.info(CHANNEL, "the cannon is holding fire at the prop budget", {
 				"budget": config.prop_budget, "shots": shots_fired,
 			})
 
@@ -136,7 +136,7 @@ func _launch_one(elapsed: float, active: ScSpecials.Active) -> DotPropInstance:
 
 	if _held_for_budget:
 		_held_for_budget = false
-		DotLog.debug(CHANNEL, "the cannon is firing again", {"in_the_world": props.world_count()})
+		GSLog.debug(CHANNEL, "the cannon is firing again", {"in_the_world": props.world_count()})
 
 	var tier := _pick_tier(elapsed, active)
 	var prop_id := _pick_prop(tier)
@@ -157,7 +157,7 @@ func _launch_one(elapsed: float, active: ScSpecials.Active) -> DotPropInstance:
 
 ## Drops a prop from a point, with whatever the dropper was doing.
 ## What the chopper's trigger does. It goes through the cannon so a dropped crate is on the same clock, counts against the same budget and replicates by the same path as a fired one.
-func drop(at: Vector3, inherited: Vector3, tier: int) -> DotPropInstance:
+func drop(at: Vector3, inherited: Vector3, tier: int) -> GSPropInstance:
 	if props == null or stream == null:
 		return null
 
@@ -175,7 +175,7 @@ func drop(at: Vector3, inherited: Vector3, tier: int) -> DotPropInstance:
 
 func _put_up(
 	prop_id: StringName, from: Vector3, velocity: Vector3, tier: int
-) -> DotPropInstance:
+) -> GSPropInstance:
 	var spin := Basis.from_euler(Vector3(
 		stream.next_range_f(-PI, PI),
 		stream.next_range_f(-PI, PI),
@@ -189,7 +189,7 @@ func _put_up(
 		# and what this adds is that the cannon is the thing going quiet because of it.
 		if not _said_refused:
 			_said_refused = true
-			DotLog.warn(CHANNEL, "the prop spawner refused a shot; the cannon fires what it can", {
+			GSLog.warn(CHANNEL, "the prop spawner refused a shot; the cannon fires what it can", {
 				"prop": String(prop_id), "tier": tier,
 			})
 
@@ -272,7 +272,7 @@ func _say_nothing_to_fire(tier: int) -> void:
 		return
 
 	_said_nothing_to_fire = true
-	DotLog.warn(CHANNEL, "the prop catalogue has nothing the cannon can fire", {
+	GSLog.warn(CHANNEL, "the prop catalogue has nothing the cannon can fire", {
 		"tier": tier, "catalogue": props.catalogue != null if props != null else false,
 	})
 
@@ -344,7 +344,7 @@ func _age_props(delta: float) -> void:
 
 	for instance_id in expired:
 		_ages.erase(instance_id)
-		props.remove(instance_id, DotPropSpawner.REASON_CLEANUP)
+		props.remove(instance_id, GSPropSpawner.REASON_CLEANUP)
 
 
 ## Forgets a prop that has gone for some other reason: broken, or the round ending.

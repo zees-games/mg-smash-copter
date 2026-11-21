@@ -4,7 +4,7 @@
 
 ## Reach: a jump is measured, not sized by eye
 
-`ScPlayer.jump_reach(config, rise)` is `tunables_for(config, active).jump_reach(rise)`, dot-player-controller's `DotFpsTunables.jump_reach`, so the game keeps no copy of the arithmetic. **The rise is never zero on this map**: a runner leans the platform toward the edge they run at, so the lip has dropped by the time they reach it (about 0.3 m mid-edge, 0.8 m at a corner, against a 1.15 m apex). The suite steps `ScPlatforms`' own model along the run to measure that dip for every route; it is most of the difference between a jump and a wall.
+`ScPlayer.jump_reach(config, rise)` is `tunables_for(config, active).jump_reach(rise)`, dot-player-controller's `GSFpsTunables.jump_reach`, so the game keeps no copy of the arithmetic. **The rise is never zero on this map**: a runner leans the platform toward the edge they run at, so the lip has dropped by the time they reach it (about 0.3 m mid-edge, 0.8 m at a corner, against a 1.15 m apex). The suite steps `ScPlatforms`' own model along the run to measure that dip for every route; it is most of the difference between a jump and a wall.
 
 `Layout.jumps` declares which KINDS of jump a layout means (`ALONG_ROWS`, `ACROSS_HOLES`, `ACROSS_ROWS`, `DIAGONALS`); `ScLayouts.pairs()` turns kinds into pairs off the cell list; `ScPlatforms.clear_air()` measures the air along the runner's line. **The sweep is both ways**: a declared jump must be inside the reach, and an undeclared one outside even a flat running jump, because "nobody is crossing" and "every platform stands alone" are promises too. `ScLayouts.islands()` counts what a player can get to, per cell, off the built field (bridges plus declared jumps).
 
@@ -46,4 +46,4 @@ A body marked with the meta `ScPlayer.META_CARRIER` carries whoever stands on it
 
 ## The map list
 
-`ScLayouts.catalogue()` is a `DotMapCatalogue` of the allowed layouts; `ScMapSession` (a `DotMapSession`) applies a change through `world.change_layout_now` with no scene swap, and `ScModule._build_maps` wires dot-map's commands to it. Link the addon with `addons/dot_map`.
+`ScLayouts.catalogue()` is a `GSMapCatalogue` of the allowed layouts; `ScMapSession` (a `GSMapSession`) applies a change through `world.change_layout_now` with no scene swap, and `ScModule._build_maps` wires dot-map's commands to it. Link the addon with `addons/dot_map`.

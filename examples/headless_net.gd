@@ -10,7 +10,7 @@ const CHECKS := 273
 
 
 func _ready() -> void:
-	DotLog.set_level(DotLog.Level.ERROR)
+	GSLog.set_level(GSLog.Level.ERROR)
 	_run.call_deferred()
 
 
@@ -131,7 +131,7 @@ func _attach_bridges(server_side: Node, client_side: Node) -> void:
 		false, &"client", CLIENT_PEER, client_side, _client_game.tick_rate
 	)
 		# This harness stamps every command itself (`_tick + INPUT_LEAD`), so the client must not ask for dot-net's input-lead report or its clock runs away from commands it never stamped. By the constant map, so it parses against an older dot-net.
-	var lead_bit := int((DotNetMessageRegistry as Script).get_script_constant_map().get("FEATURE_INPUT_LEAD", 0))
+	var lead_bit := int((GSNetMessageRegistry as Script).get_script_constant_map().get("FEATURE_INPUT_LEAD", 0))
 	_client_net.messages.features &= ~lead_bit
 
 	_server_bridge = ScNetBridge.new()
@@ -155,7 +155,7 @@ func _attach_bridges(server_side: Node, client_side: Node) -> void:
 	add_child(wrong)
 	var refused := wrong.attach(_client_game, _server_net)
 	_check(
-		not refused.ok and refused.error.code == DotError.CODE_STATE,
+		not refused.ok and refused.error.code == GSError.CODE_STATE,
 		"a client world on a server manager is refused"
 	)
 	wrong.queue_free()
@@ -174,12 +174,12 @@ func _open_links(server_side: Node, client_side: Node) -> void:
 
 		# Two builds, not one: each end registers an OPTIONAL message type the other has never heard of (a release ahead each way), and the rest of the suite plays over that.
 	_server_net.messages.register(
-		SkewServerNews.NAME, SkewServerNews, DotNetMessage.Delivery.RELIABLE,
-		DotNetMessage.Direction.TO_CLIENT, false
+		SkewServerNews.NAME, SkewServerNews, GSNetMessage.Delivery.RELIABLE,
+		GSNetMessage.Direction.TO_CLIENT, false
 	)
 	_client_net.messages.register(
-		SkewClientNews.NAME, SkewClientNews, DotNetMessage.Delivery.RELIABLE,
-		DotNetMessage.Direction.TO_SERVER, false
+		SkewClientNews.NAME, SkewClientNews, GSNetMessage.Delivery.RELIABLE,
+		GSNetMessage.Direction.TO_SERVER, false
 	)
 
 	_server_net.messages.seal()
@@ -192,7 +192,7 @@ func _open_links(server_side: Node, client_side: Node) -> void:
 	_server_bridge.link.loopback = _on_server_send
 	_client_bridge.link.loopback = _on_client_send
 
-	# What a real client wires to `DotClientLink.ping_ms()`: with no RTT sample the clock believes
+	# What a real client wires to `GSClientLink.ping_ms()`: with no RTT sample the clock believes
 	# the link is instant and every stamped command arrives late.
 	_client_bridge.rtt_source = func() -> float:
 		return 40.0
@@ -275,14 +275,14 @@ func _test_two_builds_share_the_wire() -> void:
 	var client_skipped := _client_net.messages.skipped
 	var news := SkewServerNews.new()
 	news.headline = "only the newer server has this"
-	var nw := DotNetWriter.new()
+	var nw := GSNetWriter.new()
 	_server_net.messages.encode(news, nw)
 	_server_bridge.link.send_event(CLIENT_PEER, nw.to_bytes())
 
 	var server_skipped := _server_net.messages.skipped
 	var mood := SkewClientNews.new()
 	mood.mood = 3
-	var mw := DotNetWriter.new()
+	var mw := GSNetWriter.new()
 	_client_net.messages.encode(mood, mw)
 	_client_bridge.link.send_request(mw.to_bytes())
 
@@ -310,15 +310,15 @@ func _test_two_builds_share_the_wire() -> void:
 
 	# A client one release ahead that REQUIRES something this server does not have.
 	var refusals: Array = []
-	var on_refused := func(peer: int, err: DotError) -> void: refusals.append([peer, err])
+	var on_refused := func(peer: int, err: GSError) -> void: refusals.append([peer, err])
 	_server_net.peer_schema_refused.connect(on_refused)
 
-	var strict := DotNetMessageRegistry.new()
+	var strict := GSNetMessageRegistry.new()
 	strict.register(&"skew.vital", SkewVital)
 	strict.seal()
 	var refused := _server_net.receive(strict.schema_payload(), 99)
 	_check(
-		not refused.ok and refused.code() == DotError.CODE_VERSION,
+		not refused.ok and refused.code() == GSError.CODE_VERSION,
 		"a client that cannot play with this game's messages is refused as a version problem"
 	)
 	_check(
@@ -334,7 +334,7 @@ func _test_two_builds_share_the_wire() -> void:
 
 ## The sentence a refused client is given, and what it names.
 func _check_refusal_text(refusals: Array) -> void:
-	var said: DotError = refusals[0][1] if refusals.size() == 1 else null
+	var said: GSError = refusals[0][1] if refusals.size() == 1 else null
 	_check(
 		said != null and said.message == "This server's game needs a newer game client.",
 		"with a sentence a player can act on",
@@ -348,44 +348,44 @@ func _check_refusal_text(refusals: Array) -> void:
 
 
 ## A type only the server's build has, which a client can do without.
-class SkewServerNews extends DotNetMessage:
+class SkewServerNews extends GSNetMessage:
 	const NAME := &"skew.server_news"
 	var headline: String = ""
 
 	func _type_name() -> StringName:
 		return NAME
 
-	func _write(w: DotNetWriter) -> void:
+	func _write(w: GSNetWriter) -> void:
 		w.write_string(headline, 64)
 
-	func _read(r: DotNetReader) -> void:
+	func _read(r: GSNetReader) -> void:
 		headline = r.read_string(64)
 
 
 ## A type only the client's build has, which a server can do without.
-class SkewClientNews extends DotNetMessage:
+class SkewClientNews extends GSNetMessage:
 	const NAME := &"skew.client_news"
 	var mood: int = 0
 
 	func _type_name() -> StringName:
 		return NAME
 
-	func _write(w: DotNetWriter) -> void:
+	func _write(w: GSNetWriter) -> void:
 		w.write_uint(mood, 8)
 
-	func _read(r: DotNetReader) -> void:
+	func _read(r: GSNetReader) -> void:
 		mood = r.read_uint(8)
 
 
 ## A type a newer client REQUIRES, which this server has never heard of.
-class SkewVital extends DotNetMessage:
+class SkewVital extends GSNetMessage:
 	func _type_name() -> StringName:
 		return &"skew.vital"
 
-	func _write(_w: DotNetWriter) -> void:
+	func _write(_w: GSNetWriter) -> void:
 		pass
 
-	func _read(_r: DotNetReader) -> void:
+	func _read(_r: GSNetReader) -> void:
 		pass
 
 

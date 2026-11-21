@@ -50,10 +50,10 @@ const PER_SIDE := 2
 var _rounds := 20
 var _full := false
 var _weapons: PackedStringArray = PackedStringArray(["rifle"])
-var _presets: PackedStringArray = PackedStringArray(DotBotProfile.PRESETS)
+var _presets: PackedStringArray = PackedStringArray(GSBotProfile.PRESETS)
 
 var _game: ScGame = null
-var _reference: DotBotSettings = null
+var _reference: GSBotSettings = null
 var _tally: Dictionary = {}
 var _rounds_done := 0
 var _reactions: Array[float] = []
@@ -71,7 +71,7 @@ func _ready() -> void:
 		elif args[i] == "--weapons":
 			_weapons = args[i + 1].split(",", false)
 
-	_reference = DotBotSettings.new()
+	_reference = GSBotSettings.new()
 	var _medium := _reference.set_difficulty("medium")
 	for field: String in REFERENCE_PROFILE:
 		var _set := _reference.set_value(field, str(REFERENCE_PROFILE[field]))
@@ -93,7 +93,7 @@ func _run() -> void:
 		var reaction := _median(result.reactions)
 		var line := "%-9s rounds won %d-%d (%d drawn)  shot kills %d-%d (K/D %.2f)  fell %d-%d  first shot %.2f s after sight (bot_reaction %.2f, %d engagements)" % [
 			preset, result.won, result.lost, result.drawn, result.kills, result.deaths_shot,
-			kd, result.fell, result.ref_fell, reaction, DotBotProfile.preset_value(preset, "reaction"), (result.reactions as Array).size(),
+			kd, result.fell, result.ref_fell, reaction, GSBotProfile.preset_value(preset, "reaction"), (result.reactions as Array).size(),
 		]
 		print(line)
 		lines.append(line)
@@ -128,7 +128,7 @@ func _play(preset: String) -> Dictionary:
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 
-	var _set := DotBotSettings.of(_game).set_difficulty(preset)
+	var _set := GSBotSettings.of(_game).set_difficulty(preset)
 	_tally = {"won": 0, "lost": 0, "drawn": 0, "kills": 0, "deaths_shot": 0, "fell": 0, "ref_fell": 0, "reactions": []}
 	_rounds_done = 0
 	_seen_shot.clear()
@@ -138,7 +138,7 @@ func _play(preset: String) -> Dictionary:
 		mine.is_bot = true
 		var theirs := _game.add_player(StringName("r%d" % i), "reference %d" % i, REFERENCE_SIDE)
 		theirs.is_bot = true
-		var _pinned := DotBotSettings.attach(theirs, _reference)
+		var _pinned := GSBotSettings.attach(theirs, _reference)
 
 	_game.round_over.connect(_on_round_over)
 	_game.player_died.connect(_on_died)
@@ -194,11 +194,11 @@ func _on_died(player_id: StringName, by: StringName, why: StringName, _weapon_id
 ## real game. One begun across the map is left out, since its reaction ran out on the walk.
 func _note_first_shots() -> void:
 	var now: float = _game._bot_now()
-	var max_range := DotBotSettings.of(_game).profile.max_range
+	var max_range := GSBotSettings.of(_game).profile.max_range
 	for id: StringName in _game.players:
 		if not String(id).begins_with("p"):
 			continue
-		var aim: DotBotAim = _game._bot_aims.get(id)
+		var aim: GSBotAim = _game._bot_aims.get(id)
 		if aim == null or aim.target_id < 0:
 			continue
 		var key := "%s@%.4f" % [id, aim.engaged_at]

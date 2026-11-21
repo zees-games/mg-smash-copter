@@ -5,22 +5,22 @@ extends Node
 const ScContent := preload("sc_content.gd")
 
 ## Dot-fx's break effect. Its own crack stays on: nothing else in this game sounds a break.
-var break_fx: DotFxBreak = null
+var break_fx: GSFxBreak = null
 
 var _world: Node = null
 
 
 ## Builds the effect and listens to [param world]'s `shattered`, offline. Online, call [method on_shatter] from the bridge.
-func setup(world: Node) -> DotResult:
+func setup(world: Node) -> GSResult:
 	_world = world
-	break_fx = DotFxBreak.new()
+	break_fx = GSFxBreak.new()
 	break_fx.name = "Break"
 	add_child(break_fx)
 
 	if world != null and world.has_signal("shattered"):
 		world.connect("shattered", on_shatter)
 
-	return DotResult.success(self)
+	return GSResult.success(self)
 
 
 ## One burst for a break at [param at]; [param material] indexes [constant ScContent.BREAK_MATERIALS].

@@ -3,7 +3,7 @@ extends "sc_net_bridge_events.gd"
 ## Part of [code]sc_net_bridge.gd[/code] (split for size): the client half: applying layouts, platforms, seats and the clock. Never used on its own.
 
 
-func client_tick(tick: int, command: DotFpsCommand, slot: int = 0, aim: bool = false) -> void:
+func client_tick(tick: int, command: GSFpsCommand, slot: int = 0, aim: bool = false) -> void:
 	if net == null or net.is_server or game == null:
 		return
 
@@ -12,7 +12,7 @@ func client_tick(tick: int, command: DotFpsCommand, slot: int = 0, aim: bool = f
 	var packet := ScNetCommand.new()
 	packet.tick = tick
 	packet.delta = net.clock.tick_duration()
-	packet.move = command if command != null else DotFpsCommand.new()
+	packet.move = command if command != null else GSFpsCommand.new()
 	packet.slot = slot
 	packet.aim = aim
 
@@ -35,8 +35,8 @@ func client_tick(tick: int, command: DotFpsCommand, slot: int = 0, aim: bool = f
 
 	if link != null:
 		var payload := net.encode_ack()
-		var writer := DotNetWriter.new()
-		DotNetInput.write_batch(writer, _input_copies(packet))
+		var writer := GSNetWriter.new()
+		GSNetInput.write_batch(writer, _input_copies(packet))
 		payload.append_array(writer.to_bytes())
 		link.send_input(payload)
 
@@ -56,7 +56,7 @@ func client_tick(tick: int, command: DotFpsCommand, slot: int = 0, aim: bool = f
 
 ## [param packet] and the commands before it from the local replay history, oldest first,
 ## for one input packet. See [constant INPUT_COPIES].
-func _input_copies(packet: DotNetInput) -> Array:
+func _input_copies(packet: GSNetInput) -> Array:
 	var batch: Array = Array(net.local_inputs().recent(INPUT_COPIES, packet.tick - 1))
 	batch = batch.slice(maxi(0, batch.size() - (INPUT_COPIES - 1)))
 	batch.append(packet)
@@ -79,16 +79,16 @@ func _adopt_tick_rate(rate: int) -> void:
 	# The LIVE one, which is built from the config back at `setup()` and is therefore not
 	# updated by writing the config alone.
 	net.clock.tick_rate = game.tick_rate
-	# dot-net API 7 has DotNetClock.adopt_tick_rate(), which also raises the engine's step cap to
+	# dot-net API 7 has GSNetClock.adopt_tick_rate(), which also raises the engine's step cap to
 	# a quarter second of ticks, so a slow-frame client keeps up with the server. A shell built
 	# before it gets the same rule here; remove this branch when the oldest shell is API 7.
-	if DotAddonApi.build_level("dot_net") >= 7:
-		DotNetClock.adopt_tick_rate(game.tick_rate)
+	if GSAddonApi.build_level("dot_net") >= 7:
+		GSNetClock.adopt_tick_rate(game.tick_rate)
 	else:
 		Engine.max_physics_steps_per_frame = maxi(Engine.max_physics_steps_per_frame, ceili(0.25 * float(game.tick_rate)))
 		Engine.physics_ticks_per_second = game.tick_rate
 
-	DotLog.info(CHANNEL, "adopted the server's tick rate", {
+	GSLog.info(CHANNEL, "adopted the server's tick rate", {
 		"was": before, "now": game.tick_rate, "engine": Engine.physics_ticks_per_second,
 	})
 
@@ -110,7 +110,7 @@ func _apply_toys(told: Dictionary) -> void:
 	_pair_pending_toys()
 
 
-func _apply_layout(reader: DotNetReader) -> void:
+func _apply_layout(reader: GSNetReader) -> void:
 	var described := ScEvents.read_layout(reader)
 
 	if not bool(described["ok"]) or game.platforms == null:
@@ -167,7 +167,7 @@ func _forget_platforms() -> void:
 			net.registry.unregister(int(net_id))
 
 
-func _apply_platform(reader: DotNetReader) -> void:
+func _apply_platform(reader: GSNetReader) -> void:
 	var told := ScEvents.read_platform(reader)
 
 	if not bool(told["ok"]) or game.platforms == null:
@@ -185,7 +185,7 @@ func _apply_platform(reader: DotNetReader) -> void:
 		# Not an error: a client that has not yet been told this round's layout is one that
 		# will be, and the platform entity will be announced again on the next round. Drawn
 		# nothing rather than guessed at.
-		DotLog.debug(CHANNEL, "a platform arrived before the field it belongs to", {
+		GSLog.debug(CHANNEL, "a platform arrived before the field it belongs to", {
 			"index": index,
 		})
 		return
@@ -196,17 +196,17 @@ func _apply_platform(reader: DotNetReader) -> void:
 	behaviour.platforms = game.platforms
 	deck.body.add_child(behaviour)
 
-	var identity := DotNetIdentity.new()
+	var identity := GSNetIdentity.new()
 	identity.name = "Identity"
 	identity.owner_peer_id = 0
-	identity.authority = DotNetIdentity.Authority.SERVER
+	identity.authority = GSNetIdentity.Authority.SERVER
 	identity.always_relevant = true
 	deck.body.add_child(identity)
 
 	var registered := net.registry.register(identity, net_id, net.clock.tick, net.config)
 
 	if not registered.ok:
-		DotLog.warn(CHANNEL, "could not mirror a platform", {"error": str(registered.error)})
+		GSLog.warn(CHANNEL, "could not mirror a platform", {"error": str(registered.error)})
 		return
 
 	_bodies[net_id] = behaviour
@@ -223,7 +223,7 @@ func _scene_for(kind_id: StringName, vehicle: bool) -> String:
 	return prop.scene_path if prop != null else ""
 
 
-func _apply_prop_gone(reader: DotNetReader) -> void:
+func _apply_prop_gone(reader: GSNetReader) -> void:
 	var info := ScEvents.read_prop_gone(reader)
 
 	if not bool(info["ok"]):
@@ -253,7 +253,7 @@ func _apply_prop_gone(reader: DotNetReader) -> void:
 ## A client's copy of "that player is flying". The client runs no ride (no vehicle spawner, seats or exit sweep: the
 ## server owns them), so what arrives is the answer, and what the client does with it is stop predicting somebody no
 ## longer walking.
-func _apply_seat(reader: DotNetReader) -> void:
+func _apply_seat(reader: GSNetReader) -> void:
 	var info := ScEvents.read_seat(reader)
 
 	if not bool(info["ok"]):
@@ -268,7 +268,7 @@ func _apply_seat(reader: DotNetReader) -> void:
 	seat_changed.emit(int(info["player_id"]), bool(info["seated"]))
 
 
-func _apply_clock(reader: DotNetReader) -> void:
+func _apply_clock(reader: GSNetReader) -> void:
 	var clock := ScEvents.read_clock(reader)
 
 	if not bool(clock["ok"]):

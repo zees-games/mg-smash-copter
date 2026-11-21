@@ -5,8 +5,8 @@ const ScPaths := preload("sc_paths.gd")
 const ScPlatforms := preload("sc_platforms.gd")
 
 ## What this game makes a noise about, and the noise, on the client.
-## Sound is not polish here: the cannon is as often behind you as in front, and a bang from the middle of the map and a platform creaking before it goes are the warnings that work without looking. A catalogue of ids plus a table of synthesised stand-ins ([method sound_catalogue], [method sound_recipes]); [DotAudioSinkGodot] consults the file first, so a real `.ogg` in `audio/` switches one id over with no code change.
-## Never on a server and never deciding anything: hooks are called by [ScClient] from what the world or wire already said, so a headless suite runs the same code and differs only in whether a speaker moves. The beacon's ping stays in [DotFxBeacon] (pinned by `headless_run`); `beacon` is the id it moves to when real audio ships.
+## Sound is not polish here: the cannon is as often behind you as in front, and a bang from the middle of the map and a platform creaking before it goes are the warnings that work without looking. A catalogue of ids plus a table of synthesised stand-ins ([method sound_catalogue], [method sound_recipes]); [GSAudioSinkGodot] consults the file first, so a real `.ogg` in `audio/` switches one id over with no code change.
+## Never on a server and never deciding anything: hooks are called by [ScClient] from what the world or wire already said, so a headless suite runs the same code and differs only in whether a speaker moves. The beacon's ping stays in [GSFxBeacon] (pinned by `headless_run`); `beacon` is the id it moves to when real audio ships.
 
 const CHANNEL := "sc.audio"
 
@@ -61,16 +61,16 @@ const MUZZLE_REACH := 6.0
 const CREAK_AT := 0.7
 const CREAK_CLEARS_AT := 0.5
 
-var manager: DotAudioManager = null
+var manager: GSAudioManager = null
 
 ## Everybody's footsteps by what they stand on, and the bed under the whole game: dot-audio's
 ## stock (Kenney's footsteps, generated beds, all CC0; the addon's stock/CREDITS.md).
 ## Forty metres up on a slab in the open: wind is the whole world's sound.
-var steps: DotAudioFootsteps = null
-var ambience: DotAudioAmbience = null
+var steps: GSAudioFootsteps = null
+var ambience: GSAudioAmbience = null
 
 ## Quiet moods under the sky (dot-audio's stock set); the old wind bed plays only when none loaded.
-var ambient: DotAmbienceDirector = null
+var ambient: GSAmbienceDirector = null
 
 ## Where the cannon's mouth is. [ScClient] sets it from `ScArena.muzzle()`, which is the one
 ## place that number is written.
@@ -90,21 +90,21 @@ static func ids() -> Array[StringName]:
 		WEAPON_SHOT, WEAPON_SWING, WEAPON_LAUNCH, WEAPON_BEAM, WEAPON_THROW,
 		UI_CLICK, UI_DENY,
 		# dot-player-char's dead bodies.
-		DotPlayerDeathReactions.SOUND_THUD, DotPlayerDeathReactions.SOUND_FACE_PLANT,
-		DotPlayerDeathReactions.SOUND_SLUMP, DotPlayerDeathReactions.SOUND_WHOOSH,
+		GSPlayerDeathReactions.SOUND_THUD, GSPlayerDeathReactions.SOUND_FACE_PLANT,
+		GSPlayerDeathReactions.SOUND_SLUMP, GSPlayerDeathReactions.SOUND_WHOOSH,
 	]
 	# dot-props' toys.
-	for row: Dictionary in DotPropBodySounds.rows():
+	for row: Dictionary in GSPropBodySounds.rows():
 		out.append(StringName(row["id"]))
 	# A typed array plus a typed array is an untyped one: appended, not added.
-	out.append_array(DotAudioStock.ids())
+	out.append_array(GSAudioStock.ids())
 	return out
 
 
 ## What this game makes a noise about, and the rules for each.
 ## Positional for everything that happens somewhere, with the map's distances: the field is about sixty metres across and the corners a hundred and twenty from it, so a corridor-shooter cull would silence the cannon for the showdown. Warnings (cannon, collapse) carry across the whole map on purpose.
-static func sound_catalogue() -> DotAudioCatalogue:
-	var c := DotAudioCatalogue.new()
+static func sound_catalogue() -> GSAudioCatalogue:
+	var c := GSAudioCatalogue.new()
 
 	# The one sound that is a warning about the future. Everybody on the field hears it,
 	# and hears it from the middle, which is where to look.
@@ -125,7 +125,7 @@ static func sound_catalogue() -> DotAudioCatalogue:
 	c.add(_placed(PLAYER_DOWN, 120.0, 14.0, 3, 65, 0.95, 1.05))
 
 	# Footsteps and ambience beds, the family's stock.
-	DotAudioStock.add_to(c)
+	GSAudioStock.add_to(c)
 
 	c.add(_flat(YOU_ARE_OUT, &"SFX", 1, 100))
 	c.add(_flat(ROUND_START, &"UI", 1, 80))
@@ -139,7 +139,7 @@ static func sound_catalogue() -> DotAudioCatalogue:
 	return c
 
 
-static func _add_weapon_sounds(c: DotAudioCatalogue) -> void:
+static func _add_weapon_sounds(c: GSAudioCatalogue) -> void:
 	# Weapons, by kind of use. Twenty-seven weapons in the pack is twenty-seven files nobody
 	# has made; five kinds of use is the distinction a player acts on — something is being
 	# fired at me, somebody is swinging, something is on its way.
@@ -170,9 +170,9 @@ static func _add_weapon_sounds(c: DotAudioCatalogue) -> void:
 	c.add(deny)
 
 
-static func _add_stock_rows(c: DotAudioCatalogue) -> void:
+static func _add_stock_rows(c: GSAudioCatalogue) -> void:
 	# A body landing: dot-player-char's stock death sounds (Kenney, CC0), shipped in the addon.
-	for row: Dictionary in DotPlayerDeathSounds.rows():
+	for row: Dictionary in GSPlayerDeathSounds.rows():
 		var fall := _placed(row["id"], 45.0, 8.0, 3, 50, float(row["pitch_min"]), float(row["pitch_max"]))
 		fall.path = row["path"]
 		fall.variants = row["variants"]
@@ -181,7 +181,7 @@ static func _add_stock_rows(c: DotAudioCatalogue) -> void:
 		c.add(fall)
 
 	# The field's toys: dot-props' stock toy sounds (Kenney, CC0), shipped in the addon.
-	for row: Dictionary in DotPropBodySounds.rows():
+	for row: Dictionary in GSPropBodySounds.rows():
 		var toy := _placed(row["id"], float(row["distance"]), 6.0, 3, 30, float(row["pitch_min"]), float(row["pitch_max"]))
 		toy.path = row["path"]
 		toy.variants = row["variants"]
@@ -194,46 +194,46 @@ static func _add_stock_rows(c: DotAudioCatalogue) -> void:
 ## A table in the game rather than a guess in dot-audio. The cannon is the heavy shot and a collapse the boom, so a warning and a consequence never sound alike; a creak is the hurt voice pitched down; the teleport is the one upward sweep, because up reads as "on".
 static func sound_recipes() -> Dictionary:
 	return {
-		CANNON_FIRE: DotAudioSynth.Voice.SHOT_HEAVY,
-		IMPACT_LIGHT: DotAudioSynth.Voice.IMPACT,
-		IMPACT_HEAVY: DotAudioSynth.Voice.BOOM,
-		PLATFORM_CREAK: DotAudioSynth.Voice.HURT,
-		PLATFORM_COLLAPSE: DotAudioSynth.Voice.BOOM,
-		BARREL_BLAST: DotAudioSynth.Voice.BOOM,
-		PLAYER_FELL: DotAudioSynth.Voice.DIE,
-		PLAYER_DOWN: DotAudioSynth.Voice.HURT,
-		YOU_ARE_OUT: DotAudioSynth.Voice.DIE,
-		ROUND_START: DotAudioSynth.Voice.SPAWN,
-		ROUND_END: DotAudioSynth.Voice.PICKUP,
-		SHOWDOWN_TELEPORT: DotAudioSynth.Voice.SPAWN,
-		SHOWDOWN_GO: DotAudioSynth.Voice.BLIP,
-		SPECIAL: DotAudioSynth.Voice.PICKUP,
-		WEAPON_SHOT: DotAudioSynth.Voice.SHOT,
-		WEAPON_SWING: DotAudioSynth.Voice.STEP,
-		WEAPON_LAUNCH: DotAudioSynth.Voice.SHOT_HEAVY,
-		WEAPON_BEAM: DotAudioSynth.Voice.SHOT_TIGHT,
-		WEAPON_THROW: DotAudioSynth.Voice.CLICK,
-		UI_CLICK: DotAudioSynth.Voice.CLICK,
-		UI_DENY: DotAudioSynth.Voice.DENY,
+		CANNON_FIRE: GSAudioSynth.Voice.SHOT_HEAVY,
+		IMPACT_LIGHT: GSAudioSynth.Voice.IMPACT,
+		IMPACT_HEAVY: GSAudioSynth.Voice.BOOM,
+		PLATFORM_CREAK: GSAudioSynth.Voice.HURT,
+		PLATFORM_COLLAPSE: GSAudioSynth.Voice.BOOM,
+		BARREL_BLAST: GSAudioSynth.Voice.BOOM,
+		PLAYER_FELL: GSAudioSynth.Voice.DIE,
+		PLAYER_DOWN: GSAudioSynth.Voice.HURT,
+		YOU_ARE_OUT: GSAudioSynth.Voice.DIE,
+		ROUND_START: GSAudioSynth.Voice.SPAWN,
+		ROUND_END: GSAudioSynth.Voice.PICKUP,
+		SHOWDOWN_TELEPORT: GSAudioSynth.Voice.SPAWN,
+		SHOWDOWN_GO: GSAudioSynth.Voice.BLIP,
+		SPECIAL: GSAudioSynth.Voice.PICKUP,
+		WEAPON_SHOT: GSAudioSynth.Voice.SHOT,
+		WEAPON_SWING: GSAudioSynth.Voice.STEP,
+		WEAPON_LAUNCH: GSAudioSynth.Voice.SHOT_HEAVY,
+		WEAPON_BEAM: GSAudioSynth.Voice.SHOT_TIGHT,
+		WEAPON_THROW: GSAudioSynth.Voice.CLICK,
+		UI_CLICK: GSAudioSynth.Voice.CLICK,
+		UI_DENY: GSAudioSynth.Voice.DENY,
 		# Stand-ins only for a build without dot-props' toy files.
-		DotPropBodySounds.BOUNCE: DotAudioSynth.Voice.IMPACT,
-		DotPropBodySounds.THUMP: DotAudioSynth.Voice.IMPACT,
-		DotPropBodySounds.KNOCK: DotAudioSynth.Voice.IMPACT,
-		DotPropBodySounds.PIN: DotAudioSynth.Voice.CLICK,
-		DotPropBodySounds.WOOD: DotAudioSynth.Voice.IMPACT,
-		DotPropBodySounds.RUBBER: DotAudioSynth.Voice.IMPACT,
-		DotPropBodySounds.PUNCH: DotAudioSynth.Voice.HURT,
-		DotPropBodySounds.METAL: DotAudioSynth.Voice.CLICK,
-		DotPropBodySounds.BELL: DotAudioSynth.Voice.PICKUP,
-		DotPropBodySounds.CLICK: DotAudioSynth.Voice.CLICK,
-		DotPropBodySounds.WATER: DotAudioSynth.Voice.STEP,
-		DotPropBodySounds.BOING: DotAudioSynth.Voice.SPAWN,
-		DotPropBodySounds.HORN: DotAudioSynth.Voice.BLIP,
+		GSPropBodySounds.BOUNCE: GSAudioSynth.Voice.IMPACT,
+		GSPropBodySounds.THUMP: GSAudioSynth.Voice.IMPACT,
+		GSPropBodySounds.KNOCK: GSAudioSynth.Voice.IMPACT,
+		GSPropBodySounds.PIN: GSAudioSynth.Voice.CLICK,
+		GSPropBodySounds.WOOD: GSAudioSynth.Voice.IMPACT,
+		GSPropBodySounds.RUBBER: GSAudioSynth.Voice.IMPACT,
+		GSPropBodySounds.PUNCH: GSAudioSynth.Voice.HURT,
+		GSPropBodySounds.METAL: GSAudioSynth.Voice.CLICK,
+		GSPropBodySounds.BELL: GSAudioSynth.Voice.PICKUP,
+		GSPropBodySounds.CLICK: GSAudioSynth.Voice.CLICK,
+		GSPropBodySounds.WATER: GSAudioSynth.Voice.STEP,
+		GSPropBodySounds.BOING: GSAudioSynth.Voice.SPAWN,
+		GSPropBodySounds.HORN: GSAudioSynth.Voice.BLIP,
 		# Stand-ins only for a build without dot-player-char's files.
-		DotPlayerDeathReactions.SOUND_THUD: DotAudioSynth.Voice.IMPACT,
-		DotPlayerDeathReactions.SOUND_FACE_PLANT: DotAudioSynth.Voice.IMPACT,
-		DotPlayerDeathReactions.SOUND_SLUMP: DotAudioSynth.Voice.STEP,
-		DotPlayerDeathReactions.SOUND_WHOOSH: DotAudioSynth.Voice.SPAWN,
+		GSPlayerDeathReactions.SOUND_THUD: GSAudioSynth.Voice.IMPACT,
+		GSPlayerDeathReactions.SOUND_FACE_PLANT: GSAudioSynth.Voice.IMPACT,
+		GSPlayerDeathReactions.SOUND_SLUMP: GSAudioSynth.Voice.STEP,
+		GSPlayerDeathReactions.SOUND_WHOOSH: GSAudioSynth.Voice.SPAWN,
 	}
 
 
@@ -263,11 +263,11 @@ static func _placed(
 	priority: int,
 	pitch_min: float,
 	pitch_max: float
-) -> DotAudioDef:
-	var def := DotAudioDef.new()
+) -> GSAudioDef:
+	var def := GSAudioDef.new()
 	def.id = id
 	def.path = "%s/%s.ogg" % [SOUND_DIR, String(id)]
-	def.kind = DotAudioDef.Kind.POSITIONAL_3D
+	def.kind = GSAudioDef.Kind.POSITIONAL_3D
 	def.bus = &"SFX"
 	def.max_distance = max_distance
 	def.unit_size = unit_size
@@ -278,8 +278,8 @@ static func _placed(
 	return def
 
 
-static func _flat(id: StringName, bus: StringName, concurrent: int, priority: int) -> DotAudioDef:
-	var def := DotAudioDef.new()
+static func _flat(id: StringName, bus: StringName, concurrent: int, priority: int) -> GSAudioDef:
+	var def := GSAudioDef.new()
 	def.id = id
 	def.path = "%s/%s.ogg" % [SOUND_DIR, String(id)]
 	def.bus = bus
@@ -289,11 +289,11 @@ static func _flat(id: StringName, bus: StringName, concurrent: int, priority: in
 
 
 
-func setup() -> DotResult:
-	manager = DotAudioManager.new()
+func setup() -> GSResult:
+	manager = GSAudioManager.new()
 	manager.name = "Audio"
 	manager.catalogue = sound_catalogue()
-	manager.mixer = DotAudioMixer.new()
+	manager.mixer = GSAudioMixer.new()
 	# Not published: a client and a server in one process, which every suite here is, would
 	# otherwise fight over one registry name — and nothing looks this up by name anyway.
 	manager.register_as_service = false
@@ -309,18 +309,18 @@ func setup() -> DotResult:
 	if not ready_now.ok:
 		return ready_now.wrap("smash-copter audio")
 
-	steps = DotAudioFootsteps.new()
+	steps = GSAudioFootsteps.new()
 	steps.name = "Footsteps"
 	steps.manager = manager
 	steps.default_surface = &"concrete"
 	add_child(steps)
-	ambience = DotAudioAmbience.new()
+	ambience = GSAudioAmbience.new()
 	ambience.name = "Ambience"
 	ambience.manager = manager
 	ambience.fallback_bed = &"amb_wind"
 	add_child(ambience)
 	ambience.set_map_bed(&"amb_wind")
-	ambient = DotAmbienceDirector.new()
+	ambient = GSAmbienceDirector.new()
 	ambient.name = "Ambient"
 	ambient.manager = manager
 	ambient.default_mood = ScAmbience.DEFAULT_MOOD
@@ -333,16 +333,16 @@ func setup() -> DotResult:
 
 	# Only on a real sink: the manager has already decided whether there is a device, and a
 	# headless process has nothing to bake for.
-	var godot_sink := manager.sink as DotAudioSinkGodot
+	var godot_sink := manager.sink as GSAudioSinkGodot
 
 	if godot_sink != null:
-		godot_sink.bank = DotAudioSynth.bank(manager.catalogue, sound_recipes())
+		godot_sink.bank = GSAudioSynth.bank(manager.catalogue, sound_recipes())
 		# INFO, once: the answer to "why does it sound like that" is in this line.
-		DotLog.info(CHANNEL, "no audio files; synthesised stand-ins are in use", {
+		GSLog.info(CHANNEL, "no audio files; synthesised stand-ins are in use", {
 			"ids": sound_recipes().size(), "dir": SOUND_DIR,
 		})
 
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
 ## Everybody this client knows steps, once a frame: players and bots alike.

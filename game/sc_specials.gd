@@ -13,7 +13,7 @@ const ScConfig := preload("sc_config.gd")
 ##
 ## [b]Two kinds, and the second one is the point.[/b] A special rolled at the start of a
 ## round is announced and lasts the round: it is a variant a player can plan around. One
-## that arrives at ninety seconds is not — [DotRandomSchedule] decides when from the tick
+## that arrives at ninety seconds is not — [GSRandomSchedule] decides when from the tick
 ## alone, so a server and a replay of it turn the gravity off at the same instant, and
 ## nobody on the server saw it coming.
 
@@ -205,7 +205,7 @@ static func available(config: ScConfig) -> Array[Special]:
 		# Said rather than silently ignored. An operator who mistyped every id would
 		# otherwise have a server whose special rounds simply never happen, and nothing
 		# anywhere would mention it.
-		DotLog.warn(CHANNEL, "special_ids names nothing this game has", {
+		GSLog.warn(CHANNEL, "special_ids names nothing this game has", {
 			"asked_for": ", ".join(config.special_ids),
 			"available": ", ".join(ids()),
 		})
@@ -215,7 +215,7 @@ static func available(config: ScConfig) -> Array[Special]:
 
 
 ## One special drawn by weight, or null when none are available.
-static func pick(config: ScConfig, stream: DotRandomStream) -> Special:
+static func pick(config: ScConfig, stream: GSRandomStream) -> Special:
 	var pool := available(config)
 
 	if pool.is_empty():
@@ -254,8 +254,8 @@ static func ids() -> PackedStringArray:
 ## without anybody sending a message about it — and a schedule that drew from a stream
 ## per tick would give a different answer on a machine that had drawn a different number
 ## of times beforehand.
-static func schedule(config: ScConfig, tick_rate: int) -> DotRandomSchedule:
-	var plan := DotRandomSchedule.new()
+static func schedule(config: ScConfig, tick_rate: int) -> GSRandomSchedule:
+	var plan := GSRandomSchedule.new()
 	plan.mean_interval_ticks = int(maxf(config.special_mean_gap, 1.0) * float(tick_rate))
 	plan.min_gap_ticks = int(maxf(config.special_min_gap, 1.0) * float(tick_rate))
 	# A ramp, so the first one is never in the opening seconds: a round that goes strange

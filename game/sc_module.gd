@@ -5,11 +5,11 @@ const ScContent := preload("sc_content.gd")
 
 ## This game, as a module a dedicated server loads.
 ##
-## No `class_name`, a requirement: [method DotModuleHost.load_module] constructs it from a PATH, and a module in a dot-cloud pack cannot register globals in the host. [DotGameModule] holds the netcode, bridge, seal, identity, roster and tick; this adds the operator cvars, two console commands and the rule that keeps enough people in a round. Usage: `server.modules.load_module("res://game/sc_module.gd")`.
+## No `class_name`, a requirement: [method GSModuleHost.load_module] constructs it from a PATH, and a module in a dot-cloud pack cannot register globals in the host. [GSGameModule] holds the netcode, bridge, seal, identity, roster and tick; this adds the operator cvars, two console commands and the rule that keeps enough people in a round. Usage: `server.modules.load_module("res://game/sc_module.gd")`.
 
-# No `const CHANNEL`: [DotGameModule] declares one and GDScript refuses a redeclaration, rightly, since a module logs through [method DotModule.log_info] under its own name and a second channel would split its records.
+# No `const CHANNEL`: [GSGameModule] declares one and GDScript refuses a redeclaration, rightly, since a module logs through [method GSModule.log_info] under its own name and a second channel would split its records.
 
-## Where the services keep punishments. Empty is [DotGameServices]'s default, `user://smash-copter_punishments.json`, the store a real server enforces.
+## Where the services keep punishments. Empty is [GSGameServices]'s default, `user://smash-copter_punishments.json`, the store a real server enforces.
 ##
 ## Static, because dot-server constructs the module from a path so no instance exists to set a field on; `examples/dedicated.tscn` points it at its own directory so runs do not append to the real store.
 static var punishments_file: String = ""
@@ -42,8 +42,8 @@ func _game_missing_hint() -> String:
 ## The netcode's numbers, which are the game's and not the addon's.
 ##
 ## Tick rate comes from the world so `sv_tickrate` reaches it (the world is built after the server and reads the engine rate); a number written here would run the netcode at a rate the operator did not choose.
-func _net_config() -> DotNetConfig:
-	var config := DotNetConfig.new()
+func _net_config() -> GSNetConfig:
+	var config := GSNetConfig.new()
 	config.tick_rate = (game as ScGame).tick_rate
 	config.snapshot_rate = ScGame.NET_SNAPSHOT_RATE
 	config.world_extent = ScGame.NET_WORLD_EXTENT
@@ -61,9 +61,9 @@ func _make_bridge() -> Node:
 	return ScNetBridge.new()
 
 
-## Chat, voice and moderation, over [DotGameServices].
+## Chat, voice and moderation, over [GSGameServices].
 ##
-## The bridge is handed over as the link: chat goes through `send_chat`, voice through `send_voice`, and [DotGameModule] assigns `voice_relay_fn`, checks `check_admission` before seating and tells the roster to follow this layer so a leaver is forgotten by the limiter and voice router together.
+## The bridge is handed over as the link: chat goes through `send_chat`, voice through `send_voice`, and [GSGameModule] assigns `voice_relay_fn`, checks `check_admission` before seating and tells the roster to follow this layer so a leaver is forgotten by the limiter and voice router together.
 func _make_services() -> Node:
 	var services := ScServices.new()
 	services.bridge = bridge
@@ -71,22 +71,22 @@ func _make_services() -> Node:
 	return services
 
 
-## Profiles, avatars and admission: dot-platform's [DotPlatformIdentity] over this game's one-slot schema.
+## Profiles, avatars and admission: dot-platform's [GSPlatformIdentity] over this game's one-slot schema.
 ##
-## [DotGameModule] builds it before the services. Authentication is the host's `dot_auth_server`, not this game's; this layer is the scoped profile, name and face after it. With authentication off everybody is a guest.
+## [GSGameModule] builds it before the services. Authentication is the host's `dot_auth_server`, not this game's; this layer is the scoped profile, name and face after it. With authentication off everybody is a guest.
 func _make_identity() -> Node:
-	var identity_layer := DotPlatformIdentity.new()
+	var identity_layer := GSPlatformIdentity.new()
 	identity_layer.avatar_schema = ScAvatars.schema()
 	identity_layer.stock_avatar_fn = ScAvatars.stock_avatar
 	identity_layer.avatar_translate_fn = ScAvatars.from_site
 	return identity_layer
 
 
-func _game_load() -> DotResult:
+func _game_load() -> GSResult:
 	var world := game as ScGame
 
 	if world == null:
-		return DotResult.fail(DotError.CODE_STATE, "The registered game is not an ScGame.")
+		return GSResult.fail(GSError.CODE_STATE, "The registered game is not an ScGame.")
 
 	add_command("sc_status", _cmd_status, "Show the round, the field and the cannon")
 	add_command("sc_net", _cmd_net, "Show what the netcode is doing")
@@ -114,7 +114,7 @@ func _game_load() -> DotResult:
 	# REPLICATED: the clients play the killcam, the server only lengthens the intermission for it.
 	var killcam := add_cvar("mp_killcam_time", _number(world.config.killcam_seconds),
 		"Seconds the killcam of a round's last moment plays, added to the intermission (0 for none)",
-		DotConVar.FLAG_ARCHIVE | DotConVar.FLAG_NOTIFY | DotConVar.FLAG_REPLICATED)
+		GSConVar.FLAG_ARCHIVE | GSConVar.FLAG_NOTIFY | GSConVar.FLAG_REPLICATED)
 	if killcam != null:
 		# Any length, 0 for none; below 0 is refused with the reason, not clamped.
 		var _v := killcam.with_validator(_at_least.bind("mp_killcam_time", 0.0))
@@ -124,8 +124,8 @@ func _game_load() -> DotResult:
 
 	# REPLICATED: where the clients' killcam camera sits (0 the killer's eye, 1 behind the killer).
 	var _camera := add_cvar("mp_killview_camera", "0",
-		"Killcam camera: 0 the killer's eye, 1 behind the killer (dot-replay DotKillcamFraming)",
-		DotConVar.FLAG_ARCHIVE | DotConVar.FLAG_NOTIFY | DotConVar.FLAG_REPLICATED)
+		"Killcam camera: 0 the killer's eye, 1 behind the killer (dot-replay GSKillcamFraming)",
+		GSConVar.FLAG_ARCHIVE | GSConVar.FLAG_NOTIFY | GSConVar.FLAG_REPLICATED)
 
 	var configured := _bind_config(world)
 	if not configured.ok:
@@ -139,23 +139,23 @@ func _game_load() -> DotResult:
 		"Automatic stand-ins: 1 keeps as many as bot_quota and bot_quota_mode say, 0 none at all."
 	)
 
-		# The count is dot-server's [DotBotQuota], so `bot_quota` and `bot_quota_mode` mean the same on every server. The default is `minimum_players` in fill mode: stand-ins top the round up, a joiner takes one's place. `sc_bots` stays the switch.
-	_quota = DotBotQuota.install(self, world.config.minimum_players)
+		# The count is dot-server's [GSBotQuota], so `bot_quota` and `bot_quota_mode` mean the same on every server. The default is `minimum_players` in fill mode: stand-ins top the round up, a joiner takes one's place. `sc_bots` stays the switch.
+	_quota = GSBotQuota.install(self, world.config.minimum_players)
 
 		# Started here, not in the world's `_ready`: `start()` lays the field out, and before the bridge existed nothing would hear `world_rebuilt`, leaving invisible floors the server knows and no client does.
 	world.start()
 
 	log_info("the field is up", world.describe())
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
 ## The addons' rule sets as cvars, REPLICATED where a client predicts or draws under them.
 func _bind_family_cvars(world: ScGame) -> void:
-	var flags := DotConVar.FLAG_ARCHIVE | DotConVar.FLAG_NOTIFY | DotConVar.FLAG_REPLICATED
+	var flags := GSConVar.FLAG_ARCHIVE | GSConVar.FLAG_NOTIFY | GSConVar.FLAG_REPLICATED
 
 	# `mp_teammate_passthrough` 0 never, 1 a team-mate holding the muzzle, 2 every team-mate.
 	if world.combat != null:
-		var _passthrough := world.combat.bind_cvars(add_cvar, DotConVar.FLAG_NOTIFY | DotConVar.FLAG_REPLICATED)
+		var _passthrough := world.combat.bind_cvars(add_cvar, GSConVar.FLAG_NOTIFY | GSConVar.FLAG_REPLICATED)
 
 	var _ragdolls := world.ragdoll_rules.bind_cvars(add_cvar, flags)
 	var _toys := world.toy_rules.bind_cvars(add_cvar, flags)
@@ -165,7 +165,7 @@ func _bind_family_cvars(world: ScGame) -> void:
 
 	# mp_forcecamera, mp_freeroam: each client flies its own spectator camera under them.
 	for made: Object in world.spectate_rules.bind_cvars(add_cvar, flags):
-		if str(made.get(&"name")) == DotSpectatorRules.CVAR_FORCE_CAMERA:
+		if str(made.get(&"name")) == GSSpectatorRules.CVAR_FORCE_CAMERA:
 			_force_camera_cvar = made
 
 	# mp_forceview and mp_solidplayers: the client places its camera and predicts its player under them.
@@ -174,7 +174,7 @@ func _bind_family_cvars(world: ScGame) -> void:
 	# sv_mobile_*: a client shows its touch overlay under the server's say.
 	var _mobile := world.mobile_rules.bind_cvars(add_cvar, flags)
 	# sc_ambient*: each client plays its own ambience under the server's intent; the directory cvar stays local.
-	var _ambient := world.ambient_rules.bind_cvars(add_cvar, flags, DotConVar.FLAG_ARCHIVE | DotConVar.FLAG_NOTIFY)
+	var _ambient := world.ambient_rules.bind_cvars(add_cvar, flags, GSConVar.FLAG_ARCHIVE | GSConVar.FLAG_NOTIFY)
 
 
 ## Who somebody is reaches the world: a face as they are seated, and the real name and face once dot-platform has them.
@@ -195,7 +195,7 @@ func _wire_identity() -> void:
 ## What a session looks like: what dot-platform resolved for them, or the stock person.
 ##
 ## Through the platform module's `player_for`, never the hub by a key made here: the hub keys by scoped profile key, so `u<session>` finds nobody and silently reads as "no avatar". Duck-typed, since a server without dot-platform is a configuration.
-func _avatar_for(session_id: int) -> DotAvatar:
+func _avatar_for(session_id: int) -> GSAvatar:
 	var session := server.session_by_userid(session_id) if server != null else null
 	var platform: Object = server.modules.get_module("platform") \
 		if server != null and server.modules != null else null
@@ -203,8 +203,8 @@ func _avatar_for(session_id: int) -> DotAvatar:
 	if session != null and platform != null and platform.has_method("player_for"):
 		var player: Variant = platform.call("player_for", session)
 
-		if player is Object and (player as Object).get("avatar") is DotAvatar:
-			return (player as Object).get("avatar") as DotAvatar
+		if player is Object and (player as Object).get("avatar") is GSAvatar:
+			return (player as Object).get("avatar") as GSAvatar
 
 	if identity != null and identity.has_method("avatar_for"):
 		return identity.call("avatar_for", String(ScNetBridge.player_key(session_id)))
@@ -212,7 +212,7 @@ func _avatar_for(session_id: int) -> DotAvatar:
 	return null
 
 
-func _on_profile(event: DotEvent) -> void:
+func _on_profile(event: GSEvent) -> void:
 	var session_id := event.get_int("userid")
 	var session := server.session_by_userid(session_id) if server != null else null
 	var link := bridge as ScNetBridge
@@ -236,8 +236,8 @@ func _add_tunables(world: ScGame) -> void:
 		"Seconds the fight in the corners lasts",
 		func(value: float) -> void: config.showdown_seconds = value)
 		# How stand-ins aim and shoot is dot-bot's (`bot_difficulty` and the `bot_*` bundle). Set on the world as metadata, never the registry, since two servers in one process must not share it. `sc_bot_spread` stays a deprecated name for `bot_aim_error`.
-	var bot_settings := DotBotSettings.of(world)
-	var _bot_cvars := bot_settings.bind_cvars(add_cvar, DotConVar.FLAG_NOTIFY, add_command)
+	var bot_settings := GSBotSettings.of(world)
+	var _bot_cvars := bot_settings.bind_cvars(add_cvar, GSConVar.FLAG_NOTIFY, add_command)
 	_tunable("sc_bot_spread", bot_settings.profile.aim_error,
 		"Deprecated, sets bot_aim_error. Degrees off a stand-in's aim when it opens fire",
 		func(value: float) -> void:
@@ -338,16 +338,16 @@ func _hand_cvar(key: String) -> String:
 
 
 ## Every config field as an `sc_<field>` cvar (the hand-written ones keep their handlers and follow workbench edits), the cfg/ diff commands, the workbench and dot-team's block rules.
-func _bind_config(world: ScGame) -> DotResult:
+func _bind_config(world: ScGame) -> GSResult:
 	var _fl := world.flashlight_conf()
 	if world.flashlight_binder != null:
-		var _flash_cvars := world.flashlight_binder.bind_cvars(add_cvar, DotConVar.FLAG_ARCHIVE,
+		var _flash_cvars := world.flashlight_binder.bind_cvars(add_cvar, GSConVar.FLAG_ARCHIVE,
 			func(name: String) -> bool: return console.has_name(name))
 		world.flashlight_binder.bind_commands(add_command)
 	var binder := world.config_binder
 	if binder == null:
-		return DotResult.success(null)
-	workbench = DotGameWorkbench.new()
+		return GSResult.success(null)
+	workbench = GSGameWorkbench.new()
 	workbench.name = "Workbench"
 	workbench.lazy_panel = true
 	workbench.dedicated = DisplayServer.get_name() == "headless"
@@ -355,12 +355,12 @@ func _bind_config(world: ScGame) -> DotResult:
 	workbench.permit_fn = func(actor: Variant, flag: String) -> bool:
 		return server != null and server.admins != null and actor is String \
 			and bool(server.admins.uid_has_permission(actor, flag))
-	for set: DotProfileSet in binder.profile_sets():
+	for set: GSProfileSet in binder.profile_sets():
 		workbench.add_set(set, "Game settings: %s" % set.rel_path.trim_prefix("config_"))
 	if world.flashlight_binder != null:
-		for set: DotProfileSet in world.flashlight_binder.profile_sets():
+		for set: GSProfileSet in world.flashlight_binder.profile_sets():
 			workbench.add_set(set, "Flashlight")
-	var ambient_set := DotGameWorkbench.cvar_set(console, ScAmbience.cvar_types(), AMBIENT_KIND)
+	var ambient_set := GSGameWorkbench.cvar_set(console, ScAmbience.cvar_types(), AMBIENT_KIND)
 	if ambient_set != null:
 		workbench.add_set(ambient_set, "Ambience (sc_ambient*)")
 	add_child(workbench)
@@ -368,7 +368,7 @@ func _bind_config(world: ScGame) -> DotResult:
 	# Off until the owner sets sv_workbench_remote 1; then flagged admins edit from a client.
 	if started.ok and net != null:
 		var _served := workbench.serve_remote(net)
-	var runtime: DotProfileRuntime = workbench.api.runtime if started.ok and workbench.api != null else null
+	var runtime: GSProfileRuntime = workbench.api.runtime if started.ok and workbench.api != null else null
 	if not started.ok:
 		log_warn("the workbench did not start", {"why": started.error.message})
 
@@ -376,7 +376,7 @@ func _bind_config(world: ScGame) -> DotResult:
 	for key: String in HAND_RENAMES:
 		if console.has_name(HAND_RENAMES[key]):
 			renamed["sc_%s" % key] = true
-	binder.bind_cvars(add_cvar, DotConVar.FLAG_ARCHIVE,
+	binder.bind_cvars(add_cvar, GSConVar.FLAG_ARCHIVE,
 		func(name: String) -> bool: return console.has_name(name) or renamed.has(name))
 	binder.bind_commands(add_command)
 	binder.field_changed.connect(_on_config_field)
@@ -385,8 +385,8 @@ func _bind_config(world: ScGame) -> DotResult:
 		if world.flashlight_binder != null:
 			world.flashlight_binder.attach(runtime)
 		if ambient_set != null:
-			var _applied := DotGameWorkbench.bind_cvar_set(ambient_set, runtime, console)
-	return DotResult.success(null)
+			var _applied := GSGameWorkbench.bind_cvar_set(ambient_set, runtime, console)
+	return GSResult.success(null)
 
 
 ## Everybody's side for the block rules: the team, none for a spectator.
@@ -400,7 +400,7 @@ func _noblock_runtime() -> Object:
 
 
 ## The block commands are keyed by the player ids the world uses (`u<userid>`), not the bare userid.
-func _build_noblock() -> DotResult:
+func _build_noblock() -> GSResult:
 	var built := super()
 	if built.ok and noblock != null and noblock.commands != null:
 		noblock.commands.set(&"key_fn", func(ctx: Object) -> Variant:
@@ -445,37 +445,37 @@ func _tunable(
 	)
 
 
-static func _teams_fit(value: String, config: ScConfig) -> DotResult:
+static func _teams_fit(value: String, config: ScConfig) -> GSResult:
 	if not value.is_valid_float() or value.to_float() < 2.0:
-		return DotResult.fail(DotError.CODE_INVALID, "sc_teams is %s; it takes two sides or more." % value)
+		return GSResult.fail(GSError.CODE_INVALID, "sc_teams is %s; it takes two sides or more." % value)
 	var room := config.corner_distance_for(int(value.to_float()))
 	if is_inf(room):
-		return DotResult.fail(DotError.CODE_INVALID,
+		return GSResult.fail(GSError.CODE_INVALID,
 			"sc_teams %s is more catwalks than the ring has room for; raise sc_corner_size first." % value)
 	if config.corner_distance < room:
-		return DotResult.fail(DotError.CODE_INVALID,
+		return GSResult.fail(GSError.CODE_INVALID,
 			"sc_teams %s does not fit round the corners; set sc_corner_distance to %.0f or more first."
 				% [value, ceilf(room)])
-	return DotResult.success(value)
+	return GSResult.success(value)
 
 
 ## Refuses (with the reason) a value outside [param least]..[param most] (most may be infinite). Never clamps.
-static func _between(value: String, cvar_name: String, least: float, most: float) -> DotResult:
+static func _between(value: String, cvar_name: String, least: float, most: float) -> GSResult:
 	if not value.is_valid_float() or value.to_float() < least or value.to_float() > most:
 		var want := "a number of %s or more" % _number(least) if is_inf(most) \
 			else "a number from %s to %s" % [_number(least), _number(most)]
-		return DotResult.fail(DotError.CODE_INVALID, "%s is %s; it takes %s." % [cvar_name, value, want])
-	return DotResult.success(value)
+		return GSResult.fail(GSError.CODE_INVALID, "%s is %s; it takes %s." % [cvar_name, value, want])
+	return GSResult.success(value)
 
 
-static func _at_least(value: String, cvar_name: String, least: float) -> DotResult:
+static func _at_least(value: String, cvar_name: String, least: float) -> GSResult:
 	if not value.is_valid_float() or value.to_float() < least:
-		return DotResult.fail(DotError.CODE_INVALID,
+		return GSResult.fail(GSError.CODE_INVALID,
 			"%s is %s; it takes a number of %s or more." % [cvar_name, value, _number(least)])
-	return DotResult.success(value)
+	return GSResult.success(value)
 
 
-## Nothing to undo: [DotModule] removes the commands and [DotGameModule] tears down netcode, bridge and roster in reverse. The world is not this module's to free, since `module reload` must not make the map go away.
+## Nothing to undo: [GSModule] removes the commands and [GSGameModule] tears down netcode, bridge and roster in reverse. The world is not this module's to free, since `module reload` must not make the map go away.
 func _game_unload() -> void:
 	if workbench != null:
 		workbench.queue_free()
@@ -493,7 +493,7 @@ func _game_unload() -> void:
 		vote = null
 
 
-## The server slept or woke. The vote's director follows it on its own (DotGameModule finds
+## The server slept or woke. The vote's director follows it on its own (GSGameModule finds
 ## it); the layout ballot's timer is this game's, so it starts again here on waking.
 func _game_hibernation(hibernating: bool) -> void:
 	if not hibernating and vote != null:
@@ -559,7 +559,7 @@ func _keep_the_round_full() -> void:
 
 
 ## Names for the stand-ins, so a scoreboard of four of them is readable: this game's own names
-## through dot-bot's [DotBotNames], never one already in [param world] (drawn at random they
+## through dot-bot's [GSBotNames], never one already in [param world] (drawn at random they
 ## could double up), and the same from run to run.
 static func _bot_name(world: ScGame) -> String:
 	var taken: Array = []
@@ -567,7 +567,7 @@ static func _bot_name(world: ScGame) -> String:
 	for id: StringName in world.players:
 		taken.append((world.players[id] as ScPlayer).display_name)
 
-	return DotBotNames.pick(taken, world.players.size(), ScGame.BOT_NAMES)
+	return GSBotNames.pick(taken, world.players.size(), ScGame.BOT_NAMES)
 
 
 ## Joins the bridge's chat seam to the services layer's router.
@@ -593,15 +593,15 @@ func _build_maps(world: ScGame) -> void:
 
 	# `map`, `maps` and `mapinfo`, dot-map's, over the layouts. The change goes through the
 	# game's own `change_layout_now` rather than a scene swap: see `ScMapSession`.
-	var map_commands := DotMapCommands.new()
+	var map_commands := GSMapCommands.new()
 	map_commands.session = maps
 	map_commands.change_fn = world.change_layout_now
 	map_commands.player_count_fn = func() -> int:
 		return world.players.size()
-	map_commands.rotation_file_fn = func() -> DotMapRotationFile:
+	map_commands.rotation_file_fn = func() -> GSMapRotationFile:
 		return maps.rotation_file if maps != null else null
 	map_commands.spec_fn = _rotation_commands
-	DotLog.result(CHANNEL, "the map commands", map_commands.bind(self))
+	GSLog.result(CHANNEL, "the map commands", map_commands.bind(self))
 
 	world.world_rebuilt.connect(func() -> void:
 		if maps != null and world.layout != null:
@@ -635,14 +635,14 @@ func _build_vote(world: ScGame) -> void:
 	var ready := vote.setup()
 
 	if not ready.ok:
-		DotLog.result(CHANNEL, "the layout vote; the draw alone chooses", ready)
+		GSLog.result(CHANNEL, "the layout vote; the draw alone chooses", ready)
 		vote.queue_free()
 		vote = null
 		return
 
 	vote.commands_spec_fn = _rotation_commands
 	var commanded := vote.install_commands(self)
-	DotLog.result(CHANNEL, "the layout vote's commands", commanded)
+	GSLog.result(CHANNEL, "the layout vote's commands", commanded)
 
 	# The map menu (M), dot-vote's: a player holding the owner's `sv_map_menu_flag` changes the
 	# layout now, not next round, and sees the same rows a solo player does. Read by name,
@@ -673,7 +673,7 @@ func _follow_vote_rounds(world: ScGame) -> void:
 	)
 
 	if server != null:
-		server.client_disconnected.connect(func(session: DotClientSession, _reason: String) -> void:
+		server.client_disconnected.connect(func(session: GSClientSession, _reason: String) -> void:
 			if vote != null:
 				vote.forget_voter(StringName(str(session.userid)))
 		)

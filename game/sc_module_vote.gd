@@ -22,9 +22,9 @@ func _bind_vote_hooks(world: ScGame) -> void:
 			out.append([def.id, def.display_name])
 
 		return out
-	vote.apply_fn = func(id: StringName) -> DotResult:
+	vote.apply_fn = func(id: StringName) -> GSResult:
 		world.next_layout_id = id
-		return DotResult.success(id)
+		return GSResult.success(id)
 	# People only: a stand-in is not a voter, and a ballot it could swing is not the players'.
 	vote.voters_fn = func() -> Array:
 		var out: Array = []
@@ -50,7 +50,7 @@ func _bind_vote_hooks(world: ScGame) -> void:
 			server.broadcast_message(line)
 	vote.is_admin_fn = func(voter: StringName) -> bool:
 		var session := server.session_by_userid(String(voter).to_int()) if server != null else null
-		return session != null and session.has_permission(DotAdminFlags.CHANGEMAP)
+		return session != null and session.has_permission(GSAdminFlags.CHANGEMAP)
 	vote.ballot_fn = func(state: Dictionary) -> void:
 		if server == null:
 			return
@@ -58,7 +58,7 @@ func _bind_vote_hooks(world: ScGame) -> void:
 		for session in server.playing_sessions():
 			var data := state.duplicate()
 			data["you"] = str(session.userid)
-			server.send_notice(session, DotNotice.make(
+			server.send_notice(session, GSNotice.make(
 				&"", "", float(state.get("seconds", -1.0)), LAYOUT_BALLOT_TOPIC, data
 			))
 	vote.people_fn = func(voter: StringName) -> Dictionary:

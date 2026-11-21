@@ -12,7 +12,7 @@ Every other 3D game here binds shift to a sprint. Here running is the default an
 
 ## The tiers are the cannon's whole design
 
-A crate wobbles a platform, a boulder tips it, a container takes a corner off it, a monolith deletes it with everybody on it. All four outcomes come from two numbers on a `DotPropDef` (mass and size) through one model in `ScPlatforms`, not a rule per prop. A server retunes a round by editing a document, and the suite asserts the design rather than the code.
+A crate wobbles a platform, a boulder tips it, a container takes a corner off it, a monolith deletes it with everybody on it. All four outcomes come from two numbers on a `GSPropDef` (mass and size) through one model in `ScPlatforms`, not a rule per prop. A server retunes a round by editing a document, and the suite asserts the design rather than the code.
 
 **The cannon aims.** Firing straight up with a random lean is worse to play against: half the shots go nowhere and the rest are unreadable. This one picks a platform still standing, solves the arc to it, and scatters the aim by a few metres, so every shot is a warning readable off the sky and missing is still possible.
 
@@ -22,7 +22,7 @@ A round's field is an id, a handful of numbers and a list of cells. A client reb
 
 ## No dot-spawn
 
-A spawn point is a fixed place, and every place in this world tips, collapses, or is not there this round. The game places its own players: a side to a platform, spread round its middle, facing inward, from the field it just built; on a field of islands, one side to an island while any island is free (`_place_players`). `DotMatch.spawns_ref` is still set, to the match node itself, so dot-match never walks the scene for points (unset, it picks up another world's in a process with a server and a client, or the outgoing map's for a frame).
+A spawn point is a fixed place, and every place in this world tips, collapses, or is not there this round. The game places its own players: a side to a platform, spread round its middle, facing inward, from the field it just built; on a field of islands, one side to an island while any island is free (`_place_players`). `GSMatch.spawns_ref` is still set, to the match node itself, so dot-match never walks the scene for points (unset, it picks up another world's in a process with a server and a client, or the outgoing map's for a frame).
 
 ## The showdown is somewhere else
 
@@ -30,9 +30,9 @@ The corners started directly over the field, where the tube, the arc and the par
 
 ## The chopper is a fourth chassis
 
-`DotVehicleHover` returns early when its ground rays find nothing, which is right for a hovercraft and is the state a helicopter lives in; `DotVehicleWheeled` needs wheels on a surface. So `ScCopter` is loaded through `DotVehicleDef.chassis_script_path`, dot-vehicle's documented extension point, and nothing in that addon knows what a helicopter is.
+`GSVehicleHover` returns early when its ground rays find nothing, which is right for a hovercraft and is the state a helicopter lives in; `GSVehicleWheeled` needs wheels on a surface. So `ScCopter` is loaded through `GSVehicleDef.chassis_script_path`, dot-vehicle's documented extension point, and nothing in that addon knows what a helicopter is.
 
-- **Three controls fit in a `DotVehicleCommand` and the fourth does not.** Collective is throttle, pedals are steer, rotor brake is brake, and the cyclic goes in `DotVehicleInstance.meta`: widening the command would be a breaking change across the family for a field only an aircraft has.
+- **Three controls fit in a `GSVehicleCommand` and the fourth does not.** Collective is throttle, pedals are steer, rotor brake is brake, and the cyclic goes in `GSVehicleInstance.meta`: widening the command would be a breaking change across the family for a field only an aircraft has.
 - **It holds itself up at exactly neutral.** A machine whose neutral is a slow sink is one a player fights while trying to aim. It does not arrest a climb; that is what the ceiling is for.
 - A parked chopper rests on whatever is under its pad, so every layout with one needs a platform there. `Layout.chopper_cell` names it (-1,-1 is the ordinary pad; with `chopper_on_bridge` it names a bridge, the Airfield's); `ScGame.chopper_pad_on(layout, index)` is the one reader. Server-side only: the machine replicates where it comes to rest.
 - **A rider is measured by the machine for falls**: a pilot who put the chopper down on the floor sat out of the cannon's reach, alive. A machine within two metres of the kill height has reached the floor (a parked one's origin rests 0.9 m above it).
@@ -50,20 +50,20 @@ Decided 2026-09-23. **A level is a change to where a player can stand or go** (t
 ## Teams and friendly fire
 
 - dot-match's `max_difference` is 0, because `sides` decides a team; the default 1 refuses a join that puts a side two ahead (`force_balance = false` does not reach it) and left offline stand-ins on no team. A refused join logs at ERROR.
-- **`DotDamageResolver` needs a `team_of` callable**, or `_same_team` answers false and friendly fire is on whatever the rules say. A free-for-all is right without one; a team game is silently wrong.
+- **`GSDamageResolver` needs a `team_of` callable**, or `_same_team` answers false and friendly fire is on whatever the rules say. A free-for-all is right without one; a team game is silently wrong.
 - **Tell spectating and progress about a death before dot-match**: `report_kill` can end the round synchronously (the last of a side is an elimination), which files the round, and the winning kill was counted in no round.
 
 ## The layout vote
 
-A layout is drawn per round, so the players vote for the next one over dot-vote (`game/sc_vote.gd`, a `DotVoteDirector` over a `DotVoteListSource` of `ScLayouts.allowed`). dot-vote's ROUND_END trigger opens a ballot at a round's end and applies it at the next, one layout late; `ScVote` uses MANUAL instead: a ballot opens `sc_vote_after` (20) seconds into every round and is applied at the round's end (`apply: END_OF_ROUND`), setting `ScGame.next_layout_id`, which the next `_lay_out_round` uses once instead of the weighted draw (and drops if `layout_ids` no longer allows it). The module advances the director once a server tick (`self_advance` off, `round_based` on) and calls `note_round_end` from `DotMatch.round_ended`.
+A layout is drawn per round, so the players vote for the next one over dot-vote (`game/sc_vote.gd`, a `GSVoteDirector` over a `GSVoteListSource` of `ScLayouts.allowed`). dot-vote's ROUND_END trigger opens a ballot at a round's end and applies it at the next, one layout late; `ScVote` uses MANUAL instead: a ballot opens `sc_vote_after` (20) seconds into every round and is applied at the round's end (`apply: END_OF_ROUND`), setting `ScGame.next_layout_id`, which the next `_lay_out_round` uses once instead of the weighted draw (and drops if `layout_ids` no longer allows it). The module advances the director once a server tick (`self_advance` off, `round_based` on) and calls `note_round_end` from `GSMatch.round_ended`.
 
 - **Rock the vote opens the ballot in the game, not in dot-vote.** Under MANUAL the director hands every opening to its host, a passed rock-the-vote included: without `ScVote`'s handler on `director.clock.expired` (reason `rtv`), `!rtv` answered "Rocked. 1 of 1." and nothing opened. A rocked vote still waits for the round's end (`rtv_apply`): changing the layout mid-round tears every platform down under the people standing on it. `rtv_delay_sec` is 0, because dot-vote's two minutes are as long as a whole survival phase.
 - **`vary_layout` off means no ballot**: the operator asked for one layout all evening. The list is read again on every layout laid, so `layout_ids` changed between rounds reaches the ballot.
 - No time limit (`duration_sec` 0), the current layout is on the ballot, no cooldown in plays. Stand-ins do not vote, so a server of stand-ins never opens one.
 - dot-vote's commands (`vote`, `rtv`, `nominate`, …) are the module's, so `!vote 2` in chat reaches them through `_on_chat_command` as the player who typed it.
-- The client shell draws the ballot from the `map_ballot` notice (`DotVoteBallotFeed` → `DotBallotPanel` down the right-hand side); nothing of it is in this game's client. `tools/shot.sh --ballot` draws the same panel from this game's own vote over any view.
-- An owner reshapes it in `user://cfg/smash_vote.json` or `game.yml`'s `metadata: layout_vote:`, keyed as `DotVoteRules`; `{"enabled": false}` leaves the draw alone.
-- `cfg/maps.yml` (or the `--config` directory's, or `sv_map_rotation_file`) says which layouts rotate, in dot-map's `DotMapRotationFile` shape (`defaults:` / `games: mg-smash-copter:`, named rotations, `maps:` lists and name globs). `ScMapSession.load_rotation` reads it and sets `DotMapDef.in_rotation`; a layout outside the active rotation stays installed (the M menu marks it "not in rotation", an admin can still change to it) but is never drawn, balloted or nominated. `sv_map_rotation <name>` switches, and the file's `commands:` block renames vote, rtv and nominate. No file: every layout rotates. A `cycle` rotation's order is not followed, the draw stays weighted.
+- The client shell draws the ballot from the `map_ballot` notice (`GSVoteBallotFeed` → `GSBallotPanel` down the right-hand side); nothing of it is in this game's client. `tools/shot.sh --ballot` draws the same panel from this game's own vote over any view.
+- An owner reshapes it in `user://cfg/smash_vote.json` or `game.yml`'s `metadata: layout_vote:`, keyed as `GSVoteRules`; `{"enabled": false}` leaves the draw alone.
+- `cfg/maps.yml` (or the `--config` directory's, or `sv_map_rotation_file`) says which layouts rotate, in dot-map's `GSMapRotationFile` shape (`defaults:` / `games: mg-smash-copter:`, named rotations, `maps:` lists and name globs). `ScMapSession.load_rotation` reads it and sets `GSMapDef.in_rotation`; a layout outside the active rotation stays installed (the M menu marks it "not in rotation", an admin can still change to it) but is never drawn, balloted or nominated. `sv_map_rotation <name>` switches, and the file's `commands:` block renames vote, rtv and nominate. No file: every layout rotates. A `cycle` rotation's order is not followed, the draw stays weighted.
 
 `examples/dedicated`'s "the layout vote" section drives it through the console as a player's chat would: a nomination, the ballot opening on its own clock with the nomination on it, a vote by number, the round's end laying the winner, and rock-the-vote opening the next one early. Not yet tried in a browser.
 

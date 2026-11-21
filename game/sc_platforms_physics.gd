@@ -280,7 +280,7 @@ func report_impact(index: int, kilos: float, speed: float, at: Vector3) -> Impac
 ## Leans every platform at once, which is what an earthquake is.
 ##
 ## [param strength] is in radians per second of lean velocity, in a direction drawn from [param stream] so peers on one seed shake the same way.
-func shake_all(stream: DotRandomStream, strength: float) -> void:
+func shake_all(stream: GSRandomStream, strength: float) -> void:
 	for deck in decks:
 		if not deck.is_standing():
 			continue
@@ -316,7 +316,7 @@ func _collapse(index: int, deck: Deck, why: StringName) -> void:
 		_by_body.erase(deck.body.get_instance_id())
 
 	collapsed.emit(index, why)
-	DotLog.debug(CHANNEL, "a platform came off its pillar", {
+	GSLog.debug(CHANNEL, "a platform came off its pillar", {
 		"index": index, "cell": "%d,%d" % [deck.column, deck.row], "why": String(why),
 	})
 

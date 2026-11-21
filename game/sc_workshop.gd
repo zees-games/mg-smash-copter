@@ -33,13 +33,13 @@ const MAX_ROWS := 5
 ## Entry id -> why it was refused.
 var refused: Dictionary = {}
 
-var catalogue: DotMapCatalogue = null
+var catalogue: GSMapCatalogue = null
 
 
 ## Follows [param index] (the process's shared one by default).
-func follow(index: DotContentIndex = null) -> void:
-	catalogue = DotMapCatalogue.new()
-	catalogue.follow_content(index if index != null else DotContentIndex.shared(), accepted())
+func follow(index: GSContentIndex = null) -> void:
+	catalogue = GSMapCatalogue.new()
+	catalogue.follow_content(index if index != null else GSContentIndex.shared(), accepted())
 	refresh()
 
 
@@ -73,7 +73,7 @@ static func layout_id(id: StringName) -> StringName:
 	return StringName("workshop:%s" % id)
 
 
-func _read(map: DotMapDef) -> ScLayouts.Layout:
+func _read(map: GSMapDef) -> ScLayouts.Layout:
 	var text := FileAccess.get_file_as_string(map.scene_path) if map.scene_path != "" else ""
 	var parsed: Variant = JSON.parse_string(text) if text != "" else null
 	var why := ""
@@ -90,7 +90,7 @@ func _read(map: DotMapDef) -> ScLayouts.Layout:
 
 	if why != "":
 		refused[String(map.id)] = why
-		DotLog.warn(CHANNEL, "a subscribed map was refused", {"id": String(map.id), "why": why})
+		GSLog.warn(CHANNEL, "a subscribed map was refused", {"id": String(map.id), "why": why})
 		return null
 
 	layout.id = layout_id(map.id)

@@ -1,6 +1,6 @@
 extends "sc_prop_net.gd"
 
-## What a chopper replicates, through [DotVehicleNetSync].
+## What a chopper replicates, through [GSVehicleNetSync].
 ##
 ## [b]It extends the prop behaviour rather than sitting beside it.[/b] A chopper is another
 ## body the server moves and the client draws, so the bridge keeps ONE table of replicated
@@ -15,9 +15,9 @@ const ScCopterBody := preload("../../props/sc_copter_body.gd")
 
 ## The instance, on the authority only. Null on a client, where a chopper is a body being
 ## drawn where the server says it is and nothing more.
-var vehicle: DotVehicleInstance = null
+var vehicle: GSVehicleInstance = null
 
-# The replicated properties, named by [DotVehicleNetSync]. Declared here because GDScript
+# The replicated properties, named by [GSVehicleNetSync]. Declared here because GDScript
 # has no dynamic properties: `specs()` says what to send, and these are what it sends.
 var net_x: float = 0.0
 var net_y: float = 0.0
@@ -32,14 +32,14 @@ var net_occupancy: int = 0
 ## Declared from the addon's own table.
 ##
 ## [b]The type is resolved from a STRING, and that is why the table is written the way it
-## is.[/b] [DotVehicleNetSync] never mentions a dot-net `class_name`, because a script
+## is.[/b] [GSVehicleNetSync] never mentions a dot-net `class_name`, because a script
 ## naming a class the project does not have fails to parse and takes every script that
 ## references it down with it — so a game without dot-net can still use dot-vehicle.
-## Resolving `DotNetVar.Type[spec.type]` is the game's half of that bargain and can only be
+## Resolving `GSNetVar.Type[spec.type]` is the game's half of that bargain and can only be
 ## done here.
 func _register_net_vars() -> void:
-	for spec in DotVehicleNetSync.specs():
-		var declaration := replicate(spec["property"], DotNetVar.Type[spec["type"]])
+	for spec in GSVehicleNetSync.specs():
+		var declaration := replicate(spec["property"], GSNetVar.Type[spec["type"]])
 
 		if int(spec["bits"]) > 0:
 			declaration.bits(int(spec["bits"]))
@@ -52,7 +52,7 @@ func pull() -> void:
 	if vehicle == null or not vehicle.is_alive():
 		return
 
-	DotVehicleNetSync.pull(vehicle, self)
+	GSVehicleNetSync.pull(vehicle, self)
 
 
 ## The vehicle layout's three floats, as the one vector everything else reads.
@@ -67,7 +67,7 @@ func _draw() -> void:
 	if identity != null and identity.is_authoritative:
 		return
 
-	DotVehicleNetSync.apply(prop, self)
+	GSVehicleNetSync.apply(prop, self)
 
 	# Frozen for the same reason a mirrored prop is: an unfrozen [RigidBody3D] fights every
 	# transform written into it, and the result is a machine juddering in the air while the
@@ -82,4 +82,4 @@ func _draw() -> void:
 
 ## Whether a seat is taken, from the replicated mask. What a "get in" prompt reads.
 func seat_occupied(seat_index: int) -> bool:
-	return DotVehicleNetSync.is_seat_occupied(net_occupancy, seat_index)
+	return GSVehicleNetSync.is_seat_occupied(net_occupancy, seat_index)

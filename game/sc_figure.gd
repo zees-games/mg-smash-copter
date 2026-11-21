@@ -20,16 +20,16 @@ const ScPaths := preload("sc_paths.gd")
 ## remote player, `render_state()` for one this process simulates — and nothing here
 ## computes one.
 ##
-## [b]One of the family's people[/b] (dot-player-char's `DotHumanoidFigure`: animated, on the
+## [b]One of the family's people[/b] (dot-player-char's `GSHumanoidFigure`: animated, on the
 ## rig every game's players, bots and NPCs share, the same style as the zombies of the family's
 ## zombie game), because a player is somebody to see coming and a capsule does not say which way
 ## somebody is facing from forty metres. Which person a player is still comes from the blocky
 ## kit's atlas their avatar names ([constant ATLASES]): the atlas letter is a look
-## (`DotHumanoidLook.from_letter`), so every avatar document written before the people arrived
+## (`GSHumanoidLook.from_letter`), so every avatar document written before the people arrived
 ## dresses the same person on every client. [b]The side is on the top[/b], [constant TEAM_TINT] of
 ## the way: the first thing anybody needs to read off a body is whose side it is on.
 ##
-## [b]The weapon is in the person's own hand[/b] (`DotHumanoidFigure.attachment`, the gun hand of
+## [b]The weapon is in the person's own hand[/b] (`GSHumanoidFigure.attachment`, the gun hand of
 ## the kit's clips), so it moves with the gun clips and a melee swing; the legs keep walking under
 ## a swing because the figure plays it on the upper body only.
 
@@ -66,13 +66,13 @@ var holding: StringName = &""
 var held: ZeeWorldModel = null
 
 ## The person, under this node.
-var person: DotHumanoidFigure = null
+var person: GSHumanoidFigure = null
 
 ## How much the weapon in the person's hand is scaled up. The addon's 1.7 left a launcher the
 ## length of a forearm in these chibi fists (visual QA); read at [method build].
 var held_scale: float = 2.4
 
-## dot-player-char API level that has DotHumanoidFigure.frame_delta.
+## dot-player-char API level that has GSHumanoidFigure.frame_delta.
 const FRAME_DELTA_LEVEL := 11
 
 var _posed_at_usec: int = -1
@@ -93,22 +93,22 @@ func build(height: float, atlas_path: String, colour: Color) -> void:
 	# The gun hung off the old person's hand and goes with it; [method hold] builds it again on
 	# the next frame, from [member holding], which outlives a rebuild.
 	held = null
-	var look := DotHumanoidLook.from_letter(atlas_path)
+	var look := GSHumanoidLook.from_letter(atlas_path)
 	if look == null:
-		look = DotHumanoidLook.stock(hash(atlas_path))
+		look = GSHumanoidLook.stock(hash(atlas_path))
 	if colour != Color.WHITE:
 		look = look.with_side(colour, TEAM_TINT)
 	if person != null:
 		remove_child(person)
 		person.queue_free()
-	person = DotHumanoidFigure.new()
+	person = GSHumanoidFigure.new()
 	person.name = "Person"
 	person.held_scale = held_scale
 	add_child(person)
 	person.build(look, height)
 	from_art = person.from_art
 	if not from_art:
-		DotLog.warn(CHANNEL, "the person's art did not load; a capsule stands in", {"atlas": atlas.get_file()})
+		GSLog.warn(CHANNEL, "the person's art did not load; a capsule stands in", {"atlas": atlas.get_file()})
 
 
 ## The drawn model, for a death that breaks it apart or falls. Null before [method build].
@@ -117,7 +117,7 @@ func body_node() -> Node3D:
 
 
 ## How the player moves besides its ground speed: `on_floor`, `vertical`, `crouched`, `downed`
-## and the rest [method DotHumanoidFigure.set_motion] reads.
+## and the rest [method GSHumanoidFigure.set_motion] reads.
 func set_motion(motion: Dictionary) -> void:
 	if person != null:
 		person.set_motion(motion)
@@ -131,7 +131,7 @@ func pose(at: Vector3, yaw_radians: float, speed: float) -> void:
 	if person == null:
 		return
 	# Game time, as the body moves: a wall-clock step skated the feet (slow motion, fixed-rate frames).
-	if DotAddonApi.build_level("dot_player_char") >= FRAME_DELTA_LEVEL:
+	if GSAddonApi.build_level("dot_player_char") >= FRAME_DELTA_LEVEL:
 		person.animate(speed, person.frame_delta())
 	else:
 		var now := Time.get_ticks_usec()
@@ -187,16 +187,16 @@ func _set_hold_kind() -> void:
 	if person == null:
 		return
 	if holding == &"" or held == null or not held.visible:
-		person.set_hold(DotHumanoidFigure.Hold.NONE)
+		person.set_hold(GSHumanoidFigure.Hold.NONE)
 		return
 	var art: Variant = ZeeWeaponArtTable.table().get(holding)
 	var pose: StringName = (art as ZeeWeaponArt).pose if art is ZeeWeaponArt else ZeeWeaponArtTable.POSE_RIFLE
 	if pose == ZeeWeaponArtTable.POSE_MELEE:
-		person.set_hold(DotHumanoidFigure.Hold.MELEE)
+		person.set_hold(GSHumanoidFigure.Hold.MELEE)
 	elif pose == ZeeWeaponArtTable.POSE_THROWN:
-		person.set_hold(DotHumanoidFigure.Hold.NONE)
+		person.set_hold(GSHumanoidFigure.Hold.NONE)
 	else:
-		person.set_hold(DotHumanoidFigure.Hold.GUN)
+		person.set_hold(GSHumanoidFigure.Hold.GUN)
 
 
 ## The weapon in this figure's hand was used [param times] times, as a [ZeeWeaponNet] kind.
@@ -210,7 +210,7 @@ func fired(times: int, kind: int) -> void:
 
 	# [b]A swing is the arm, not a kick[/b]: the person's slash, over whatever the legs do.
 	if kind == ZeeWeaponNet.KIND_SWING and person != null:
-		person.swing(DotHumanoidClips.SLASH)
+		person.swing(GSHumanoidClips.SLASH)
 
 
 ## The node a held weapon hangs from, by the name [ZeeWorldModel] asks for: the person's hand.

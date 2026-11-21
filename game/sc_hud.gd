@@ -27,7 +27,7 @@ const FINE_COLOUR := Color(0.45, 0.82, 0.48)
 ## so a light or high-contrast theme can change them. Static so a render tool can use it.
 static func piece_theme() -> Theme:
 	var t := Theme.new()
-	var type := DotHudPiece.THEME_TYPE
+	var type := GSHudPiece.THEME_TYPE
 	t.set_color(&"plate_edge", type, Color(0.98, 0.86, 0.40, 0.3))
 	t.set_color(&"highlight", type, Color(0.98, 0.86, 0.40))
 	t.set_color(&"good", type, FINE_COLOUR)
@@ -52,23 +52,23 @@ var game: ScGame = null
 var player: ScPlayer = null
 
 ## Bottom right while armed: the weapon in hand and `magazine | reserve`. See [method _draw_ammo].
-var ammo: DotAmmoCounter = null
+var ammo: GSAmmoCounter = null
 ## The held weapon's sprite over [member ammo]; hidden when it has none.
-var weapon_icon: DotWeaponIconPlate = null
+var weapon_icon: GSWeaponIconPlate = null
 
 ## The rig the counter reads: the gun this client draws (`ScClient.weapons`), which
 ## `ScClient.correct_drawn` brings to the server's count once quiet.
 var weapons_fn: Callable = Callable()
 
 ## Four ticks round the crosshair for a hit the server confirmed. See [method confirm_hit].
-var hit_fx: DotHitFeedback = null
-var hit_marker: DotHitMarker = null
+var hit_fx: GSHitFeedback = null
+var hit_marker: GSHitMarker = null
 
-## The clock with the phase line under it: dot-ui's [DotScoreStrip], clock alone (the
+## The clock with the phase line under it: dot-ui's [GSScoreStrip], clock alone (the
 ## sides' state is the field line, bottom right).
-var strip: DotScoreStrip = null
-## Health: dot-ui's [DotVitals], bar and number on one plate, red at a quarter.
-var vitals: DotVitals = null
+var strip: GSScoreStrip = null
+## Health: dot-ui's [GSVitals], bar and number on one plate, red at a quarter.
+var vitals: GSVitals = null
 var _field: Label = null
 var _special: Label = null
 var _shout: Label = null
@@ -145,14 +145,14 @@ func _build() -> void:
 
 	var size := 22
 
-	# The glance pieces read their colours from the theme on the type DotHudPiece; set on
+	# The glance pieces read their colours from the theme on the type GSHudPiece; set on
 	# the root, every piece under it inherits them. See [method piece_theme].
 	_root.theme = piece_theme()
 	_follow()
 
 	# The clock, and the phase line under it. Full width, because the strip centres itself
 	# on its own middle; it ends above the special line at 110.
-	strip = DotScoreStrip.new()
+	strip = GSScoreStrip.new()
 	strip.name = "Clock"
 	strip.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	strip.offset_top = 16.0
@@ -184,7 +184,7 @@ func _build() -> void:
 
 func _build_bottom(size: int) -> void:
 	# Above the chat box, because the chat box also draws itself bottom-left; overlap is invisible to a headless suite, whose viewport is 64 x 64.
-	vitals = DotVitals.new()
+	vitals = GSVitals.new()
 	vitals.name = "Vitals"
 	vitals.bar_end = 220.0
 	vitals.fill_colour = FINE_COLOUR
@@ -194,7 +194,7 @@ func _build_bottom(size: int) -> void:
 	# Above the chat box's FULL log, not its first line: ScClient.new_chat caps the box at six rows, so its log tops out 162 pixels off the bottom, under this plate's 170 (56 tall; checked in headless_run).
 	vitals.offset_top = -226.0
 	vitals.offset_bottom = -170.0
-	if DotPlatform.has_touch():
+	if GSPlatform.has_touch():
 		# The bottom-left corner is the thumbstick: the health plate goes top left, under the Menu button.
 		vitals.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 		vitals.offset_left = 16.0
@@ -212,7 +212,7 @@ func _build_bottom(size: int) -> void:
 	_field.offset_top = -80.0
 	_field.offset_bottom = -26.0
 	_field.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	if DotPlatform.has_touch():
+	if GSPlatform.has_touch():
 		# The bottom-right corner is the FIRE/USE cluster: park the line top right.
 		_field.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 		_field.offset_left = -400.0
@@ -240,7 +240,7 @@ func _build_crosshair() -> void:
 	# A dot rather than a cross. For the whole first half there is nothing to aim at, and in
 	# the second half every weapon in the pack has its own spread — so what a player needs is
 	# "the point I am looking at", which is one pixel.
-	var dot := DotCrosshair.new()
+	var dot := GSCrosshair.new()
 	dot.name = "Crosshair"
 	dot.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dot.length = 0.0
@@ -251,7 +251,7 @@ func _build_crosshair() -> void:
 	dot.dot_radius = 3.0
 	dot.colour = Color(1.0, 1.0, 1.0, 0.75)
 	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if DotAddonApi.build_level("dot_ui") >= 14:
+	if GSAddonApi.build_level("dot_ui") >= 14:
 		dot.set(&"alive_source", func() -> bool: return player == null or player.is_alive())
 	_root.add_child(dot)
 	_aim_dot = dot
@@ -260,8 +260,8 @@ func _build_crosshair() -> void:
 ## Ammo counter, weapon icon and hit marker, bottom right.
 func _build_hand() -> void:
 	# Bottom right, above the field line: what is in hand and how much is in it. The play test
-	# found a gun with no counter anywhere; dot-ui's DotAmmoCounter is the family's one.
-	ammo = DotAmmoCounter.new()
+	# found a gun with no counter anywhere; dot-ui's GSAmmoCounter is the family's one.
+	ammo = GSAmmoCounter.new()
 	ammo.name = "Ammo"
 	ammo.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
 	ammo.offset_left = -420.0
@@ -271,7 +271,7 @@ func _build_hand() -> void:
 	ammo.visible = false
 	_root.add_child(ammo)
 
-	weapon_icon = DotWeaponIconPlate.new()
+	weapon_icon = GSWeaponIconPlate.new()
 	weapon_icon.name = "WeaponIcon"
 	weapon_icon.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
 	weapon_icon.offset_left = -204.0
@@ -281,7 +281,7 @@ func _build_hand() -> void:
 	weapon_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(weapon_icon)
 
-	hit_fx = DotHitFeedback.mount(_root)
+	hit_fx = GSHitFeedback.mount(_root)
 	hit_marker = hit_fx.marker
 
 
@@ -349,12 +349,12 @@ func _process(delta: float) -> void:
 	# thing twice. Red for the last ten seconds of a phase.
 	var running := game.phase != ScGame.Phase.IDLE and game.sides_are_playable()
 	strip.show_clock(
-		DotScoreStrip.clock_text(left) if running else "", left <= LOW_CLOCK_SEC, _phase_line()
+		GSScoreStrip.clock_text(left) if running else "", left <= LOW_CLOCK_SEC, _phase_line()
 	)
 	_special.text = game.special_line()
 
 	if player != null and player.health != null:
-		# Red at a quarter (DotVitals.low_fraction), which in the showdown is one burst from
+		# Red at a quarter (GSVitals.low_fraction), which in the showdown is one burst from
 		# gone and in the survival phase is one crate.
 		vitals.show_vitals(player.health.health, player.health.max_health)
 

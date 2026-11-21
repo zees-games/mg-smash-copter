@@ -31,7 +31,7 @@ const CHECKS := 442
 
 
 func _ready() -> void:
-	DotLog.set_level(DotLog.Level.ERROR)
+	GSLog.set_level(GSLog.Level.ERROR)
 	_run.call_deferred()
 
 
@@ -241,7 +241,7 @@ func _pieces_highest_comes_off(platforms: ScPlatforms, config: ScConfig, label: 
 func _pieces_cross_the_wire(platforms: ScPlatforms, config: ScConfig, label: String, layout: ScLayouts.Layout) -> void:
 	# The cells survive the wire, kinds and levels both.
 	var cells := platforms.cells()
-	var back := ScEvents.read_layout(DotNetReader.new(ScEvents.write_layout(
+	var back := ScEvents.read_layout(GSNetReader.new(ScEvents.write_layout(
 		layout.id, platforms.field_columns(), platforms.field_rows(), config.column_pitch,
 		config.row_pitch, config.platform_size, config.deck_height, layout.pitch_scale,
 		layout.stiffness_scale, cells, layout.row_pitch_scale, layout.row_shift
@@ -472,7 +472,7 @@ func _flank_run_pads(game: ScGame, sides: int, middle: Vector3) -> void:
 				break
 			toward = Vector3(route[next].x - at.x, 0.0, route[next].z - at.z)
 
-		var command := DotFpsCommand.new()
+		var command := GSFpsCommand.new()
 		command.yaw = rad_to_deg(atan2(-toward.x, -toward.z))
 		command.move = Vector2(0.0, 1.0)
 		runner.controller.apply_command(command)
@@ -647,13 +647,13 @@ func _dais_run_on(game: ScGame, sides: int, middle: Vector3, half: float, top: f
 			target = route_points[next]
 			toward = Vector3(target.x - at.x, 0.0, target.z - at.z)
 
-		var command := DotFpsCommand.new()
+		var command := GSFpsCommand.new()
 		command.yaw = rad_to_deg(atan2(-toward.x, -toward.z))
 		command.move = Vector2(0.0, 1.0)
 
 		# Off the ring 1.2 m short of the dais' edge, the lead a running jump wants.
 		if next == route_points.size() - 1 and not jumped and toward.length() < half + 1.2:
-			command.set_button(DotFpsCommand.BUTTON_JUMP, true)
+			command.set_button(GSFpsCommand.BUTTON_JUMP, true)
 			jumped = true
 
 		runner.controller.apply_command(command)
@@ -663,7 +663,7 @@ func _dais_run_on(game: ScGame, sides: int, middle: Vector3, half: float, top: f
 
 		var now := runner.controller.state.position
 
-		if jumped and runner.controller.state.mode == DotFpsState.Mode.GROUND \
+		if jumped and runner.controller.state.mode == GSFpsState.Mode.GROUND \
 				and now.y > top - 0.1 and absf(now.x - middle.x) < half \
 				and absf(now.z - middle.z) < half:
 			on_top = true

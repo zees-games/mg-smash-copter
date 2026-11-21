@@ -89,7 +89,7 @@ func _test_a_weapon_crosses() -> void:
 
 	# Fired on the server the way a player fires: the button rides in the movement command,
 	# because it is held and has to be ordered against the movement it was aimed with.
-	var firing := DotFpsCommand.new()
+	var firing := GSFpsCommand.new()
 	firing.set_button(ScNetCommand.BUTTON_FIRE, true)
 	await _steps(24, firing)
 
@@ -148,23 +148,23 @@ func _test_the_aim_bit_crosses() -> void:
 	drawn.role = ZeeWeaponRig.Role.SERVER
 	drawn.authority = false
 	drawn.tick_rate = _client_game.tick_rate
-	drawn.player_ref = DotNodeRef.of_path(mine.get_path())
+	drawn.player_ref = GSNodeRef.of_path(mine.get_path())
 	drawn.ads_rules = _client_game.ads_rules
 	mine.add_child(drawn)
 	var drawn_ready := drawn.setup()
 	var _drawn_given := drawn.give(rig.current_def().id)
 	_check(drawn_ready.ok, "the client's drawn rig sets up", "" if drawn_ready.ok else drawn_ready.error.message)
 	var drawn_tick := 500000
-	var aim_step := func(command: DotFpsCommand, aim: bool) -> void:
+	var aim_step := func(command: GSFpsCommand, aim: bool) -> void:
 		drawn_tick += 1
-		var weapon_command := DotWeaponCommand.new()
-		weapon_command.set_button(DotWeaponCommand.BUTTON_AIM, aim)
+		var weapon_command := GSWeaponCommand.new()
+		weapon_command.set_button(GSWeaponCommand.BUTTON_AIM, aim)
 		var _o := drawn.simulate_tick(weapon_command, drawn_tick)
 		await _step(command, aim)
 	var start := server_me.global_position
 
 	var run := func(direction: Vector2, aim: bool) -> float:
-		var walk := DotFpsCommand.new()
+		var walk := GSFpsCommand.new()
 		walk.move = direction
 		server_me.place_at(start, 0.0)
 		for _i in range(INPUT_LEAD + 8):
@@ -189,7 +189,7 @@ func _test_the_aim_bit_crosses() -> void:
 	_check(not server_me.aiming and rig.ads_move_scale() == 1.0, "unaimed, the server's body is not aiming and not slowed")
 
 	var aimed_run: float = await run.call(best, true)
-	var forward := DotFpsCommand.new()
+	var forward := GSFpsCommand.new()
 	forward.move = best
 	_check(server_me.aiming and mine.aiming and absf(rig.ads_move_scale() - paced) < 0.001,
 		"aimed, the server's body and the client's both are, and the rig is at the rules' pace",
@@ -226,12 +226,12 @@ func _test_a_hit_is_the_shooters() -> void:
 	_server_bridge._admit(BYSTANDER_PEER)
 	# Two seconds still: the last section's trigger lets go, and a bolt-action gun (the handover
 	# deals a sniper rifle) is ready again, so one press here is one shot.
-	var still := DotFpsCommand.new()
+	var still := GSFpsCommand.new()
 	await _steps(SERVER_TICK_RATE * 2, still)
 	var full := server_me.weapons.arsenal.current().magazine if server_me.weapons != null else -1
 
 	# Point-blank, straight down the aim: the stand-in (the other side) three metres ahead.
-	var aim := DotWeaponCommand.new()
+	var aim := GSWeaponCommand.new()
 	var ahead := aim.aim_direction()
 	_stand_in.place_at(server_me.global_position + ahead * 3.0, 180.0)
 	# Hit but never killed: a kill could end the showdown and take the gun this section counts.
@@ -240,7 +240,7 @@ func _test_a_hit_is_the_shooters() -> void:
 	_sent_events.clear()
 	_listening = true
 
-	var fire := DotFpsCommand.new()
+	var fire := GSFpsCommand.new()
 	fire.set_button(ScNetCommand.BUTTON_FIRE, true)
 	await _steps(2, fire)
 	await _steps(INPUT_LEAD + 6, still)
@@ -257,9 +257,9 @@ func _test_a_hit_is_the_shooters() -> void:
 	# Shot back: this player the victim, and a victim is told nothing.
 	hits.clear()
 	_sent_events.clear()
-	var shot_back := DotShot.new()
+	var shot_back := GSShot.new()
 	shot_back.attacker = _stand_in.entity_id
-	var wound := DotDamage.make(_stand_in.entity_id, server_me.entity_id, 1.0, null)
+	var wound := GSDamage.make(_stand_in.entity_id, server_me.entity_id, 1.0, null)
 	wound.health_lost = 1.0
 	wound.point = server_me.global_position + Vector3.UP
 	shot_back.damages.append(wound)
@@ -411,7 +411,7 @@ func _test_a_lossy_link() -> void:
 	# useless.
 	_drop_every = 3
 
-	var forward := DotFpsCommand.new()
+	var forward := GSFpsCommand.new()
 	forward.move = Vector2(0.0, 1.0)
 
 	await _steps(50, forward)
@@ -476,21 +476,21 @@ func _test_blind_and_beacon() -> void:
 	var theirs_net := _behaviour_of(theirs)
 
 	_check(
-		mine_net != null and mine_net.find_var(&"net_blind").audience == DotNetVar.Audience.OWNER
-		and mine_net.find_var(&"net_beacon").audience == DotNetVar.Audience.EVERYONE,
+		mine_net != null and mine_net.find_var(&"net_blind").audience == GSNetVar.Audience.OWNER
+		and mine_net.find_var(&"net_beacon").audience == GSNetVar.Audience.EVERYONE,
 		"the blind is declared owner-only and the beacon for everybody"
 	)
 
 	var ada := String.num_int64(SESSION)
 	var bot := String.num_int64(ScNetBridge.session_of(bot_key))
-	var results: Array[DotResult] = [
+	var results: Array[GSResult] = [
 		blind.call(StringName(ada), {"on": true, "actor": "1"}),
 		blind.call(StringName(bot), {"on": true, "actor": "1"}),
 		beacon.call(StringName(ada), {"on": true, "actor": "1"}),
 		beacon.call(StringName(bot), {"on": true, "actor": "1"}),
 	]
 	_check(
-		results.all(func(r: DotResult) -> bool: return r.ok),
+		results.all(func(r: GSResult) -> bool: return r.ok),
 		"the server blinds and beacons both players"
 	)
 
@@ -514,7 +514,7 @@ func _test_blind_and_beacon() -> void:
 		"a beaconed player is relevant to every peer — as every player here already is"
 	)
 
-	var _off: Array[DotResult] = [
+	var _off: Array[GSResult] = [
 		blind.call(StringName(ada), {"on": false, "actor": "1"}),
 		blind.call(StringName(bot), {"on": false, "actor": "1"}),
 		beacon.call(StringName(ada), {"on": false, "actor": "1"}),
@@ -534,7 +534,7 @@ func _test_blind_and_beacon() -> void:
 		"and a beacon turned off leaves the player relevant, which on this map is everybody"
 	)
 
-	var absent: DotResult = blind.call(&"9999", {"on": true, "actor": "1"})
+	var absent: GSResult = blind.call(&"9999", {"on": true, "actor": "1"})
 	_check(not absent.ok, "a blind on nobody is refused rather than ignored")
 
 	services.free()
@@ -623,13 +623,13 @@ func _test_somebody_out_watches() -> void:
 
 	_check(not theirs.is_alive(), "the client's player fell and is out on the server")
 	_check(
-		views.has(DotSpectatorView.Mode.DEATH_CAM) and _client_game.spectate.is_spectating(me),
+		views.has(GSSpectatorView.Mode.DEATH_CAM) and _client_game.spectate.is_spectating(me),
 		"the client is told, and its own mirror now says it is watching"
 	)
 
 	var drop := _client_game.spectate.camera_for(me)
 	_check(
-		_client_game.spectate.mode_of(me) == DotSpectatorView.Mode.DEATH_CAM
+		_client_game.spectate.mode_of(me) == GSSpectatorView.Mode.DEATH_CAM
 			and drop.origin.y > _server_game.config.deck_height,
 		"the death camera is up over the drop, not at the floor they hit",
 		"y = %.1f" % drop.origin.y
@@ -639,11 +639,11 @@ func _test_somebody_out_watches() -> void:
 
 	var mate_key := mate.player_id
 	_check(
-		_client_game.spectate.mode_of(me) == DotSpectatorView.Mode.FIRST_PERSON
+		_client_game.spectate.mode_of(me) == GSSpectatorView.Mode.FIRST_PERSON
 			and _client_game.spectate.watching(me) == mate_key,
 		"and then hands over to the team-mate's eyes",
 		"%s on %s" % [
-			DotSpectatorView.Mode.keys()[_client_game.spectate.mode_of(me)],
+			GSSpectatorView.Mode.keys()[_client_game.spectate.mode_of(me)],
 			String(_client_game.spectate.watching(me)),
 		]
 	)
@@ -677,7 +677,7 @@ func _check_watch_policy(me: StringName, mate_key: StringName, notices: Array[St
 		" | ".join(notices)
 	)
 	_check(
-		_client_game.spectate.mode_of(me) == DotSpectatorView.Mode.FIRST_PERSON,
+		_client_game.spectate.mode_of(me) == GSSpectatorView.Mode.FIRST_PERSON,
 		"and the camera stays where the server put it"
 	)
 

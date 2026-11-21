@@ -75,7 +75,7 @@ func _predicted_key_moves(client_player: ScPlayer, server_player: ScPlayer) -> v
 	_server_bridge.server_tick(_tick)
 	_flush()
 
-	var forward := DotFpsCommand.new()
+	var forward := GSFpsCommand.new()
 	forward.move = Vector2(0.0, 1.0)
 	forward.yaw = 0.0
 
@@ -101,7 +101,7 @@ func _predicted_key_moves(client_player: ScPlayer, server_player: ScPlayer) -> v
 
 ## A straight run then a stop leaves the client where the server has the player.
 func _predicted_run_and_stop(client_player: ScPlayer, server_player: ScPlayer) -> void:
-	var forward := DotFpsCommand.new()
+	var forward := GSFpsCommand.new()
 	forward.move = Vector2(0.0, 1.0)
 	forward.yaw = 0.0
 
@@ -181,7 +181,7 @@ func _test_who_somebody_is_crosses() -> void:
 	var chosen := (ScAvatars.stock_index(face_key) + 3) % ScAvatars.SKINS.size()
 	var face := ScAvatars.stock_avatar(face_key)
 	face.set_part(ScAvatars.SLOT_SKIN, ScAvatars.SKINS[chosen])
-	_server_bridge.avatar_fn = func(session_id: int) -> DotAvatar:
+	_server_bridge.avatar_fn = func(session_id: int) -> GSAvatar:
 		return face if session_id == FACE_SESSION else null
 
 	var seated := _server_bridge.add_player(FACE_PEER, FACE_SESSION, "Cyd")
@@ -243,7 +243,7 @@ func _test_who_somebody_is_crosses() -> void:
 	)
 
 	# A document for another game's schema is nobody this game can draw.
-	var foreign := DotAvatar.make(&"some_other_game")
+	var foreign := GSAvatar.make(&"some_other_game")
 	foreign.set_part(ScAvatars.SLOT_SKIN, ScAvatars.SKINS[later])
 	_server_bridge.refresh_player(FACE_SESSION, "", foreign)
 	await _steps(4)
@@ -335,7 +335,7 @@ func _else_runs_across_a_deck(theirs: ScPlayer, server_theirs: ScPlayer, mine: S
 	await _steps(16)
 
 	var bea_net: Variant = _server_bridge._behaviours.get(OTHER_SESSION)
-	var run := DotFpsCommand.new()
+	var run := GSFpsCommand.new()
 	run.move = Vector2(0.0, 1.0)
 	run.yaw = -90.0
 	(bea_net as Object).set(&"last_move", run)
@@ -357,7 +357,7 @@ func _else_runs_across_a_deck(theirs: ScPlayer, server_theirs: ScPlayer, mine: S
 				drawn.append(theirs.figure.global_position)
 		clips.append(theirs.figure.clip)
 
-	(bea_net as Object).set(&"last_move", DotFpsCommand.new())
+	(bea_net as Object).set(&"last_move", GSFpsCommand.new())
 
 	var ran := server_track[server_track.size() - 1].distance_to(server_track[0])
 	_check(
@@ -425,7 +425,7 @@ func _else_runs_evenly(theirs: ScPlayer, drawn: Array[Vector3], server_track: Ar
 		"%.1f deg" % rad_to_deg(theirs.figure.rotation.y)
 	)
 	_check(
-		clips[clips.size() - 1] in [&"run", DotHumanoidClips.SPRINT],
+		clips[clips.size() - 1] in [&"run", GSHumanoidClips.SPRINT],
 		"and running, rather than sliding across in a standing pose",
 		String(clips[clips.size() - 1])
 	)

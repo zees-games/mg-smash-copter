@@ -50,7 +50,7 @@ enum Shape {
 
 
 func _ready() -> void:
-	# Mass is NOT set here: [method DotPropSpawner.spawn] writes the catalogue's figure onto the body before it enters the tree, so a scene saved at one mass and a definition claiming another cannot disagree.
+	# Mass is NOT set here: [method GSPropSpawner.spawn] writes the catalogue's figure onto the body before it enters the tree, so a scene saved at one mass and a definition claiming another cannot disagree.
 	_build_collider()
 	_build_model()
 
@@ -97,7 +97,7 @@ func _build_model() -> void:
 		# Not fatal and not silent. A prop with no mesh still falls, still hits a platform
 		# and still kills somebody — what it does not do is warn them it was coming, which
 		# is a game that reads as broken rather than as missing one file.
-		DotLog.warn(CHANNEL, "a prop model would not load", {"path": path, "prop": name})
+		GSLog.warn(CHANNEL, "a prop model would not load", {"path": path, "prop": name})
 		return
 
 	var art := scene.instantiate() as Node3D
@@ -138,7 +138,7 @@ func _paint(root: Node) -> void:
 				atlas = load(ScPaths.rebase(atlas_path)) as Texture2D
 
 				if atlas == null:
-					DotLog.warn(CHANNEL, "the atlas is missing from this build", {
+					GSLog.warn(CHANNEL, "the atlas is missing from this build", {
 						"path": ScPaths.rebase(atlas_path),
 					})
 					return
@@ -150,7 +150,7 @@ func _paint(root: Node) -> void:
 			repaired += 1
 
 	if repaired > 0:
-		DotLog.debug(CHANNEL, "the art was repainted from the mount", {
+		GSLog.debug(CHANNEL, "the art was repainted from the mount", {
 			"materials": repaired, "prop": name,
 		})
 

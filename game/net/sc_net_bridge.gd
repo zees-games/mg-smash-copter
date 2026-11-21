@@ -1,7 +1,7 @@
 extends "sc_net_bridge_apply.gd"
 
 
-## Joins an [ScGame] to a [DotNetManager]. The netcode seam, and the only file in this project that names both. Server: attach, open_link, add_player, server_tick; client: attach, open_link, ask_ready, client_tick.
+## Joins an [ScGame] to a [GSNetManager]. The netcode seam, and the only file in this project that names both. Server: attach, open_link, add_player, server_tick; client: attach, open_link, ask_ready, client_tick.
 ## Only a player's own movement is predicted; platforms, props and choppers are server-authoritative, since a diverged floor would drop a player through a platform their own machine says holds them up.
 ## This game's tick is whole-world (players move, platforms load and step, landings decided), so [method ensure_game_ticked] runs it on the first behaviour through a tick and the rest find it done.
 
@@ -12,16 +12,16 @@ func _exit_tree() -> void:
 		profile_link = null
 
 
-## [param p_game] and [param p_net], in the shape [DotGameNetcode] calls it.
-func attach(p_game: Object, p_net: DotNetManager) -> DotResult:
+## [param p_game] and [param p_net], in the shape [GSGameNetcode] calls it.
+func attach(p_game: Object, p_net: GSNetManager) -> GSResult:
 	var world := p_game as ScGame
 
 	if world == null or p_net == null:
-		return DotResult.fail(DotError.CODE_INVALID, "A bridge needs a world and a manager.")
+		return GSResult.fail(GSError.CODE_INVALID, "A bridge needs a world and a manager.")
 
 	if world.authoritative != p_net.is_server:
-		return DotResult.fail(
-			DotError.CODE_STATE,
+		return GSResult.fail(
+			GSError.CODE_STATE,
 			"The world and the manager disagree about who is authoritative.",
 			"world=%s net.is_server=%s" % [world.authoritative, p_net.is_server]
 		)
@@ -34,11 +34,11 @@ func attach(p_game: Object, p_net: DotNetManager) -> DotResult:
 	add_child(_entities)
 
 	net.send_fn = _send
-	profile_link = DotNetProfileLink.attach(net, world.ensure_runtime())
+	profile_link = GSNetProfileLink.attach(net, world.ensure_runtime())
 
 	var event := net.messages.register(
 		ScEvent.NAME, ScEvent,
-		DotNetMessage.Delivery.RELIABLE, DotNetMessage.Direction.TO_CLIENT
+		GSNetMessage.Delivery.RELIABLE, GSNetMessage.Direction.TO_CLIENT
 	)
 
 	if not event.ok:
@@ -46,7 +46,7 @@ func attach(p_game: Object, p_net: DotNetManager) -> DotResult:
 
 	var request := net.messages.register(
 		ScRequest.NAME, ScRequest,
-		DotNetMessage.Delivery.RELIABLE, DotNetMessage.Direction.TO_SERVER
+		GSNetMessage.Delivery.RELIABLE, GSNetMessage.Direction.TO_SERVER
 	)
 
 	if not request.ok:
@@ -70,7 +70,7 @@ func attach(p_game: Object, p_net: DotNetManager) -> DotResult:
 	if net.is_server:
 		_connect_server_signals()
 
-	return DotResult.success(true)
+	return GSResult.success(true)
 
 
 func _connect_server_signals() -> void:
@@ -123,27 +123,27 @@ func _wire_lag_compensation() -> void:
 	game.combat.restore_fn = func() -> int:
 		return net.history.restore()
 
-	DotLog.debug(CHANNEL, "lag compensation is wired to the netcode's history", {
+	GSLog.debug(CHANNEL, "lag compensation is wired to the netcode's history", {
 		"max_rewind_ms": game.combat.config.max_rewind_ms if game.combat.config != null else 0.0,
 	})
 
 
 ## Opens the link under [param parent], whose NAME is half the RPC routing.
-## A [DotServer] and a [DotClientLink] both call theirs `Server`, with this node under each: Godot routes an RPC by node path, so a link opened elsewhere lands every message nowhere, with no error.
+## A [GSServer] and a [GSClientLink] both call theirs `Server`, with this node under each: Godot routes an RPC by node path, so a link opened elsewhere lands every message nowhere, with no error.
 func open_link(parent: Node) -> void:
 	if parent == null or link != null:
 		return
 
 	link = ScNetLink.attached_to(parent, self, net != null and net.is_server)
 	# Not parent.add_child: the link sits under the server (RPCs route by path) but must die with this bridge, or a module reload leaves a second link and Godot renames the live one `@Node@n`.
-	# DotGameLink frees it with the bridge without remove_child, which errors on a busy parent.
-	DotGameLink.attach(link, parent, self, ScNetLink.NODE_NAME)
+	# GSGameLink frees it with the bridge without remove_child, which errors on a busy parent.
+	GSGameLink.attach(link, parent, self, ScNetLink.NODE_NAME)
 
 
-## Puts a connected peer into the game. What [DotGameRoster] calls.
-func add_player(peer_id: int, session_id: int, display_name: String) -> DotResult:
+## Puts a connected peer into the game. What [GSGameRoster] calls.
+func add_player(peer_id: int, session_id: int, display_name: String) -> GSResult:
 	if net == null or not net.is_server:
-		return DotResult.fail(DotError.CODE_FORBIDDEN, "Only the server adds players.")
+		return GSResult.fail(GSError.CODE_FORBIDDEN, "Only the server adds players.")
 
 	if peer_id > 0:
 		# FIRST, because `game.add_player` emits `player_added` and the handler has to be
@@ -156,13 +156,13 @@ func add_player(peer_id: int, session_id: int, display_name: String) -> DotResul
 	if player == null:
 		_player_of_peer.erase(peer_id)
 		_peer_of_player.erase(session_id)
-		return DotResult.fail(DotError.CODE_STATE, "The game refused the player.")
+		return GSResult.fail(GSError.CODE_STATE, "The game refused the player.")
 
 	if _ready_unseated.has(peer_id):
 		_ready_unseated.erase(peer_id)
 		_admit(peer_id)
 
-	return DotResult.success(player)
+	return GSResult.success(player)
 
 
 func remove_peer(peer_id: int) -> void:
@@ -200,30 +200,30 @@ func remove_player(session_id: int) -> void:
 	roster_changed.emit(session_id)
 
 
-func receive_input(peer_id: int, payload: PackedByteArray) -> DotResult:
+func receive_input(peer_id: int, payload: PackedByteArray) -> GSResult:
 	if net == null or not net.is_server:
-		return DotResult.fail(DotError.CODE_FORBIDDEN, "Only the server takes input.")
+		return GSResult.fail(GSError.CODE_FORBIDDEN, "Only the server takes input.")
 
 	if not _player_of_peer.has(peer_id):
-		return DotResult.fail(DotError.CODE_FORBIDDEN, "That peer has no player.")
+		return GSResult.fail(GSError.CODE_FORBIDDEN, "That peer has no player.")
 
 	if payload.size() <= ACK_BYTES:
-		return DotResult.fail(DotError.CODE_PARSE, "Input packet is too short.")
+		return GSResult.fail(GSError.CODE_PARSE, "Input packet is too short.")
 
 	net.receive_ack_payload(peer_id, payload.slice(0, ACK_BYTES))
 
 	# A batch: this tick's command and the ones before it (see [constant INPUT_COPIES]).
 	# Copies of ticks already simulated are skipped rather than pushed, or each would count
 	# as a late input; the packet's own tick is always pushed, so a late one still counts.
-	var batch := DotNetInput.read_batch(
-		DotNetReader.new(payload.slice(ACK_BYTES)),
-		func() -> DotNetInput: return ScNetCommand.new()
+	var batch := GSNetInput.read_batch(
+		GSNetReader.new(payload.slice(ACK_BYTES)),
+		func() -> GSNetInput: return ScNetCommand.new()
 	)
 	if batch.is_empty():
-		return DotResult.fail(DotError.CODE_PARSE, "Input packet carries no command.")
+		return GSResult.fail(GSError.CODE_PARSE, "Input packet carries no command.")
 	var buffer := net.input_buffer_for(peer_id)
 	var newest := batch[batch.size() - 1]
-	var pushed := DotResult.success(false)
+	var pushed := GSResult.success(false)
 	for input in batch:
 		if input != newest and input.tick <= buffer.last_consumed_tick():
 			continue
@@ -231,7 +231,7 @@ func receive_input(peer_id: int, payload: PackedByteArray) -> DotResult:
 	return pushed
 
 
-func _on_request(message: DotNetMessage) -> void:
+func _on_request(message: GSNetMessage) -> void:
 	var ask := message as ScRequest
 
 	if ask == null or net == null or not net.is_server:
@@ -250,7 +250,7 @@ func _on_request(message: DotNetMessage) -> void:
 
 			if bool(said["ok"]):
 				# Emitted rather than acted on: everything about what a line means is
-				# [DotChatRouter]'s, and the router is the module's.
+				# [GSChatRouter]'s, and the router is the module's.
 				say_requested.emit(
 					peer_id, StringName(str(said["channel"])), str(said["text"])
 				)
@@ -342,7 +342,7 @@ func _admit(peer_id: int) -> void:
 	_tell(peer_id, ScEvents.Kind.CLOCK, _clock_body())
 
 
-func _on_event(message: DotNetMessage) -> void:
+func _on_event(message: GSNetMessage) -> void:
 	var event := message as ScEvent
 
 	if event == null or game == null or net == null or net.is_server:
@@ -406,7 +406,7 @@ func _on_event(message: DotNetMessage) -> void:
 
 
 ## Events that only tell a listener something happened (no state of the world changes).
-func _apply_effect(kind: int, reader: DotNetReader) -> void:
+func _apply_effect(kind: int, reader: GSNetReader) -> void:
 	match kind:
 		ScEvents.Kind.COLLAPSE:
 			var fell := ScEvents.read_collapse(reader)
@@ -447,7 +447,7 @@ func _apply_effect(kind: int, reader: DotNetReader) -> void:
 				)
 
 
-func _apply_team(reader: DotNetReader) -> void:
+func _apply_team(reader: GSNetReader) -> void:
 	var side := ScEvents.read_team(reader)
 
 	if bool(side["ok"]):
@@ -460,7 +460,7 @@ func _apply_team(reader: DotNetReader) -> void:
 		roster_changed.emit(int(side["player_id"]))
 
 
-func _apply_round(reader: DotNetReader) -> void:
+func _apply_round(reader: GSNetReader) -> void:
 	var round_info := ScEvents.read_round(reader)
 
 	if bool(round_info["ok"]):
@@ -474,7 +474,7 @@ func _apply_round(reader: DotNetReader) -> void:
 		)
 
 
-func _apply_death(reader: DotNetReader) -> void:
+func _apply_death(reader: GSNetReader) -> void:
 	var death := ScEvents.read_death(reader)
 
 	if bool(death["ok"]):
@@ -488,7 +488,7 @@ func _apply_death(reader: DotNetReader) -> void:
 		)
 
 
-func _apply_armed(reader: DotNetReader) -> void:
+func _apply_armed(reader: GSNetReader) -> void:
 	var armed := ScEvents.read_armed(reader)
 
 	if bool(armed["ok"]):
@@ -500,7 +500,7 @@ func _apply_armed(reader: DotNetReader) -> void:
 		armed_received.emit(int(armed["player_id"]), armed["weapon_id"])
 
 
-func _apply_spectate(reader: DotNetReader) -> void:
+func _apply_spectate(reader: GSNetReader) -> void:
 	var view := ScEvents.read_spectate(reader)
 
 	if bool(view["ok"]) and game.spectate != null:
@@ -514,7 +514,7 @@ func _apply_spectate(reader: DotNetReader) -> void:
 		spectate_received.emit(int(view["viewer"]), int(view["mode"]), int(view["target"]))
 
 
-func _apply_hello(reader: DotNetReader) -> void:
+func _apply_hello(reader: GSNetReader) -> void:
 	var hello := ScEvents.read_hello(reader)
 
 	if not bool(hello["ok"]):
@@ -539,7 +539,7 @@ func _apply_hello(reader: DotNetReader) -> void:
 	hello_received.emit(local_player_id)
 
 
-func _apply_join(reader: DotNetReader) -> void:
+func _apply_join(reader: GSNetReader) -> void:
 	var join := ScEvents.read_join(reader)
 
 	if not bool(join["ok"]):
@@ -569,7 +569,7 @@ func _apply_join(reader: DotNetReader) -> void:
 		)
 
 		if not registered.ok:
-			DotLog.warn(CHANNEL, "could not mirror a player", {"error": str(registered.error)})
+			GSLog.warn(CHANNEL, "could not mirror a player", {"error": str(registered.error)})
 			return
 	else:
 		player.display_name = str(join["name"])
@@ -608,14 +608,14 @@ func _claim_local_player() -> void:
 	if claimed == 0 or mine.identity.owner_peer_id == claimed:
 		return
 
-	DotLog.debug(CHANNEL, "claimed the local player after HELLO", {
+	GSLog.debug(CHANNEL, "claimed the local player after HELLO", {
 		"session": local_player_id, "net_id": mine.identity.net_id,
 	})
 	var _changed := net.registry.change_owner(mine.identity.net_id, claimed)
 
 
 ## A prop or a chopper the server has put out.
-func _apply_prop(reader: DotNetReader) -> void:
+func _apply_prop(reader: GSNetReader) -> void:
 	var info := ScEvents.read_prop(reader)
 
 	if not bool(info["ok"]):
@@ -632,13 +632,13 @@ func _apply_prop(reader: DotNetReader) -> void:
 	if scene_path == "":
 		# Not an error: a server may run a catalogue this build does not have, and the
 		# honest answer is to draw nothing rather than to guess.
-		DotLog.debug(CHANNEL, "something this build does not have", {"id": String(kind_id)})
+		GSLog.debug(CHANNEL, "something this build does not have", {"id": String(kind_id)})
 		return
 
 	var scene: PackedScene = load(scene_path)
 
 	if scene == null:
-		DotLog.warn(CHANNEL, "a scene would not load", {"path": scene_path})
+		GSLog.warn(CHANNEL, "a scene would not load", {"path": scene_path})
 		return
 
 	var body := scene.instantiate() as Node3D
@@ -665,7 +665,7 @@ func _apply_prop(reader: DotNetReader) -> void:
 				var put := game.physics.apply_to(rigid, &"vehicle")
 
 				if not put.ok:
-					DotLog.warn(CHANNEL, "a mirrored chopper could not be put on its layer", {
+					GSLog.warn(CHANNEL, "a mirrored chopper could not be put on its layer", {
 						"why": put.error.message,
 					})
 
@@ -674,17 +674,17 @@ func _apply_prop(reader: DotNetReader) -> void:
 	behaviour.prop = body
 	body.add_child(behaviour)
 
-	var identity := DotNetIdentity.new()
+	var identity := GSNetIdentity.new()
 	identity.name = "Identity"
 	identity.owner_peer_id = 0
-	identity.authority = DotNetIdentity.Authority.SERVER
+	identity.authority = GSNetIdentity.Authority.SERVER
 	identity.always_relevant = true
 	body.add_child(identity)
 
 	var registered := net.registry.register(identity, net_id, net.clock.tick, net.config)
 
 	if not registered.ok:
-		DotLog.warn(CHANNEL, "could not mirror a body", {"error": str(registered.error)})
+		GSLog.warn(CHANNEL, "could not mirror a body", {"error": str(registered.error)})
 		body.queue_free()
 		return
 

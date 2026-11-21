@@ -1,4 +1,4 @@
-extends DotNetBehaviour
+extends GSNetBehaviour
 
 const ScPlatforms := preload("../sc_platforms.gd")
 
@@ -35,12 +35,12 @@ func _register_net_vars() -> void:
 	# that saturated at the collapse angle would make every platform that is about to go
 	# over look identical to every other. Half a radian is about twice the angle anything
 	# survives, so the interesting part of the range is the middle of it.
-	replicate(&"net_lean_x", DotNetVar.Type.FLOAT_RANGE).range_of(-0.5, 0.5).bits(11).interpolated()
-	replicate(&"net_lean_y", DotNetVar.Type.FLOAT_RANGE).range_of(-0.5, 0.5).bits(11).interpolated()
-	replicate(&"net_sink", DotNetVar.Type.FLOAT_RANGE).range_of(-64.0, 4.0).bits(14).interpolated()
+	replicate(&"net_lean_x", GSNetVar.Type.FLOAT_RANGE).range_of(-0.5, 0.5).bits(11).interpolated()
+	replicate(&"net_lean_y", GSNetVar.Type.FLOAT_RANGE).range_of(-0.5, 0.5).bits(11).interpolated()
+	replicate(&"net_sink", GSNetVar.Type.FLOAT_RANGE).range_of(-64.0, 4.0).bits(14).interpolated()
 	# Three states in two bits, and NOT interpolated: half way between standing and gone is
 	# not a thing a floor can be.
-	replicate(&"net_state", DotNetVar.Type.UINT).bits(2)
+	replicate(&"net_state", GSNetVar.Type.UINT).bits(2)
 
 
 ## Authority only: what the model decided this tick.

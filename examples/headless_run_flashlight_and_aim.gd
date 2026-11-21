@@ -27,11 +27,11 @@ func _test_the_flashlight() -> void:
 	_check(not ScFlashlight.starts_on(cfg, "terraces"), "the lit sky starts dark")
 	_check(ScFlashlight.starts_on(cfg, "terraces", "outdoor_night"), "and a night mood would start lit")
 
-	cfg.default_state = DotFlashlightConfig.START_ON
+	cfg.default_state = GSFlashlightConfig.START_ON
 	a.flashlight_ready = false
 	await _step(game, 2)
 	_check(a.flashlight, "a config that starts lit lights the player")
-	cfg.default_state = DotFlashlightConfig.START_OFF
+	cfg.default_state = GSFlashlightConfig.START_OFF
 	a.flashlight_ready = false
 	await _step(game, 2)
 	_check(not a.flashlight, "and one that starts dark does not")
@@ -47,7 +47,7 @@ func _test_the_flashlight() -> void:
 	cfg.enabled = false
 	_check(not game.toggle_flashlight(a.player_id) and not a.flashlight, "a disabled config has no light")
 	cfg.enabled = true
-	cfg.default_state = DotFlashlightConfig.START_DARK
+	cfg.default_state = GSFlashlightConfig.START_DARK
 	await _dispose(game)
 	_finished()
 
@@ -87,7 +87,7 @@ func _test_the_aim_button() -> void:
 		hunter.place_at(start, 0.0)
 		hunter.controller.state.velocity = Vector3.ZERO
 		hunter.aiming = aim
-		var command := DotFpsCommand.new()
+		var command := GSFpsCommand.new()
 		command.move = direction
 		await _step(game, 4)
 		var peak := 0.0
@@ -112,12 +112,12 @@ func _test_the_aim_button() -> void:
 		"aimed, the player walks at the rules' pace and not otherwise", "hip %.2f m/s aimed %.2f m/s, ratio %.2f of %.2f, rig %.2f" % [hip, aimed, aimed / maxf(hip, 0.001), paced, aimed_scale])
 
 	# The wire to the rig: the server builds the weapon command from the body's flag.
-	hunter.controller.apply_command(DotFpsCommand.new())
+	hunter.controller.apply_command(GSFpsCommand.new())
 	hunter.aiming = true
 	var up := game.weapon_command_for(hunter)
 	hunter.aiming = false
 	var down := game.weapon_command_for(hunter)
-	_check(up.is_pressed(DotWeaponCommand.BUTTON_AIM) and not down.is_pressed(DotWeaponCommand.BUTTON_AIM),
+	_check(up.is_pressed(GSWeaponCommand.BUTTON_AIM) and not down.is_pressed(GSWeaponCommand.BUTTON_AIM),
 		"the body's flag is the weapon command's aim button")
 
 	_aim_closes_the_spread(rig, held, rules, paced)
@@ -126,16 +126,16 @@ func _test_the_aim_button() -> void:
 
 
 ## With the sights up a held trigger's first shots spread less, and the raised rig is at the rules' pace.
-func _aim_closes_the_spread(rig: ZeeWeaponRig, held: DotWeaponDef, rules: ZeeAdsRules, paced: float) -> void:
+func _aim_closes_the_spread(rig: ZeeWeaponRig, held: GSWeaponDef, rules: ZeeAdsRules, paced: float) -> void:
 	# The spread: first shots of a held trigger with the sights down, then up for longer than they take to rise.
 	var spreads := func(aim: bool) -> float:
-		var command := DotWeaponCommand.new()
-		command.set_button(DotWeaponCommand.BUTTON_AIM, aim)
+		var command := GSWeaponCommand.new()
+		command.set_button(GSWeaponCommand.BUTTON_AIM, aim)
 		var tick := 100000
 		for i in range(TICK_RATE * 2):
 			tick += 1
 			var _o := rig.simulate_tick(command, tick)
-		command.set_button(DotWeaponCommand.BUTTON_ATTACK, true)
+		command.set_button(GSWeaponCommand.BUTTON_ATTACK, true)
 		var total := 0.0
 		var shots := 0
 		for i in range(TICK_RATE):
@@ -145,7 +145,7 @@ func _aim_closes_the_spread(rig: ZeeWeaponRig, held: DotWeaponDef, rules: ZeeAds
 			for shot in outcome.shots:
 				total += shot.spread
 				shots += 1
-			command.set_button(DotWeaponCommand.BUTTON_ATTACK, i % 2 == 1)
+			command.set_button(GSWeaponCommand.BUTTON_ATTACK, i % 2 == 1)
 		return total / float(maxi(shots, 1))
 	var hip_spread: float = spreads.call(false)
 	var aimed_spread: float = spreads.call(true)

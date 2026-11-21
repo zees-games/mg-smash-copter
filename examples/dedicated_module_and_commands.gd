@@ -13,7 +13,7 @@ const ScAvatars := preload("../game/sc_avatars.gd")
 const ScProgress := preload("../game/sc_progress.gd")
 const ScTestPorts := preload("test_ports.gd")
 
-## Boots a real [DotServer], loads this game into it as a module, and runs the commands an operator would type.
+## Boots a real [GSServer], loads this game into it as a module, and runs the commands an operator would type.
 ## Tests the join between the game and the SERVER (module lifecycle, console, cvars, `sv_tickrate` from a config file into the netcode); `headless_run` covers the gameplay joins.
 ## No socket opens to a client except the still-loading section.
 
@@ -32,7 +32,7 @@ var QUERY_PORT := PORT + 1
 ## would pass with the chain disconnected.
 const TICK_RATE := 48
 
-var server: DotServer = null
+var server: GSServer = null
 var game: ScGame = null
 var _stats_errors: PackedStringArray = []
 
@@ -43,11 +43,11 @@ var _stats_errors: PackedStringArray = []
 
 ## An ERROR from the stats layer would otherwise scroll past and leave a stat dead with every check green.
 func _on_log_record(rec: Dictionary) -> void:
-	if int(rec.get("level", 0)) >= DotLog.Level.ERROR and String(rec.get("channel", "")).begins_with("stats"):
+	if int(rec.get("level", 0)) >= GSLog.Level.ERROR and String(rec.get("channel", "")).begins_with("stats"):
 		_stats_errors.append(str(rec.get("message", rec)))
 
 
-## Takes the server down before quitting: `get_tree().quit()` on a booted [DotServer] does not end the process (the listener holds the main loop), so a passed suite would hang in CI.
+## Takes the server down before quitting: `get_tree().quit()` on a booted [GSServer] does not end the process (the listener holds the main loop), so a passed suite would hang in CI.
 func _shut_down() -> void:
 	if server == null:
 		return
@@ -101,7 +101,7 @@ func _boot() -> void:
 
 	_check(true, "the test config file could be written")
 
-	var config := DotServerConfig.new()
+	var config := GSServerConfig.new()
 	config.startup_config = cfg_path
 	# And nothing in the after-the-listener file, so the test is unambiguous about which one
 	# set it.
@@ -119,7 +119,7 @@ func _boot() -> void:
 	# Kept after dot-server 5f46687 (no pipe reads unless `stdin_console_pipes`): a terminal is still read.
 	config.stdin_console_enabled = false
 
-	server = DotServer.new()
+	server = GSServer.new()
 	server.name = "Server"
 	server.config = config
 	add_child(server)
@@ -130,13 +130,13 @@ func _boot() -> void:
 	for _i in range(120):
 		await get_tree().process_frame
 
-		if server.state == DotServer.State.RUNNING:
+		if server.state == GSServer.State.RUNNING:
 			break
 
 	_check(
-		server.state == DotServer.State.RUNNING,
+		server.state == GSServer.State.RUNNING,
 		"the server boots",
-		DotServer.State.keys()[server.state]
+		GSServer.State.keys()[server.state]
 	)
 	_check(server.console != null, "and has a console")
 	_check(
@@ -172,7 +172,7 @@ func _test_the_module_loads() -> void:
 	await get_tree().process_frame
 
 	_check(
-		DotRegistry.get_node_service(ScGame.SERVICE) == game,
+		GSRegistry.get_node_service(ScGame.SERVICE) == game,
 		"the world publishes itself where a module will look for it"
 	)
 	_check(game.platforms.count() > 0, "and it already has a field",
@@ -184,7 +184,7 @@ func _test_the_module_loads() -> void:
 		"punishments_file", "%s/punishments.json" % SERVER_DIR
 	)
 
-	var loaded: DotResult = await server.modules.load_module("res://game/sc_module.gd")
+	var loaded: GSResult = await server.modules.load_module("res://game/sc_module.gd")
 	_check(
 		loaded.ok, "the module loads into the server",
 		loaded.error.message if not loaded.ok else ""
@@ -227,7 +227,7 @@ func _fail_without_module() -> void:
 
 
 func _check_module_net(module: Object) -> void:
-	var net: DotNetManager = module.get("net")
+	var net: GSNetManager = module.get("net")
 	_check(
 		net.config.tick_rate == TICK_RATE,
 		"and the netcode runs at the rate the config file asked for",
@@ -265,7 +265,7 @@ func _test_a_module_reload() -> void:
 
 	for _i in range(2):
 		_check(server.modules.unload_module("smash").ok, "the module unloads")
-		var back: DotResult = await server.modules.load_module("res://game/sc_module.gd")
+		var back: GSResult = await server.modules.load_module("res://game/sc_module.gd")
 		_check(back.ok, "and loads again", back.error.message if not back.ok else "")
 	for _i in range(5):
 		await get_tree().process_frame
@@ -281,7 +281,7 @@ func _test_a_module_reload() -> void:
 	side.name = "ReloadClient"
 	add_child(side)
 	get_tree().set_multiplayer(MultiplayerAPI.create_default_interface(), side.get_path())
-	var link := DotClientLink.new()
+	var link := GSClientLink.new()
 	link.name = "Server"
 	link.player_name = "Reloaded"
 	link.transport_preference = "udp"
@@ -301,7 +301,7 @@ func _test_a_module_reload() -> void:
 	link.spawned.connect(func() -> void: spawned[0] = true)
 	link.connect_to_server("127.0.0.1:%d" % PORT)
 	var joined := await _until(func() -> bool:
-		return spawned[0] or link.phase == DotClientLink.Phase.FAILED, 30.0)
+		return spawned[0] or link.phase == GSClientLink.Phase.FAILED, 30.0)
 	_check(joined and spawned[0], "a real client still hears the server's events after two reloads")
 	link.disconnect_from_server("done")
 	for _i in range(10):
@@ -312,7 +312,7 @@ func _test_a_module_reload() -> void:
 
 ## The family cvar `stats_report` is registered, off, and turning it on makes the tracker report.
 func _test_stats_report() -> void:
-	var cv: DotConVar = server.console.find_cvar("stats_report")
+	var cv: GSConVar = server.console.find_cvar("stats_report")
 	var progress = game.progress if game != null else null
 	_check(cv != null and cv.get_string() == "0", "stats_report is registered and off by default")
 	_check(progress != null and progress.stats != null and not progress.stats.report_to_backbone,
@@ -327,25 +327,25 @@ func _test_stats_report() -> void:
 	script.source_code = "extends Node\nfunc post_integration(_a = null, _b = null, _c = null): return null\n"
 	var _reloaded := script.reload()
 	client.set_script(script)
-	DotRegistry.register(&"dot_backbone_client", client)
+	GSRegistry.register(&"dot_backbone_client", client)
 	var _r0 := cv.set_value("0")
 	var _r1 := cv.set_value("1")
 	_check(progress.stats.report_to_backbone, "on with a backbone client makes the tracker report")
 	var _r2 := cv.set_value("0")
 	_check(not progress.stats.report_to_backbone, "off stops it again")
-	DotRegistry.unregister_instance(&"dot_backbone_client", client)
+	GSRegistry.unregister_instance(&"dot_backbone_client", client)
 	client.free()
 
 	_check(progress.stats.schema.has(&"rank_score") and progress.rank != null, "rank_score is declared and the rank is set up")
-	var _held := DotStatsValues.new()
+	var _held := GSStatsValues.new()
 	_held.values = {"sc.rounds_won": 10.0}
 	progress.rank.seed_baseline(&"sc-rank", _held)
-	var _life: float = progress.rank.publish_lifetime(&"sc-rank", DotStatsValues.new(), progress.stats.schema)
+	var _life: float = progress.rank.publish_lifetime(&"sc-rank", GSStatsValues.new(), progress.stats.schema)
 	_check(_life == 20.0, "a stored lifetime baseline (10 wins) is what the published rank is built on")
 
 
-## Config cvars, the workbench's sync into a hand-written cvar, and dot-team's block rules through dot-game's DotGameNoblock.
-func _noblock_and_config(module: DotModule) -> void:
+## Config cvars, the workbench's sync into a hand-written cvar, and dot-team's block rules through dot-game's GSGameNoblock.
+func _noblock_and_config(module: GSModule) -> void:
 	var teamblock := server.console.find_cvar("mp_teamblock")
 	var enemyblock := server.console.find_cvar("mp_enemyblock")
 	_check(teamblock != null and teamblock.get_string() == "0" and enemyblock != null and enemyblock.get_string() == "1",
@@ -354,8 +354,8 @@ func _noblock_and_config(module: DotModule) -> void:
 		"config fields with no hand-written cvar are sc_ cvars")
 	_check(not server.console.has_name("sc_platform_stiffness"), "a field with a hand-written cvar gets no second one")
 	_check(module.get("workbench") != null, "the module hosts the workbench")
-	var wb: DotGameWorkbench = module.get("workbench")
-	var amb: DotResult = wb.api.handle(DotGameWorkbench.LOCAL_ACTOR, {"op": "set", "kind": "ambience", "id": DotGameWorkbench.CVAR_SET_ID, "key": "sc_ambient_volume", "value": 0.2})
+	var wb: GSGameWorkbench = module.get("workbench")
+	var amb: GSResult = wb.api.handle(GSGameWorkbench.LOCAL_ACTOR, {"op": "set", "kind": "ambience", "id": GSGameWorkbench.CVAR_SET_ID, "key": "sc_ambient_volume", "value": 0.2})
 	_check(amb.ok and is_equal_approx(server.console.get_float("sc_ambient_volume"), 0.2), "the sc_ambient* cvars are a workbench set and an edit moves the cvar", "" if amb.ok else amb.error.message)
 	var _restore := server.console.set_cvar("sc_ambient_volume", "0.3")
 	game.config.platform_stiffness = 4.5
@@ -401,7 +401,7 @@ func _test_the_commands() -> void:
 	# under the server's level rather than its default.
 	var shared := server.console.find_cvar("mp_teammate_passthrough")
 	var _two := _run_command("mp_teammate_passthrough 2")
-	_check(shared != null and shared.has_flag(DotConVar.FLAG_REPLICATED)
+	_check(shared != null and shared.has_flag(GSConVar.FLAG_REPLICATED)
 			and server.console.replicated_values().get("mp_teammate_passthrough", "") == "2",
 		"mp_teammate_passthrough is replicated: a client is sent the server's level",
 		str(server.console.replicated_values()))
@@ -469,7 +469,7 @@ func _test_the_tunables() -> void:
 	# The module binds dot-spectate's rules on the world's own object, so a console change
 	# reaches the rules in use; free roam is on until an operator turns it off.
 	_run_command("sc_spectate_camera 0")
-	var rules: DotSpectatorRules = game.spectate_rules
+	var rules: GSSpectatorRules = game.spectate_rules
 	_check(
 		server.console.find_cvar("mp_freeroam") != null and server.console.find_cvar("mp_forcecamera") != null
 			and server.console.find_cvar("mp_freeroam_speed") != null and rules.roaming_permitted(),
@@ -507,8 +507,8 @@ func _until_player(session: int) -> ScPlayer:
 
 
 ## The loaded module, looked up every time because the last section unloads it.
-## Typed [DotModule], not its own class: `sc_module.gd` has NO `class_name`, the shape a module delivered in a dot-cloud pack must have.
-func _module() -> DotModule:
+## Typed [GSModule], not its own class: `sc_module.gd` has NO `class_name`, the shape a module delivered in a dot-cloud pack must have.
+func _module() -> GSModule:
 	return server.modules.get_module("smash") if server != null else null
 
 
@@ -547,7 +547,7 @@ class EngineErrors extends Logger:
 func _run_command(line: String) -> PackedStringArray:
 	var captured: Array[String] = []
 
-	var context := DotCmdContext.console("", PackedStringArray())
+	var context := GSCmdContext.console("", PackedStringArray())
 	context.reply_sink = func(text: String) -> void: captured.append(text)
 
 	server.console.execute(line, context)

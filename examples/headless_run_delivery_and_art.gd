@@ -85,7 +85,7 @@ func _test_zee_art_root() -> void:
 	client.config_file = "user://cfg/headless-none.json"
 	add_child(client)
 	# The field used to be drawn, and steered, while it was still being built.
-	var platform: DotGameClient = client.get("platform")
+	var platform: GSGameClient = client.get("platform")
 	var covered := platform != null and platform.gate != null and not platform.is_shown() \
 		and platform.is_input_blocked()
 	for i in 240:
@@ -132,8 +132,8 @@ func _test_blind_and_beacon_drawn() -> void:
 	var hud := ScHud.new()
 	add_child(hud)
 	hud.bind(game, me)
-	var xh := hud.find_child("Crosshair", true, false) as DotCrosshair
-	_check(xh != null and xh.alive_source.is_valid() and bool(xh.alive_source.call()), "the crosshair is a DotCrosshair bound to the player's alive state")
+	var xh := hud.find_child("Crosshair", true, false) as GSCrosshair
+	_check(xh != null and xh.alive_source.is_valid() and bool(xh.alive_source.call()), "the crosshair is a GSCrosshair bound to the player's alive state")
 
 	me.blinded = true
 	for _i in range(30):
@@ -156,31 +156,31 @@ func _test_blind_and_beacon_drawn() -> void:
 	)
 
 	_hud_chat_and_theme(hud)
-	var vitals: DotVitals = hud.vitals
+	var vitals: GSVitals = hud.vitals
 
 	# Health and the clock are dot-ui's glance pieces, handed this world's numbers.
 	me.health.health = 17.4
 	hud._process(0.0)
 	_check(
 		vitals.number_text() == "18" and vitals.is_low(),
-		"the HUD hands health to DotVitals, red at a quarter",
+		"the HUD hands health to GSVitals, red at a quarter",
 		"%s low=%s" % [vitals.number_text(), str(vitals.is_low())]
 	)
 	_check(
 		hud.strip.under_text() == hud._phase_line()
 		and hud.strip.clock == (
-			DotScoreStrip.clock_text(game.seconds_left())
+			GSScoreStrip.clock_text(game.seconds_left())
 			if game.phase != ScGame.Phase.IDLE and game.sides_are_playable() else ""
 		),
-		"and the clock and the phase line to DotScoreStrip",
+		"and the clock and the phase line to GSScoreStrip",
 		"%s / %s" % [hud.strip.clock, hud.strip.under_text()]
 	)
 	me.health.health = me.health.max_health
 
 	# A shell whose dot-ui predates these classes cannot parse the pack: requires.json must ask for dot-ui 4.
-	var asks := DotAddonApi.derive()
+	var asks := GSAddonApi.derive()
 	_check(
-		int(asks.get("dot_ui", 0)) >= 13 and FileAccess.file_exists("res://" + DotAddonApi.FLOOR_FILE),
+		int(asks.get("dot_ui", 0)) >= 13 and FileAccess.file_exists("res://" + GSAddonApi.FLOOR_FILE),
 		"the pack asks a shell for dot-ui level 13, the weapon icons (requires.floor.json)",
 		str(asks.get("dot_ui"))
 	)
@@ -199,12 +199,12 @@ func _test_blind_and_beacon_drawn() -> void:
 
 ## The full chat log against the health plate, and the menu's theme reaching the HUD.
 func _hud_chat_and_theme(hud: ScHud) -> void:
-	var vitals: DotVitals = hud.vitals
+	var vitals: GSVitals = hud.vitals
 	# The chat box's full log against the health number, both bottom-anchored, so the
 	# arithmetic holds at any height: eight rows once drew over the "100".
 	var chat := ScClient.new_chat()
 	add_child(chat)
-	var w: DotChatWindow = chat.window
+	var w: GSChatWindow = chat.window
 	var log_top := w.margin_bottom + w.entry_height + float(w.max_lines) * (w.line_height + w.line_gap)
 	var plate_bottom := -(vitals.offset_top + vitals.footprint().end.y)
 	_check(
@@ -222,12 +222,12 @@ func _hud_chat_and_theme(hud: ScHud) -> void:
 	# Christian's first play test: a darker HUD by default, restyled live by the menu's theme.
 	var settings := ScSettings.new()
 	add_child(settings)
-	var _built: Variant = settings.setup(DotSettingsStoreMemory.new())
+	var _built: Variant = settings.setup(GSSettingsStoreMemory.new())
 	hud.follow_menu(settings.menu)
 	var plate := hud.vitals.colour(&"plate")
 	_check(plate.get_luminance() < 0.1 and plate.a >= 0.7, "the HUD is dark by default, in the menu's theme", str(plate))
 	var _t := settings.settings.set_value(&"ui_theme", &"contrast")
-	var contrast: DotMenuPalette = settings.menu.palette()
+	var contrast: GSMenuPalette = settings.menu.palette()
 	_check(contrast.id == &"contrast" and hud.vitals.colour(&"plate") == contrast.hud_plate and hud.vitals.colour(&"text") == contrast.hud_text,
 		"a theme picked in the menu reaches the pieces at once")
 	_check(hud.vitals.colour(&"highlight") == Color(0.98, 0.86, 0.40) and hud._field.get_theme_color(&"font_color") == contrast.hud_text,
@@ -302,7 +302,7 @@ func _test_somebody_out_watches() -> void:
 	await _step(game, 1)
 
 	_check(
-		not a.is_alive() and spectate.mode_of(&"a") == DotSpectatorView.Mode.DEATH_CAM,
+		not a.is_alive() and spectate.mode_of(&"a") == GSSpectatorView.Mode.DEATH_CAM,
 		"falling off starts the death camera"
 	)
 
@@ -317,11 +317,11 @@ func _test_somebody_out_watches() -> void:
 	await _step(game, int(ScSpectate.DEATH_CAM_SECONDS * TICK_RATE) + 2)
 
 	_check(
-		spectate.mode_of(&"a") == DotSpectatorView.Mode.FIRST_PERSON
+		spectate.mode_of(&"a") == GSSpectatorView.Mode.FIRST_PERSON
 			and spectate.watching(&"a") == &"mate",
 		"then through the eyes of the team-mate still up",
 		"%s on %s" % [
-			DotSpectatorView.Mode.keys()[spectate.mode_of(&"a")], String(spectate.watching(&"a"))
+			GSSpectatorView.Mode.keys()[spectate.mode_of(&"a")], String(spectate.watching(&"a"))
 		]
 	)
 
@@ -336,7 +336,7 @@ func _test_somebody_out_watches() -> void:
 	)
 	_check(
 		not spectate.step(&"a", 0).ok
-			and spectate.mode_of(&"a") == DotSpectatorView.Mode.FIRST_PERSON,
+			and spectate.mode_of(&"a") == GSSpectatorView.Mode.FIRST_PERSON,
 		"and a chase camera is refused, because behind a team-mate sees round corners"
 	)
 
@@ -351,7 +351,7 @@ func _test_somebody_out_watches() -> void:
 func _watch_anybody_allowed(game: ScGame, spectate: ScSpectate, a: ScPlayer, b: ScPlayer, mate: ScPlayer) -> void:
 	spectate.set_force_camera(0)
 	_check(
-		spectate.step(&"a", 0).ok and spectate.mode_of(&"a") == DotSpectatorView.Mode.CHASE,
+		spectate.step(&"a", 0).ok and spectate.mode_of(&"a") == GSSpectatorView.Mode.CHASE,
 		"with anybody allowed, the other camera is behind them"
 	)
 
@@ -377,9 +377,9 @@ func _watch_side_with_nobody_up(game: ScGame, spectate: ScSpectate, a: ScPlayer,
 	mate.place_at(Vector3(at_mate.x, game.config.kill_height - 5.0, at_mate.z), 0.0)
 	await _step(game, 2)
 	_check(
-		spectate.mode_of(&"a") == DotSpectatorView.Mode.FIXED,
+		spectate.mode_of(&"a") == GSSpectatorView.Mode.FIXED,
 		"a side with nobody left up watches from a fixed camera",
-		DotSpectatorView.Mode.keys()[spectate.mode_of(&"a")]
+		GSSpectatorView.Mode.keys()[spectate.mode_of(&"a")]
 	)
 
 	var over := spectate.camera_for(&"a")
@@ -420,10 +420,10 @@ func _test_the_game_makes_a_noise() -> void:
 	var game := await _world()
 	var audio := ScAudio.new()
 	add_child(audio)
-	_check(audio.setup().ok and audio.manager.sink is DotAudioSinkNull,
+	_check(audio.setup().ok and audio.manager.sink is GSAudioSinkNull,
 		"it comes up headless, on the sink that records rather than plays")
 
-	var sink := audio.manager.sink as DotAudioSinkNull
+	var sink := audio.manager.sink as GSAudioSinkNull
 	audio.muzzle = game.arena.muzzle()
 
 	await _noise_cannon_and_landings(game, audio, sink)
@@ -434,9 +434,9 @@ func _test_the_game_makes_a_noise() -> void:
 	var heard := sink.played()
 	_check(
 		heard.size() == 2 and str(heard[0]["id"]) == String(ScAudio.YOU_ARE_OUT)
-			and int(heard[0]["kind"]) == DotAudioDef.Kind.FLAT
+			and int(heard[0]["kind"]) == GSAudioDef.Kind.FLAT
 			and str(heard[1]["id"]) == String(ScAudio.PLAYER_FELL)
-			and int(heard[1]["kind"]) == DotAudioDef.Kind.POSITIONAL_3D,
+			and int(heard[1]["kind"]) == GSAudioDef.Kind.POSITIONAL_3D,
 		"your own fall is flat and everybody else's comes from where they went",
 		str(sink.played_ids())
 	)
@@ -464,7 +464,7 @@ func _noise_catalogue_is_whole() -> void:
 		"unlisted %s, uncatalogued %s" % [unlisted, uncatalogued])
 
 	# dot-audio's stock footsteps and beds are files the addon ships, so they need no stand-in.
-	var stock := DotAudioStock.ids()
+	var stock := GSAudioStock.ids()
 	var synthesised := catalogued.filter(func(id: StringName) -> bool: return not stock.has(id))
 	var silent := synthesised.filter(func(id: StringName) -> bool: return not recipes.has(id))
 	_check(silent.is_empty(), "every catalogued id has a stand-in voice", str(silent))
@@ -474,7 +474,7 @@ func _noise_catalogue_is_whole() -> void:
 	)
 	_check(nowhere.is_empty(), "and every stand-in names an id the catalogue has", str(nowhere))
 
-	var bank := DotAudioSynth.bank(catalogue, recipes)
+	var bank := GSAudioSynth.bank(catalogue, recipes)
 	var unbaked := synthesised.filter(func(id: StringName) -> bool: return not bank.has(id))
 	_check(unbaked.is_empty(), "the synthesiser bakes all of them", str(unbaked))
 
@@ -492,7 +492,7 @@ func _noise_catalogue_is_whole() -> void:
 	)
 
 
-func _noise_cannon_and_landings(game: ScGame, audio: ScAudio, sink: DotAudioSinkNull) -> void:
+func _noise_cannon_and_landings(game: ScGame, audio: ScAudio, sink: GSAudioSinkNull) -> void:
 	# The cannon is heard from anywhere on the map — and the corners are the far end of it.
 	# Armed: at a corridor shooter's 90 m cull the showdown hears no cannon at all.
 	audio.listen_from(game.arena.showdown_centre())
@@ -520,7 +520,7 @@ func _noise_cannon_and_landings(game: ScGame, audio: ScAudio, sink: DotAudioSink
 	)
 
 
-func _noise_creaks(game: ScGame, audio: ScAudio, sink: DotAudioSinkNull) -> void:
+func _noise_creaks(game: ScGame, audio: ScAudio, sink: GSAudioSinkNull) -> void:
 	# The creak, from the lean alone. Armed: with the hysteresis taken out, the held lean
 	# creaks on every frame and this reads 1 + 29 more.
 	sink.forget()
@@ -686,7 +686,7 @@ func _keeps_showdown_win(game: ScGame, progress: ScProgress, a: ScPlayer, a2: Sc
 	game.round_elapsed = game.config.showdown_starts_at() + 0.02
 	await _step(game, 2)
 
-	var shot := DotDamage.make(a2.entity_id, bot.entity_id, 1000.0, null)
+	var shot := GSDamage.make(a2.entity_id, bot.entity_id, 1000.0, null)
 	shot.point = bot.controller.state.position
 	shot.tick = 10000000
 	shot.context = {"why": ScGame.DIED_SHOT}

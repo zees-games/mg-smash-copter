@@ -2,8 +2,8 @@ extends "dedicated_round_and_rotation.gd"
 
 
 func _ready() -> void:
-	DotLog.set_level(DotLog.Level.ERROR)
-	DotLog.signals().record.connect(_on_log_record)
+	GSLog.set_level(GSLog.Level.ERROR)
+	GSLog.signals().record.connect(_on_log_record)
 	_run.call_deferred()
 
 
@@ -18,31 +18,31 @@ func _run() -> void:
 	# A member's site avatar, translated into this game's schema. The site's document is the
 	# Kenney skins filed as `top.skin-c` (the site's slot.option part id); without a translation every member is stock here.
 	var site_avatars = preload("res://game/sc_avatars.gd")
-	var site_doc := DotAvatar.make(&"builtin")
+	var site_doc := GSAvatar.make(&"builtin")
 	site_doc.set_part(&"top", &"top.skin-c")
 	site_doc.set_part(&"face", &"face.skin-k")
-	var as_ours: DotAvatar = site_avatars.from_site(site_doc)
+	var as_ours: GSAvatar = site_avatars.from_site(site_doc)
 	_check(
 		as_ours != null and site_avatars.schema().validate(as_ours).ok and as_ours.part_in(&"skin") == &"skin_c",
 		"a member's site avatar becomes this game's, and its schema accepts it",
 		str(as_ours.to_dict()) if as_ours != null else "null"
 	)
-	var unknown_skin := DotAvatar.make(&"builtin")
+	var unknown_skin := GSAvatar.make(&"builtin")
 	unknown_skin.set_part(&"top", &"top.skin-r")
 	unknown_skin.set_part(&"face", &"face.skin-r")
-	var not_site := DotAvatar.make(&"elsewhere")
+	var not_site := GSAvatar.make(&"elsewhere")
 	not_site.set_part(&"top", &"top.skin-c")
 	_check(
 		site_avatars.from_site(unknown_skin) == null and site_avatars.from_site(not_site) == null,
 		"a skin this game does not draw, or a document that is not the site's, is stock"
 	)
 
-	DotPaths.remove_tree(SERVER_DIR)
+	GSPaths.remove_tree(SERVER_DIR)
 	DirAccess.make_dir_recursive_absolute(SERVER_DIR)
 
 	await _boot()
 
-	if server != null and server.state == DotServer.State.RUNNING:
+	if server != null and server.state == GSServer.State.RUNNING:
 		await _test_the_module_loads()
 		await _test_a_module_reload()
 		_test_the_commands()
@@ -68,7 +68,7 @@ func _run() -> void:
 	var checks := CHECKS - (EXIT_PROBE_CHECKS if _is_exit_probe() else 0)
 
 	await _shut_down()
-	DotPaths.remove_tree(SERVER_DIR)
+	GSPaths.remove_tree(SERVER_DIR)
 	_report_sections(_sections_entered, _sections_finished, sections, checks)
 
 
@@ -96,14 +96,14 @@ func _test_the_live_tools() -> void:
 		_finished()
 		return
 
-	var net: DotNetManager = module.get("net")
+	var net: GSNetManager = module.get("net")
 	var previous_send := net.send_fn
 	# An adopted session has no peer; the netcode's sends to it would be an engine RPC error
 	# per tick.
 	net.send_fn = func(_peer: int, _payload: PackedByteArray, _delivery: int) -> void:
 		pass
 
-	var session := DotClientSession.new()
+	var session := GSClientSession.new()
 	session.peer_id = 6161
 	session.userid = 616
 	session.display_name = "Pilot"
@@ -124,11 +124,11 @@ func _test_the_live_tools() -> void:
 		return
 
 	_run_command("noclip Pilot")
-	_check(DotFpsAdminModifiers.is_noclipped(player.controller), "`noclip Pilot` puts them in noclip")
+	_check(GSFpsAdminModifiers.is_noclipped(player.controller), "`noclip Pilot` puts them in noclip")
 	_run_command("noclip Pilot off")
 
 	_run_command("freeze Pilot")
-	_check(DotFpsAdminModifiers.is_frozen(player.controller), "`freeze Pilot` holds them on their slab")
+	_check(GSFpsAdminModifiers.is_frozen(player.controller), "`freeze Pilot` holds them on their slab")
 	_run_command("unfreeze Pilot")
 
 	await _live_tools_blind_and_beacon(player, services)
@@ -169,7 +169,7 @@ func _live_tools_blind_and_beacon(player: ScPlayer, services: Object) -> void:
 		await get_tree().process_frame
 	services.call("mod_player_respawned", &"616")
 	_check(
-		player.blinded and player.beacon and not DotFpsAdminModifiers.is_noclipped(player.controller),
+		player.blinded and player.beacon and not GSFpsAdminModifiers.is_noclipped(player.controller),
 		"a new body keeps the blind and the beacon, and ends the noclip"
 	)
 	var _unblind := _run_command("blind Pilot off")
@@ -241,7 +241,7 @@ func _test_the_layout_vote() -> void:
 
 	_check(commands_there, "and registered dot-vote's vote, rtv and nominate")
 
-	var director: DotVoteDirector = vote.get("director")
+	var director: GSVoteDirector = vote.get("director")
 	_vote_sleeps_with_the_server(vote, director)
 	_vote_offers_every_layout(vote)
 	await _vote_map_menu(vote)
@@ -250,8 +250,8 @@ func _test_the_layout_vote() -> void:
 	_finished()
 
 
-## Hibernation: DotGameModule hands the director the server, the ballot's timer waits with it, and waking starts both again from the top.
-func _vote_sleeps_with_the_server(vote: Node, director: DotVoteDirector) -> void:
+## Hibernation: GSGameModule hands the director the server, the ballot's timer waits with it, and waking starts both again from the top.
+func _vote_sleeps_with_the_server(vote: Node, director: GSVoteDirector) -> void:
 	_check(server.hibernation_changed.is_connected(director.set_hibernating),
 		"the vote follows the server's hibernation without a line of this game's")
 	vote.set("_opened_this_map", true)
@@ -269,7 +269,7 @@ func _vote_sleeps_with_the_server(vote: Node, director: DotVoteDirector) -> void
 func _vote_offers_every_layout(vote: Node) -> void:
 	var ids: Array = []
 
-	for choice: DotVoteChoice in (vote.get("source") as DotVoteListSource).entries:
+	for choice: GSVoteChoice in (vote.get("source") as GSVoteListSource).entries:
 		ids.append(String(choice.id))
 
 	_check(ids.size() == ScLayouts.ids(game.config).size() and ids.has("checker"),
@@ -284,11 +284,11 @@ func _vote_map_menu(vote: Node) -> void:
 		and server.console.find_cvar("sv_map_menu_flag").get_string() == "generic"
 		and (menu_half.get("change_fn") as Callable).is_valid(),
 		"the map menu is there, staff-only by default, changing the layout now")
-	var staff := DotCmdContext.new()
-	staff.source = DotCmdContext.Source.CHAT
+	var staff := GSCmdContext.new()
+	staff.source = GSCmdContext.Source.CHAT
 	staff.permissions = PackedStringArray(["generic"])
-	var player := DotCmdContext.new()
-	player.source = DotCmdContext.Source.CHAT
+	var player := GSCmdContext.new()
+	player.source = GSCmdContext.Source.CHAT
 	var offered: Dictionary = menu_half.call("offer", player)
 	_check((offered["maps"] as Array).size() > 1 and not bool(offered["allowed"]) and bool(offered["vote"]),
 		"a player is offered every layout, as a vote")
@@ -303,7 +303,7 @@ func _vote_map_menu(vote: Node) -> void:
 
 
 ## Nomination, the ballot opening on its own clock, a vote by number; returns the layout nominated.
-func _vote_nominate_and_cast(vote: Node, director: DotVoteDirector) -> String:
+func _vote_nominate_and_cast(vote: Node, director: GSVoteDirector) -> String:
 	# A layout that is not the one being played, so it can be nominated.
 	var playing := String(game.layout.id)
 	director.begin(StringName(playing))
@@ -321,7 +321,7 @@ func _vote_nominate_and_cast(vote: Node, director: DotVoteDirector) -> String:
 	_check(director.is_voting() and options.has(StringName(wanted)),
 		"the ballot opens on its own clock, with the nomination on it", str(options))
 	# The feed is polled each tick before the ballot timer opens one, so it sees it next tick.
-	(vote.get("feed") as DotVoteBallotFeed).poll()
+	(vote.get("feed") as GSVoteBallotFeed).poll()
 	var drawn: Dictionary = captured.back() if not captured.is_empty() else {}
 	_check(bool(drawn.get("open", false)) and str(drawn.get("command", "")) == "vote" \
 			and (drawn.get("options", []) as Array).size() == options.size(),
@@ -336,7 +336,7 @@ func _vote_nominate_and_cast(vote: Node, director: DotVoteDirector) -> String:
 	return wanted
 
 
-func _vote_round_end_and_rtv(vote: Node, director: DotVoteDirector, wanted: String) -> void:
+func _vote_round_end_and_rtv(vote: Node, director: GSVoteDirector, wanted: String) -> void:
 	vote.call("note_round_end")
 	_check(game.next_layout_id == StringName(wanted), "the round's end hands it to the world", str(game.next_layout_id))
 	game.call("_lay_out_round")
@@ -370,20 +370,20 @@ func _test_who_they_are() -> void:
 	var module := _module()
 	var identity: Object = module.get("identity") if module != null else null
 
-	_check(identity is DotPlatformIdentity, "the module built dot-platform's identity layer")
+	_check(identity is GSPlatformIdentity, "the module built dot-platform's identity layer")
 	_check(server.modules.has_module("platform"), "and dot-game loaded the platform module")
 	_check(
-		identity is DotPlatformIdentity and (identity as DotPlatformIdentity).avatars != null
-			and (identity as DotPlatformIdentity).avatars.schema.id == ScAvatars.SCHEMA_ID,
+		identity is GSPlatformIdentity and (identity as GSPlatformIdentity).avatars != null
+			and (identity as GSPlatformIdentity).avatars.schema.id == ScAvatars.SCHEMA_ID,
 		"validating avatars against this game's schema"
 	)
 
-	var net: DotNetManager = module.get("net")
+	var net: GSNetManager = module.get("net")
 	var previous_send := net.send_fn
 	net.send_fn = func(_peer: int, _payload: PackedByteArray, _delivery: int) -> void:
 		pass
 
-	var session := DotClientSession.new()
+	var session := GSClientSession.new()
 	session.peer_id = 7171
 	session.userid = 717
 	session.display_name = "guest-717"
@@ -410,8 +410,8 @@ func _test_who_they_are() -> void:
 
 
 ## A guest first, on a server with authentication off. dot-user keeps no profile for a guest by default (a guest id is a random per-device string), so they get the name they gave and the stock look.
-func _who_guest_admitted_late(player: ScPlayer, session: DotClientSession, platform: Object) -> void:
-	session.identity = DotAuthIdentity.guest("device-717", "Maggie")
+func _who_guest_admitted_late(player: ScPlayer, session: GSClientSession, platform: Object) -> void:
+	session.identity = GSAuthIdentity.guest("device-717", "Maggie")
 	platform.call("_on_client_state_changed", session)
 
 	var deadline := Time.get_ticks_msec() + 5000
@@ -429,8 +429,8 @@ func _who_guest_admitted_late(player: ScPlayer, session: DotClientSession, platf
 
 ## Then the same seat signed in, which is the case profiles exist for; returns the key the platform scoped them to.
 ## Re-announced the way dot-server announces a state change: a guest admission stored no key, so it runs again.
-func _who_signed_in(player: ScPlayer, session: DotClientSession, platform: Object) -> String:
-	session.identity = DotAuthIdentity.from_dict({
+func _who_signed_in(player: ScPlayer, session: GSClientSession, platform: Object) -> String:
+	session.identity = GSAuthIdentity.from_dict({
 		"uid": "backbone:acc-717", "provider": "backbone", "provider_id": "acc-717",
 		"display_name": "Margaret", "authenticated_at": int(Time.get_unix_time_from_system()),
 	})
@@ -458,7 +458,7 @@ func _who_signed_in(player: ScPlayer, session: DotClientSession, platform: Objec
 
 
 ## What they keep is filed under the key that outlives this connection, and is still looked up by the world's own id.
-func _who_progress_is_keyed(player: ScPlayer, module: Object, session: DotClientSession, key: String) -> void:
+func _who_progress_is_keyed(player: ScPlayer, module: Object, session: GSClientSession, key: String) -> void:
 	if game.progress != null:
 		game.progress.record(&"u717", ScProgress.DEATHS)
 	_check(

@@ -1,4 +1,4 @@
-extends DotGameCheckSuite
+extends GSGameCheckSuite
 
 ## The constants, state and wiring helpers every section of [code]headless_net.gd[/code] shares: the two halves and the loopback between them.
 
@@ -66,8 +66,8 @@ var _sections_finished := 0
 
 var _server_game: ScGame = null
 var _client_game: ScGame = null
-var _server_net: DotNetManager = null
-var _client_net: DotNetManager = null
+var _server_net: GSNetManager = null
+var _client_net: GSNetManager = null
 var _server_bridge: ScNetBridge = null
 var _client_bridge: ScNetBridge = null
 
@@ -97,24 +97,24 @@ func _events_of(kind: int, peer_id: int) -> int:
 	return count
 
 
-func _behaviour_of(body: ScPlayer) -> DotNetBehaviour:
+func _behaviour_of(body: ScPlayer) -> GSNetBehaviour:
 	if body == null:
 		return null
 
 	for child in body.get_children():
-		if child is DotNetBehaviour:
-			return child as DotNetBehaviour
+		if child is GSNetBehaviour:
+			return child as GSNetBehaviour
 
 	return null
 
 
-func _identity_of(body: ScPlayer) -> DotNetIdentity:
+func _identity_of(body: ScPlayer) -> GSNetIdentity:
 	if body == null:
 		return null
 
 	for child in body.get_children():
-		if child is DotNetIdentity:
-			return child as DotNetIdentity
+		if child is GSNetIdentity:
+			return child as GSNetIdentity
 
 	return null
 
@@ -154,8 +154,8 @@ func _make_game(server: bool, parent: Node) -> ScGame:
 
 func _make_manager(
 	server: bool, scope: StringName, peer_id: int, parent: Node, tick_rate: int
-) -> DotNetManager:
-	var manager := DotNetManager.new()
+) -> GSNetManager:
+	var manager := GSNetManager.new()
 	manager.name = "Server" if server else "Client"
 	manager.is_server = server
 	manager.local_peer_id = peer_id
@@ -163,7 +163,7 @@ func _make_manager(
 	manager.auto_tick = false
 	manager.config_file = ""
 
-	var config := DotNetConfig.new()
+	var config := GSNetConfig.new()
 	config.tick_rate = tick_rate
 	config.snapshot_rate = SNAPSHOT_RATE
 	config.enable_prediction = true
@@ -180,7 +180,7 @@ func _make_manager(
 func _on_server_send(method: StringName, peer_id: int, payload: PackedByteArray) -> void:
 	# Only while a section listens: a decode on the client's registry counts what it skips.
 	if method == &"event" and _listening:
-		var decoded := _client_net.messages.decode(DotNetReader.new(payload), 1, false)
+		var decoded := _client_net.messages.decode(GSNetReader.new(payload), 1, false)
 		if decoded.ok and decoded.value is ScEvent:
 			_sent_events.append([peer_id, (decoded.value as ScEvent).kind])
 
@@ -223,25 +223,25 @@ func _exchange() -> void:
 ## One tick on both ends, with a real physics frame between them: rigid bodies move only on
 ## it, so a tight loop would move no prop and every replication assertion would pass with
 ## nothing replicated.
-func _step(command: DotFpsCommand = null, aim: bool = false) -> void:
+func _step(command: GSFpsCommand = null, aim: bool = false) -> void:
 	_tick += 1
 	var _ticks := _client_net.clock.advance(1.0 / float(maxi(_client_game.tick_rate, 1)))
 	_server_bridge.server_tick(_tick)
 	_flush()
 	_client_bridge.client_tick(
-		_tick + INPUT_LEAD, command if command != null else DotFpsCommand.new(), 0, aim
+		_tick + INPUT_LEAD, command if command != null else GSFpsCommand.new(), 0, aim
 	)
 	_flush()
 	await get_tree().physics_frame
 
 
-func _steps(count: int, command: DotFpsCommand = null, aim: bool = false) -> void:
+func _steps(count: int, command: GSFpsCommand = null, aim: bool = false) -> void:
 	for _i in range(count):
 		await _step(command, aim)
 
 
 ## How many times the predictor has had to correct this client: off the predictor, not
-## [DotNetStats], which counts packets.
+## [GSNetStats], which counts packets.
 func _corrections() -> int:
 	if _client_net == null or _client_net.predictor == null:
 		return 0
@@ -252,8 +252,8 @@ func _corrections() -> int:
 	return int(round(_client_net.predictor.correction_rate() * 1000.0))
 
 
-static func _reader(bytes: PackedByteArray) -> DotNetReader:
-	return DotNetReader.new(bytes)
+static func _reader(bytes: PackedByteArray) -> GSNetReader:
+	return GSNetReader.new(bytes)
 
 
 func _section(name: String) -> void:

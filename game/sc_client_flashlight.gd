@@ -9,10 +9,10 @@ func _eye_is_ours() -> bool:
 
 
 ## The sound manager the flashlight clicks play through, or null before audio is up.
-func _flash_audio_ref() -> DotNodeRef:
+func _flash_audio_ref() -> GSNodeRef:
 	if audio == null or audio.manager == null or not audio.manager.is_inside_tree():
 		return null
-	return DotNodeRef.of_path(audio.manager.get_path())
+	return GSNodeRef.of_path(audio.manager.get_path())
 
 
 ## The light on the eye follows the server's state (but not for 0.4 s after our own switch, which is shown at once); everybody else's beam, and ours when the camera is not our eye, comes from the crowd.
@@ -22,10 +22,10 @@ func _present_flashlights(delta: float) -> void:
 
 	var cfg := game.flashlight_conf()
 	var layout_id := String(game.layout.id) if game.layout != null else ""
-	var allowed := DotFlashlightRules.allowed_on(cfg, layout_id)
+	var allowed := GSFlashlightRules.allowed_on(cfg, layout_id)
 
 	if flash == null or not is_instance_valid(flash):
-		flash = DotFlashlight.new()
+		flash = GSFlashlight.new()
 		flash.name = "Flashlight"
 		flash.config = cfg
 		flash.handle_input = false
@@ -37,7 +37,7 @@ func _present_flashlights(delta: float) -> void:
 	flash.allowed = allowed
 
 	if flash_crowd == null:
-		flash_crowd = DotFlashlightCrowd.new()
+		flash_crowd = GSFlashlightCrowd.new()
 		flash_crowd.name = "Flashlights"
 		flash_crowd.config = cfg
 		flash_crowd.audio = _flash_audio_ref()

@@ -37,7 +37,7 @@ func _build_killcam() -> void:
 	killcam.world_mask = _level_mask()
 	killcam.over.connect(func(_skipped: bool) -> void: _reveal_round())
 	add_child(killcam)
-	winner_reveal = DotWinnerReveal.new()
+	winner_reveal = GSWinnerReveal.new()
 	winner_reveal.name = "WinnerReveal"
 	winner_reveal.skip_actions = ScKillcam.SKIP_ACTIONS
 	winner_reveal.hold_seconds = 4.0
@@ -46,7 +46,7 @@ func _build_killcam() -> void:
 
 
 func _team_colour(team: int) -> Color:
-	return DotTeamSet.palette_colour(team - 1)
+	return GSTeamSet.palette_colour(team - 1)
 
 
 ## `mp_killcam_time`, from the server's replicated cvar.
@@ -54,7 +54,7 @@ func _on_killcam_cvar(cvar_name: String, value: String) -> void:
 	if cvar_name == "mp_killcam_time" and value.strip_edges().is_valid_float():
 		_killcam_sec = maxf(value.to_float(), 0.0)
 	elif cvar_name == "mp_killview_camera" and value.strip_edges().is_valid_float():
-		_killcam_camera = DotKillViewRules.Camera.BEHIND if value.to_float() >= 0.5 else DotKillViewRules.Camera.EYE
+		_killcam_camera = GSKillViewRules.Camera.BEHIND if value.to_float() >= 0.5 else GSKillViewRules.Camera.EYE
 
 
 func _begin_round_end(number: int, winner: int) -> void:
@@ -88,7 +88,7 @@ func _reveal_round() -> void:
 		return
 	winner_reveal.reduced_motion = settings != null and settings.settings != null and settings.settings.get_bool(&"reduce_motion", false)
 	var shown := winner_reveal.present(entries, {"title": "ROUND %d" % _round_end_number,
-		"subtitle": "%s wins" % DotTeamSet.palette_name(winner - 1), "hint": "Jump to skip"})
+		"subtitle": "%s wins" % GSTeamSet.palette_name(winner - 1), "hint": "Jump to skip"})
 	if not shown.ok:
 		_open_round_board()
 		return
@@ -137,7 +137,7 @@ func _on_round(number: int, began: bool, winner: int) -> void:
 	var team := ScText.t("hud.nobody", "Nobody")
 
 	if winner >= 1:
-		team = DotTeamSet.palette_name(winner - 1)
+		team = GSTeamSet.palette_name(winner - 1)
 
 	hud.shout(ScText.t("hud.wins", "{team} wins", {"team": team}), 4.0)
 
@@ -203,9 +203,9 @@ func _dress_board() -> void:
 	board.columns = [
 		{"key": &"name", "title": "Player", "width": 3.0},
 		{"key": &"state", "title": "", "width": 1.2},
-		{"key": &"warps", "title": "Warps", "kind": DotMenuScoreboard.KIND_NUMBER},
-		{"key": &"seconds", "title": "Time", "kind": DotMenuScoreboard.KIND_DURATION},
-		{"key": &"ping", "title": "Ping", "kind": DotMenuScoreboard.KIND_PING},
+		{"key": &"warps", "title": "Warps", "kind": GSMenuScoreboard.KIND_NUMBER},
+		{"key": &"seconds", "title": "Time", "kind": GSMenuScoreboard.KIND_DURATION},
+		{"key": &"ping", "title": "Ping", "kind": GSMenuScoreboard.KIND_PING},
 	]
 	board.sort_with = func(a: Dictionary, b: Dictionary) -> bool:
 		if bool(a.get("alive", false)) != bool(b.get("alive", false)):
@@ -241,7 +241,7 @@ func _prepare_board(snap: Dictionary) -> void:
 		snap["header"] = {"Layout": game.layout.display_name}
 	var sides: Array = []
 	for index in range(game.config.team_count):
-		sides.append({"id": index + 1, "name": DotTeamSet.palette_name(index), "color": DotTeamSet.palette_colour(index)})
+		sides.append({"id": index + 1, "name": GSTeamSet.palette_name(index), "color": GSTeamSet.palette_colour(index)})
 	snap["teams"] = sides
 
 

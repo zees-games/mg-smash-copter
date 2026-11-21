@@ -1,6 +1,6 @@
 # The netcode
 
-`game/net/` and `game/sc_module.gd` (over dot-game's `DotGameModule`). `ScNetBridge` is the only file that names both halves.
+`game/net/` and `game/sc_module.gd` (over dot-game's `GSGameModule`). `ScNetBridge` is the only file that names both halves.
 
 ## Who is authoritative
 
@@ -29,9 +29,9 @@
 ## Lag compensation and combat
 
 - The world builds dot-combat with lag compensation OFF, and `ScNetBridge` turns it on in the same breath as it wires the rewind and restore callables (dot-net already records history). Otherwise dot-combat warns "unwired" at boot on a server where it works, or reports it on with nothing behind it. The shooter is not excluded from the rewind, because `resolve_shot` fixes the origin before it rewinds.
-- Players need a `DotHitboxSet` and `combat.trace` set; a trace that finds nothing is a legitimate answer, so a missing one is silent.
-- `DotCombatManager._ready` calls `setup()`; do not call it again after `add_child`.
-- `ScPlayer.component()` is the seam `DotWeaponPlayerBridge` looks up; without it the bridge falls back to the body transform (yaw lives in the controller's state, not the node), and every shot pointed north.
+- Players need a `GSHitboxSet` and `combat.trace` set; a trace that finds nothing is a legitimate answer, so a missing one is silent.
+- `GSCombatManager._ready` calls `setup()`; do not call it again after `add_child`.
+- `ScPlayer.component()` is the seam `GSWeaponPlayerBridge` looks up; without it the bridge falls back to the body transform (yaw lives in the controller's state, not the node), and every shot pointed north.
 - **Lag-compensation tracks**: a round begins inside `server_tick`, which records history for the identity list it took before the old field went, re-creating a track per forgotten platform. The bridge forgets them again once the manager's tick returns; `dedicated` counts orphaned tracks and asserts the engine reports no error.
 
 ## Freed bodies
@@ -40,11 +40,11 @@ A disconnect mid-round frees bodies under the bridge; `_apply_prop_gone` and `_f
 
 ## Messages: never preload yourself
 
-**A script that `extends DotNetMessage` and preloads its own file leaks the whole script graph at exit** on a deployed server (measured by mg-buses-from-hell; see its [history](../../mg-buses-from-hell/docs/history.md#the-leak-that-was-one-line-of-a-message)). `sc_event.gd` and `sc_request.gd` are built with `new(kind, body)`, an `_init` whose arguments default, because dot-net's registry decodes with a bare `new()`. `dedicated`'s "exiting clean" reads every `DotNetMessage` script under `game/` as text and fails on a self-preload: the leak is printed after `quit()`, where no assertion can reach.
+**A script that `extends GSNetMessage` and preloads its own file leaks the whole script graph at exit** on a deployed server (measured by mg-buses-from-hell; see its [history](../../mg-buses-from-hell/docs/history.md#the-leak-that-was-one-line-of-a-message)). `sc_event.gd` and `sc_request.gd` are built with `new(kind, body)`, an `_init` whose arguments default, because dot-net's registry decodes with a bare `new()`. `dedicated`'s "exiting clean" reads every `GSNetMessage` script under `game/` as text and fails on a self-preload: the leak is printed after `quit()`, where no assertion can reach.
 
 ## The module
 
-`sc_module.gd` subclasses `DotGameModule`; `sc_services.gd` subclasses `DotGameServices`. The identity layer is dot-platform's `DotPlatformIdentity` over `ScAvatars.schema()`, built before the services, with dot-platform's module loaded beside it; authentication stays the host's `dot_auth_server`. Ask the platform through its module's `player_for(session)`, never the hub by `"u%d"`, which finds nobody and falls through to stock silently.
+`sc_module.gd` subclasses `GSGameModule`; `sc_services.gd` subclasses `GSGameServices`. The identity layer is dot-platform's `GSPlatformIdentity` over `ScAvatars.schema()`, built before the services, with dot-platform's module loaded beside it; authentication stays the host's `dot_auth_server`. Ask the platform through its module's `player_for(session)`, never the hub by `"u%d"`, which finds nobody and falls through to stock silently.
 
 ## Aim on the wire
 
@@ -52,4 +52,4 @@ Aiming down the sights is part of the simulation: the rules slow the walk (`move
 
 The path: `ScClient._aim_sent` (the view model's own aim state, and only on foot: never in a chopper, first person, pointer ours, alive, not watching, not under the cover) -> `ScNetBridge.client_tick(..., aim)` -> the packet -> `ScPlayerNet.last_aim` -> `ScPlayer.aiming` -> `ScGame.weapon_command_for` (`BUTTON_AIM`) -> `ZeeWeaponRig` (spread, `ads_move_scale`) -> `ScPlayer.step_controller` (the motor's top speed for that one tick; the server, offline and the prediction share it). The key is `ScBindings.AIM`, default middle mouse, because the right button is the bash here.
 
-**Compatibility.** The command grows by one bit, but `DotNetInput.write_batch` packs the inputs of a batch back to back, so a server and a client of different builds would misread every input after the first. There is no protocol version, and none is needed: a client cannot run a different build of the pack than its server. The shell carries no game code (`dot-server-deploy/docs/delivery-constraint.md`); the command class lives only in the pack, mounted at `res://dot_cloud/<id>/<version>/`. The join handshake pins the exact pack: this game has a relative scene, so `DotGameDescriptor.needs_delivered_content()` is true and `content_key()` is `<id>@<version>`; `dot_server_signon.gd` sends it as CONTENT_SYNC, the client calls `DotCloudClient.ensure(id, version)` (exact version only, a cached other version is never substituted), and `_on_content_ready` rejects a session whose reported key differs ("Your game content does not match the server's.") before it spawns, so no inputs flow first. Stores are content addressed by `id@version` and a version is never reused; `install-games` pins concrete versions. Residual caveats: the check trusts an honest client; a dev checkout has no content key but both sides are one checkout; a pack left at the unstamped 0.0.0 matches any other 0.0.0 build. From code reading (mg-prop-hunt's `docs/design.md`, 'Aim on the wire'); no two-version live join was run. Rollout: publish the pack as a new version.
+**Compatibility.** The command grows by one bit, but `GSNetInput.write_batch` packs the inputs of a batch back to back, so a server and a client of different builds would misread every input after the first. There is no protocol version, and none is needed: a client cannot run a different build of the pack than its server. The shell carries no game code (`dot-server-deploy/docs/delivery-constraint.md`); the command class lives only in the pack, mounted at `res://dot_cloud/<id>/<version>/`. The join handshake pins the exact pack: this game has a relative scene, so `GSGameDescriptor.needs_delivered_content()` is true and `content_key()` is `<id>@<version>`; `dot_server_signon.gd` sends it as CONTENT_SYNC, the client calls `GSCloudClient.ensure(id, version)` (exact version only, a cached other version is never substituted), and `_on_content_ready` rejects a session whose reported key differs ("Your game content does not match the server's.") before it spawns, so no inputs flow first. Stores are content addressed by `id@version` and a version is never reused; `install-games` pins concrete versions. Residual caveats: the check trusts an honest client; a dev checkout has no content key but both sides are one checkout; a pack left at the unstamped 0.0.0 matches any other 0.0.0 build. From code reading (mg-prop-hunt's `docs/design.md`, 'Aim on the wire'); no two-version live join was run. Rollout: publish the pack as a new version.

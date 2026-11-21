@@ -1,4 +1,4 @@
-extends DotGameCheckSuite
+extends GSGameCheckSuite
 
 const ScConfig := preload("../game/sc_config.gd")
 const ScGame := preload("../game/sc_game.gd")
@@ -6,7 +6,7 @@ const ScLayouts := preload("../game/sc_layouts.gd")
 const ScWorkshop := preload("../game/sc_workshop.gd")
 
 ## What a subscribed map pack does to this game's solo layout list, against a fixture
-## [DotContentIndex] and never the process's shared one: a pack map is listed as Name [Pack]
+## [GSContentIndex] and never the process's shared one: a pack map is listed as Name [Pack]
 ## and plays, online lists none, a map kind the game does not accept is left out, the game's
 ## own ids win, and a bad document is refused with a reason.
 ##
@@ -22,7 +22,7 @@ var _completed := 0
 
 
 func _ready() -> void:
-	DotLog.set_level(DotLog.Level.ERROR)
+	GSLog.set_level(GSLog.Level.ERROR)
 	_run.call_deferred()
 
 
@@ -56,8 +56,8 @@ func _write(file: String, text: String) -> void:
 	f.close()
 
 
-func _index(session: StringName) -> DotContentIndex:
-	var index := DotContentIndex.new()
+func _index(session: StringName) -> GSContentIndex:
+	var index := GSContentIndex.new()
 	index.set_session(session)
 	var added := index.add_pack({
 		"content_id": "fixture/decks", "version": "1.0.0", "prefix": DIR,
@@ -97,7 +97,7 @@ func _test_solo() -> void:
 	print("")
 	print("solo")
 	var shop := ScWorkshop.new()
-	shop.follow(_index(DotContentIndex.SESSION_SOLO))
+	shop.follow(_index(GSContentIndex.SESSION_SOLO))
 	var names := _names()
 	_check(names.has("Stairs [Fixture Pack]"), "the accepted map is listed as Name [Pack]", str(names))
 	_check(not names.has("Run [Fixture Pack]"), "a map kind the game does not accept is filtered out")
@@ -110,11 +110,11 @@ func _test_online() -> void:
 	_entered += 1
 	print("")
 	print("online")
-	var index := _index(DotContentIndex.SESSION_SOLO)
+	var index := _index(GSContentIndex.SESSION_SOLO)
 	var shop := ScWorkshop.new()
 	shop.follow(index)
 	_check(ScLayouts.workshop.size() == 1, "listed while the index is solo")
-	index.set_session(DotContentIndex.SESSION_ONLINE)
+	index.set_session(GSContentIndex.SESSION_ONLINE)
 	var _ids := shop.refresh()
 	_check(ScLayouts.workshop.is_empty(), "gone when the session turns online")
 	_check(ScLayouts.by_id(ScConfig.new(), &"workshop:stairs") == null, "and not playable")
@@ -126,7 +126,7 @@ func _test_ids_and_refused() -> void:
 	print("")
 	print("ids and refusals")
 	var shop := ScWorkshop.new()
-	shop.follow(_index(DotContentIndex.SESSION_SOLO))
+	shop.follow(_index(GSContentIndex.SESSION_SOLO))
 	var names := _names()
 	_check(not names.has("Not Full [Fixture Pack]"), "the game's own id wins", str(names))
 	_check(shop.refused.has("bad"), "the bad document is refused with a reason", str(shop.refused))
@@ -138,7 +138,7 @@ func _test_play() -> void:
 	print("")
 	print("play")
 	var shop := ScWorkshop.new()
-	shop.follow(_index(DotContentIndex.SESSION_SOLO))
+	shop.follow(_index(GSContentIndex.SESSION_SOLO))
 	var config := ScConfig.new()
 	config.intermission_seconds = 0.0
 	config.minimum_players = 0

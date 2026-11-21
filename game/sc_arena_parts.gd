@@ -30,7 +30,7 @@ const LIP_HEIGHT := 0.55
 @export var config: ScConfig = null
 
 ## The collision layout everything here is classified against.
-var physics: DotPhysicsLayout = null
+var physics: GSPhysicsLayout = null
 
 
 ## One solid box in the showdown, collider and mesh from the same size.
@@ -170,7 +170,7 @@ func _classify(body: Node, layer_id: StringName) -> void:
 	var applied := physics.apply_to(body, layer_id)
 
 	if not applied.ok:
-		DotLog.warn(CHANNEL, "a body could not be put on its collision layer", {
+		GSLog.warn(CHANNEL, "a body could not be put on its collision layer", {
 			"body": body.name, "layer": String(layer_id), "why": applied.error.message,
 		})
 

@@ -169,7 +169,7 @@ var stiffness_scale: float = 1.0
 ## per player per tick, and walking every deck to match it is the scan dot-entity exists to remove.
 var _by_body: Dictionary = {}
 
-var _physics: DotPhysicsLayout = null
+var _physics: GSPhysicsLayout = null
 
 ## What the configured column spacing was multiplied by for this field.
 var _pitch_scale: float = 1.0

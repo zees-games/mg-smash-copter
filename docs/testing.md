@@ -6,7 +6,7 @@
 | --- | --- |
 | `examples/headless_run` | the simulation offline: platforms, bridges, falls, every layout's reach, islands and throat, bot drives through what each layout is about, the showdown complex, spectating policy, progress, sounds, what the client draws, the delivery path scan |
 | `examples/headless_net` | the real path minus the socket: two worlds, managers, bridges and links with the RPC replaced by a callable; two builds with different message types; prediction, platforms, weapons, a landed shot told as HIT to the shooter alone (a second ready peer hears none; armed with the send removed or broadcast) and the owner's magazine adopted by `ScClient.correct_drawn`, spectating, identity, and **no engine error over the whole run** (an `EngineErrors` logger; a toy pulled out of the tree after a mid-tick field rebuild printed 40 on a green run; armed) |
-| `examples/headless_workshop` | subscribed map packs against a fixture `DotContentIndex`: solo lists `Name [Pack]` and the world lays the document's cells out, online lists none, an unaccepted kind and a bad document are left out, own ids win. |
+| `examples/headless_workshop` | subscribed map packs against a fixture `GSContentIndex`: solo lists `Name [Pack]` and the world lays the document's cells out, online lists none, an unaccepted kind and a bad document are left out, own ids win. |
 | `examples/dedicated` | as a real server: the console, live moderation tools, the spectate cvar, identity admission, stand-ins filing nothing, orphaned tracks, no engine errors, and the self-preload source check |
 
 ## Rules the suites follow
@@ -16,7 +16,7 @@
 - **Measure surfaces and outcomes, not state.** The platform-normal sign was only caught because the check measured the surface. A fall must be a real fall off an edge or a collapse, never a teleport under the floor (that hid that nobody ever died).
 - **A route bot releases the key on arrival**: the motor repeats the last command, and a runner out of the chopper once ran on off the far side and ended the round.
 - **Wait for the floor to settle** before asking for a quiet stretch with no corrections; a platform swinging to a new lean under a predicted player is a one-centimetre correction.
-- **Stand-ins need per-round variety**: each stand-in's `DotBotAim` is seeded with its id and the round number. Seeded on the entity id alone, twelve showdowns were byte-identical and one bot won every round.
+- **Stand-ins need per-round variety**: each stand-in's `GSBotAim` is seeded with its id and the round number. Seeded on the entity id alone, twelve showdowns were byte-identical and one bot won every round.
 - **How the stand-ins play at each `bot_difficulty` is measured, not asserted**: `tools/bot_difficulty.sh` ([bots](bots.md#measured)); rerun it after touching `_drive_bots` or anything under it.
 
 ## Assert the mechanism, not the symptom
@@ -29,7 +29,7 @@ A client that predicted nothing passed "a client moves itself and the server agr
 
 ## Visual QA: every figure, weapon, the copter and the props, frame by frame
 
-`tools/visual_qa.gd` (a `DotGameVisualQaCapture`, harness and rules in dot-game's `docs/visual-qa.md`) stages each item alone and records it at 60 fps: the six figure atlases (`person_<atlas>`: idle, walk, run, jump), every weapon a server deals by default (`weapon_<id>`, from `ScGameFlow.default_weapon_pool()`: the view model with arms in first person plus the figure holding it outside; idle, draw, fire, reload), the copter (`copter`: parked idle, and fly with the pilot's eye in the seat) and the cannon props (`prop_<id>`: turntable).
+`tools/visual_qa.gd` (a `GSGameVisualQaCapture`, harness and rules in dot-game's `docs/visual-qa.md`) stages each item alone and records it at 60 fps: the six figure atlases (`person_<atlas>`: idle, walk, run, jump), every weapon a server deals by default (`weapon_<id>`, from `ScGameFlow.default_weapon_pool()`: the view model with arms in first person plus the figure holding it outside; idle, draw, fire, reload), the copter (`copter`: parked idle, and fly with the pilot's eye in the seat) and the cannon props (`prop_<id>`: turntable).
 
 ```
 bash addons/dot_game/tools/dot_game_visual_qa.sh --shot tools/visual_qa_shot.sh --fresh all

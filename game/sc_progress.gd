@@ -14,7 +14,7 @@ const ScPlatforms := preload("sc_platforms.gd")
 ##
 ## [b]Achievements are rules over those numbers and nothing else.[/b] dot-achievements never
 ## hears about a platform or a cannon; it hears that a number moved, through
-## [DotAchievementStatsLink] — which is the differencer between dot-stats' SESSION totals
+## [GSAchievementStatsLink] — which is the differencer between dot-stats' SESSION totals
 ## and a lifetime total, and the reason this is not one `connect`. Wiring `recorded` straight
 ## into `record` would add the running total to the lifetime total on every reading.
 ##
@@ -66,20 +66,20 @@ const FALLS := &"sc.falls"
 const PLATFORMS_TIPPED := &"sc.platforms_tipped"
 ## Things the cannon landed on their own platform that missed them.
 const PROPS_DODGED := &"sc.props_dodged"
-## The published skill figure the site orders by (dot-stats' DotStatsRank).
+## The published skill figure the site orders by (dot-stats' GSStatsRank).
 const RANK_SCORE := &"rank_score"
 
 ## Somebody earned something. [param player_id] is theirs; the world tells them.
 signal earned(player_id: StringName, title: String, points: int)
 
-var stats: DotStatsTracker = null
+var stats: GSStatsTracker = null
 ## The skill rank: weighted lifetime figures, filed when a round ends.
-var rank: DotStatsRank = null
-var achievements: DotAchievementTracker = null
-var link: DotAchievementStatsLink = null
+var rank: GSStatsRank = null
+var achievements: GSAchievementTracker = null
+var link: GSAchievementStatsLink = null
 ## Kills and hits by body zone, through dot-stats' event feed; ids are combat entity ids.
-var feed: DotStatsEventFeed = null
-## Entity id -> player id, handed in by the world (its [DotEntityTable]).
+var feed: GSStatsEventFeed = null
+## Entity id -> player id, handed in by the world (its [GSEntityTable]).
 var player_of: Callable = Callable()
 
 ## The world's own dictionaries, shared. See [ScSpectate] for why not a reference to it.
@@ -120,29 +120,29 @@ static func ids() -> Array[StringName]:
 ## Every number, once. [b]`publish` on the ones a player page would show[/b]; deaths and
 ## rounds played are inputs to a ratio rather than figures anybody reads, and dot-stats
 ## defaults publishing off per stat for exactly that choice.
-static func schema() -> DotStatsSchema:
-	var out := DotStatsSchema.new()
-	var _zones := DotStatsHitzones.declare(out)
-	DotStatsPenetration.declare_walls(out)
-	_add(out, ROUNDS_PLAYED, DotStatsDef.Kind.COUNTER, "Rounds played", "rounds", false)
-	_add(out, ROUNDS_SURVIVED, DotStatsDef.Kind.COUNTER, "Rounds survived", "rounds", true)
-	_add(out, ROUNDS_WON, DotStatsDef.Kind.COUNTER, "Rounds won", "rounds", true)
-	_add(out, SHOWDOWN_WINS, DotStatsDef.Kind.COUNTER, "Showdowns won", "rounds", true)
-	_add(out, SHOWDOWN_KILLS, DotStatsDef.Kind.COUNTER, "Showdown kills", "kills", true)
-	_add(out, BEST_ROUND_KILLS, DotStatsDef.Kind.BEST, "Best showdown", "kills", true)
-	_add(out, DEATHS, DotStatsDef.Kind.COUNTER, "Deaths", "deaths", false)
-	_add(out, FALLS, DotStatsDef.Kind.COUNTER, "Falls", "falls", true)
-	_add(out, PLATFORMS_TIPPED, DotStatsDef.Kind.COUNTER, "Platforms tipped", "platforms", true)
-	_add(out, PROPS_DODGED, DotStatsDef.Kind.COUNTER, "Props dodged", "props", true)
-	DotStatsRank.declare(out, RANK_SCORE, "Rank score")
+static func schema() -> GSStatsSchema:
+	var out := GSStatsSchema.new()
+	var _zones := GSStatsHitzones.declare(out)
+	GSStatsPenetration.declare_walls(out)
+	_add(out, ROUNDS_PLAYED, GSStatsDef.Kind.COUNTER, "Rounds played", "rounds", false)
+	_add(out, ROUNDS_SURVIVED, GSStatsDef.Kind.COUNTER, "Rounds survived", "rounds", true)
+	_add(out, ROUNDS_WON, GSStatsDef.Kind.COUNTER, "Rounds won", "rounds", true)
+	_add(out, SHOWDOWN_WINS, GSStatsDef.Kind.COUNTER, "Showdowns won", "rounds", true)
+	_add(out, SHOWDOWN_KILLS, GSStatsDef.Kind.COUNTER, "Showdown kills", "kills", true)
+	_add(out, BEST_ROUND_KILLS, GSStatsDef.Kind.BEST, "Best showdown", "kills", true)
+	_add(out, DEATHS, GSStatsDef.Kind.COUNTER, "Deaths", "deaths", false)
+	_add(out, FALLS, GSStatsDef.Kind.COUNTER, "Falls", "falls", true)
+	_add(out, PLATFORMS_TIPPED, GSStatsDef.Kind.COUNTER, "Platforms tipped", "platforms", true)
+	_add(out, PROPS_DODGED, GSStatsDef.Kind.COUNTER, "Props dodged", "props", true)
+	GSStatsRank.declare(out, RANK_SCORE, "Rank score")
 	return out
 
 
 static func _add(
-	out: DotStatsSchema, id: StringName, kind: DotStatsDef.Kind, display: String,
+	out: GSStatsSchema, id: StringName, kind: GSStatsDef.Kind, display: String,
 	unit: String, publish: bool
 ) -> void:
-	var def := DotStatsDef.make(id, kind, display)
+	var def := GSStatsDef.make(id, kind, display)
 	def.unit = unit
 	def.publish = publish
 	out.stats.append(def)
@@ -156,8 +156,8 @@ static func _add(
 ##
 ## One stat, one merge: everything is SUM except the best round, which is HIGHEST —
 ## dot-achievements refuses a catalogue that reads one number both ways.
-static func catalogue() -> DotAchievementCatalogue:
-	var made: Array[DotAchievement] = []
+static func catalogue() -> GSAchievementCatalogue:
+	var made: Array[GSAchievement] = []
 
 	made.append(_sum(&"sc.still_standing", "Still Standing", ROUNDS_SURVIVED, 1.0, 10,
 		"Be up when the clock runs out.", &"sc.survivor", 1))
@@ -171,10 +171,10 @@ static func catalogue() -> DotAchievementCatalogue:
 		"Not be under fifty things the cannon landed on your platform."))
 
 	# A BEST: three in one showdown, not three over a career.
-	var sweep := DotAchievement.make(&"sc.clean_sweep", "Clean Sweep", [
-		DotAchievementRule.make(
-			BEST_ROUND_KILLS, 3.0, DotAchievementRule.Op.AT_LEAST,
-			DotAchievementRule.Merge.HIGHEST
+	var sweep := GSAchievement.make(&"sc.clean_sweep", "Clean Sweep", [
+		GSAchievementRule.make(
+			BEST_ROUND_KILLS, 3.0, GSAchievementRule.Op.AT_LEAST,
+			GSAchievementRule.Merge.HIGHEST
 		),
 	])
 	sweep.description = "Put three people out in one showdown."
@@ -193,7 +193,7 @@ static func catalogue() -> DotAchievementCatalogue:
 	flyer.secret = true
 	made.append(flyer)
 
-	var out := DotAchievementCatalogue.new()
+	var out := GSAchievementCatalogue.new()
 	out.achievements = made
 	return out
 
@@ -201,10 +201,10 @@ static func catalogue() -> DotAchievementCatalogue:
 static func _sum(
 	id: StringName, title: String, stat: StringName, target: float, points: int,
 	description: String, series: StringName = &"", tier: int = 0
-) -> DotAchievement:
-	var out := DotAchievement.make(id, title, [
-		DotAchievementRule.make(
-			stat, target, DotAchievementRule.Op.AT_LEAST, DotAchievementRule.Merge.SUM
+) -> GSAchievement:
+	var out := GSAchievement.make(id, title, [
+		GSAchievementRule.make(
+			stat, target, GSAchievementRule.Op.AT_LEAST, GSAchievementRule.Merge.SUM
 		),
 	])
 	out.description = description
@@ -216,24 +216,24 @@ static func _sum(
 
 
 ## Turns the backbone report on or off at run time (the family cvar `stats_report`); the cvar is registered after this tracker is built, so setup() alone cannot see it.
-func set_reporting(on: bool) -> DotResult:
+func set_reporting(on: bool) -> GSResult:
 	if stats == null:
-		return DotResult.fail(DotError.CODE_STATE, "There is no stats tracker.")
+		return GSResult.fail(GSError.CODE_STATE, "There is no stats tracker.")
 
 	if achievements != null:
 		achievements.report_to_backbone = on
 
 	if not on:
 		stats.report_to_backbone = false
-		return DotResult.success(false)
+		return GSResult.success(false)
 
 	stats.report_to_backbone = true
 	stats.define_on_start = true
 
 	if not stats.reporter.is_available():
 		stats.report_to_backbone = false
-		DotLog.warn(CHANNEL, "stats reporting needs a backbone client with STATS_WRITE; staying off")
-		return DotResult.fail(DotError.CODE_STATE, "No backbone client to report stats through.")
+		GSLog.warn(CHANNEL, "stats reporting needs a backbone client with STATS_WRITE; staying off")
+		return GSResult.fail(GSError.CODE_STATE, "No backbone client to report stats through.")
 
 	if _report_timer == null:
 		_report_timer = Timer.new()
@@ -243,20 +243,20 @@ func set_reporting(on: bool) -> DotResult:
 		_report_timer.timeout.connect(func() -> void: stats.flush())
 		add_child(_report_timer)
 
-	return DotResult.success(true)
+	return GSResult.success(true)
 
 
 ## [param directory] empty keeps achievement progress in memory; see
 ## [member ScConfig.progress_directory]. [param report] is [member ScConfig.report_progress].
-func setup(directory: String, report: bool) -> DotResult:
-	stats = DotStatsTracker.new()
+func setup(directory: String, report: bool) -> GSResult:
+	stats = GSStatsTracker.new()
 	stats.name = "Stats"
 	stats.schema = schema()
 	stats.report_to_backbone = report
 	stats.define_on_start = report
 	add_child(stats)
 
-	feed = DotStatsEventFeed.new(stats)
+	feed = GSStatsEventFeed.new(stats)
 	feed.key_of = _feed_key
 
 	var counted := stats.start()
@@ -264,7 +264,7 @@ func setup(directory: String, report: bool) -> DotResult:
 	if not counted.ok:
 		return counted.wrap("smash-copter stats")
 
-	achievements = DotAchievementTracker.new()
+	achievements = GSAchievementTracker.new()
 	achievements.name = "Achievements"
 	achievements.catalogue = catalogue()
 	achievements.report_to_backbone = report
@@ -273,11 +273,11 @@ func setup(directory: String, report: bool) -> DotResult:
 	achievements.register_as = &""
 
 	if directory != "":
-		var file_store := DotAchievementStoreFile.new()
+		var file_store := GSAchievementStoreFile.new()
 		file_store.directory = directory
 		achievements.store = file_store
 	else:
-		achievements.store = DotAchievementStoreMemory.new()
+		achievements.store = GSAchievementStoreMemory.new()
 
 	add_child(achievements)
 
@@ -288,13 +288,13 @@ func setup(directory: String, report: bool) -> DotResult:
 
 	achievements.unlocked.connect(_on_unlocked)
 
-	link = DotAchievementStatsLink.new()
+	link = GSAchievementStatsLink.new()
 	link.name = "StatsLink"
 	link.tracker = achievements
 	link.stats = stats
 	add_child(link)
 
-	rank = DotStatsRank.new()
+	rank = GSStatsRank.new()
 	rank.stat_id = RANK_SCORE
 	rank.terms = [
 		{"stat": String(ROUNDS_SURVIVED), "weight": 1.0},
@@ -334,7 +334,7 @@ func record(player_id: StringName, stat: StringName, value: float = 1.0) -> void
 	if not filed.ok:
 		# WARN: a number a player earned that nobody will ever see. It is a schema or a key
 		# that is wrong, and it only ever happens for a reason worth looking at.
-		DotLog.warn(CHANNEL, "a reading was refused", {
+		GSLog.warn(CHANNEL, "a reading was refused", {
 			"player": String(player_id), "stat": String(stat), "why": filed.error.message,
 		})
 
@@ -347,7 +347,7 @@ func _load_baseline(player_id: StringName) -> void:
 
 ## Files the player's rank_score on their lifetime baseline plus this session.
 func _publish_rank(player_id: StringName) -> void:
-	if rank == null or rank.mode != DotStatsRank.MODE_WEIGHTED or stats == null or not stats.has_player(_key(player_id)):
+	if rank == null or rank.mode != GSStatsRank.MODE_WEIGHTED or stats == null or not stats.has_player(_key(player_id)):
 		return
 	var _s := rank.publish_lifetime(player_id, session_values(player_id), stats.schema)
 
@@ -379,15 +379,15 @@ func _feed_key(entity_id: Variant) -> StringName:
 
 
 ## A landed hit, filed by body zone (and wall or body crossed) through the dot-stats hook.
-func report_damage(damage: DotDamage) -> void:
+func report_damage(damage: GSDamage) -> void:
 	if feed != null and stats != null:
-		var _filed := DotStatsDamage.report(feed, damage)
+		var _filed := GSStatsDamage.report(feed, damage)
 
 
 ## Every wall a resolved shot crossed, for the site's Penetration cost panel (the shape is dot-stats').
-func report_shot(shot: DotShot) -> void:
+func report_shot(shot: GSShot) -> void:
 	if feed != null and stats != null:
-		var _walls := DotStatsDamage.report_shot(feed, shot)
+		var _walls := GSStatsDamage.report_shot(feed, shot)
 
 
 ## A player kill for the head-to-head table; world deaths and suicides are refused by the feed.
@@ -419,21 +419,21 @@ func _key(player_id: StringName) -> StringName:
 ## `begin` is a coroutine, and this is the family's pattern for starting one from code that
 ## is not — `await` inside, a bare call outside.
 func _begin(player_id: StringName) -> void:
-	var began: DotResult = await achievements.begin(String(player_id))
+	var began: GSResult = await achievements.begin(String(player_id))
 
 	if not began.ok:
 		# WARN: this player will earn nothing this session, and they will not be told why.
-		DotLog.warn(CHANNEL, "achievement progress could not be loaded", {
+		GSLog.warn(CHANNEL, "achievement progress could not be loaded", {
 			"player": String(player_id), "why": began.error.message,
 		})
 
 
 ## Saves somebody's progress as they go. See [method _begin].
 func _end(player_id: StringName) -> void:
-	var ended: DotResult = await achievements.end(String(player_id))
+	var ended: GSResult = await achievements.end(String(player_id))
 
 	if not ended.ok:
-		DotLog.warn(CHANNEL, "achievement progress could not be saved", {
+		GSLog.warn(CHANNEL, "achievement progress could not be saved", {
 			"player": String(player_id), "why": ended.error.message,
 		})
 
@@ -457,9 +457,9 @@ func leave(player_id: StringName) -> void:
 	_end(key)
 
 
-func session_values(player_id: StringName) -> DotStatsValues:
+func session_values(player_id: StringName) -> GSStatsValues:
 	return stats.session_values(_keys.get(player_id, player_id)) \
-		if stats != null else DotStatsValues.new()
+		if stats != null else GSStatsValues.new()
 
 
 ## The key [param player_id]'s numbers are filed under. For a console command and a suite.
@@ -567,9 +567,9 @@ func on_platform_struck(index: int, at: Vector3, outcome: int) -> void:
 			record(id, PROPS_DODGED)
 
 
-func _on_unlocked(player: String, achievement: DotAchievement) -> void:
+func _on_unlocked(player: String, achievement: GSAchievement) -> void:
 	# INFO: what an admin keeps. "I did the thing and was not told" is answered here.
-	DotLog.info(CHANNEL, "an achievement was unlocked", {
+	GSLog.info(CHANNEL, "an achievement was unlocked", {
 		"player": player, "achievement": String(achievement.id), "points": achievement.points,
 	})
 	# Back to the world's id: the world tells the player, and the world knows them by that.

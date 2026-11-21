@@ -573,7 +573,7 @@ static func _island_of(root: PackedInt32Array, i: int) -> int:
 ## The layout for a round, drawn by weight from [param stream].
 ##
 ## Weighted, because the full field is the baseline the variants vary. [param keep] is `(id: StringName) -> bool`, the server's maps.yml; a filter that would leave nothing draws from every allowed layout.
-static func pick(config: ScConfig, stream: DotRandomStream, keep: Callable = Callable()) -> Layout:
+static func pick(config: ScConfig, stream: GSRandomStream, keep: Callable = Callable()) -> Layout:
 	var layouts := allowed(config)
 
 	if keep.is_valid():
@@ -616,7 +616,7 @@ static func allowed(config: ScConfig) -> Array[Layout]:
 			out.append(layout)
 
 	if out.is_empty():
-		DotLog.warn(CHANNEL, "layout_ids names nothing this game has", {
+		GSLog.warn(CHANNEL, "layout_ids names nothing this game has", {
 			"asked_for": ", ".join(config.layout_ids),
 			"have": ", ".join(ids(config)),
 		})
@@ -650,11 +650,11 @@ static func ids(config: ScConfig) -> PackedStringArray:
 ## The layouts a server plays, as a dot-map catalogue: what `map`, `maps`, `mapinfo` and the ballot list.
 ##
 ## A def per layout, with the layout's id. `scene_path` names the one scene only to satisfy the def's validation and nothing loads it (see `ScMapSession`). [method allowed] decides which are offered.
-static func catalogue(config: ScConfig) -> DotMapCatalogue:
-	var out := DotMapCatalogue.new()
+static func catalogue(config: ScConfig) -> GSMapCatalogue:
+	var out := GSMapCatalogue.new()
 
 	for layout in allowed(config):
-		var def := DotMapDef.new()
+		var def := GSMapDef.new()
 		def.id = layout.id
 		def.display_name = layout.display_name
 		def.description = layout.blurb

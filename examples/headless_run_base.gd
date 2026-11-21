@@ -1,4 +1,4 @@
-extends DotGameCheckSuite
+extends GSGameCheckSuite
 
 ## The state and the helpers every section of [code]headless_run.gd[/code] shares: its worlds, the tracked runner, walking and jumping.
 
@@ -99,12 +99,12 @@ func _run_to(game: ScGame, player: ScPlayer, target: Vector3, stop: float) -> bo
 		var toward := Vector3(target.x - at.x, 0.0, target.z - at.z)
 
 		if toward.length() < stop:
-			var still := DotFpsCommand.new()
+			var still := GSFpsCommand.new()
 			still.yaw = player.controller.state.yaw
 			player.controller.apply_command(still)
 			return true
 
-		var command := DotFpsCommand.new()
+		var command := GSFpsCommand.new()
 		command.yaw = rad_to_deg(atan2(-toward.x, -toward.z))
 		command.move = Vector2(0.0, 1.0)
 		player.controller.apply_command(command)
@@ -162,7 +162,7 @@ func _walk_to(game: ScGame, player: ScPlayer, target: Vector3) -> void:
 	for _i in range(int(6.0 * TICK_RATE)):
 		var at := player.controller.state.position
 		var toward := Vector3(target.x - at.x, 0.0, target.z - at.z)
-		var command := DotFpsCommand.new()
+		var command := GSFpsCommand.new()
 		command.yaw = player.controller.state.yaw
 
 		if toward.length() < 0.4:
@@ -173,7 +173,7 @@ func _walk_to(game: ScGame, player: ScPlayer, target: Vector3) -> void:
 
 		command.yaw = rad_to_deg(atan2(-toward.x, -toward.z))
 		command.move = Vector2(0.0, 1.0)
-		command.set_button(DotFpsCommand.BUTTON_WALK, true)
+		command.set_button(GSFpsCommand.BUTTON_WALK, true)
 		player.controller.apply_command(command)
 		game.simulate(TICK)
 		await _physics_frame()
@@ -191,7 +191,7 @@ func _jump_across(game: ScGame, player: ScPlayer, from: int, to: int) -> bool:
 	for _i in range(int(4.0 * TICK_RATE)):
 		var at := player.controller.state.position
 		var toward := Vector3(target.x - at.x, 0.0, target.z - at.z)
-		var command := DotFpsCommand.new()
+		var command := GSFpsCommand.new()
 		command.yaw = rad_to_deg(atan2(-toward.x, -toward.z))
 		command.move = Vector2(0.0, 1.0)
 
@@ -201,7 +201,7 @@ func _jump_across(game: ScGame, player: ScPlayer, from: int, to: int) -> bool:
 			var ahead := at + toward.normalized() * 0.6
 
 			if platforms.index_at(ahead.x, ahead.z) != from:
-				command.set_button(DotFpsCommand.BUTTON_JUMP, true)
+				command.set_button(GSFpsCommand.BUTTON_JUMP, true)
 				jumped = true
 
 		player.controller.apply_command(command)
@@ -209,7 +209,7 @@ func _jump_across(game: ScGame, player: ScPlayer, from: int, to: int) -> bool:
 		await _physics_frame()
 
 		if jumped and player.standing_on == to \
-				and player.controller.state.mode == DotFpsState.Mode.GROUND:
+				and player.controller.state.mode == GSFpsState.Mode.GROUND:
 			return true
 
 		if player.controller.state.position.y < game.config.deck_height - 3.0:

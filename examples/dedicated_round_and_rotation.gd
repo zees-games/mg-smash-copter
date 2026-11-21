@@ -73,9 +73,9 @@ func _test_a_round_runs() -> void:
 		]
 	)
 
-	# The round began inside the netcode's own tick, which is the case this is for: the boot field is replaced from inside `DotNetManager.server_tick`, which then re-created lag-compensation tracks for ids the registry had just forgotten (twelve leaked per round).
+	# The round began inside the netcode's own tick, which is the case this is for: the boot field is replaced from inside `GSNetManager.server_tick`, which then re-created lag-compensation tracks for ids the registry had just forgotten (twelve leaked per round).
 	# `history._tracks` is read directly because no public accessor would report a leak.
-	var net: DotNetManager = module.net
+	var net: GSNetManager = module.net
 	var orphans: Array[int] = []
 
 	for net_id: int in net.history._tracks.keys():
@@ -94,7 +94,7 @@ func _test_a_round_runs() -> void:
 		"%d tracks, %d orphaned %s" % [net.history._tracks.size(), orphans.size(), str(orphans)])
 
 	# The same moment in the log: the old decks are out of the tree but still registered for one tick.
-	# Fixed in dot-net (DotNetHistory skips an entity not in the world), because taking a node out between ticks is something the netcode agreed a game may do.
+	# Fixed in dot-net (GSNetHistory skips an entity not in the world), because taking a node out between ticks is something the netcode agreed a game may do.
 	OS.remove_logger(errors)
 	var seen := errors.seen()
 	_check(seen.is_empty(), "and the engine reported no error",
@@ -128,7 +128,7 @@ func _test_the_stand_ins() -> void:
 	_check(bots == game.players.size(), "and all of them are stand-ins on an empty server",
 		"%d of %d" % [bots, game.players.size()])
 
-	# A person takes a stand-in's place, and leaving gives it back (DotBotQuota's fill mode).
+	# A person takes a stand-in's place, and leaving gives it back (GSBotQuota's fill mode).
 	# Driven by calling the roster check, not waiting for its interval, with a person added through the bridge (peer zero) so the count is exact.
 	var quota_module := _module()
 	var quota_bridge: Object = quota_module.get("bridge") if quota_module != null else null
@@ -142,7 +142,7 @@ func _test_the_stand_ins() -> void:
 	if quota_module != null and quota_bridge != null:
 		quota_module.call("_keep_the_round_full")
 		var bots_before: int = (quota_module.get("_bot_ids") as Array).size()
-		var joined: DotResult = quota_bridge.call("add_player", 0, 9001, "Person")
+		var joined: GSResult = quota_bridge.call("add_player", 0, 9001, "Person")
 		quota_module.call("_keep_the_round_full")
 		var bots_with: int = (quota_module.get("_bot_ids") as Array).size()
 		_check(joined.ok and bots_before == 3 and bots_with == bots_before - 1,
@@ -160,25 +160,25 @@ func _test_the_stand_ins() -> void:
 
 	# How the stand-ins aim and shoot is dot-bot's, the family's names: bot_difficulty sets the
 	# bundle, a single setting overrides it, and the old sc_bot_spread still means bot_aim_error.
-	var bot_settings := DotBotSettings.of(game)
+	var bot_settings := GSBotSettings.of(game)
 	_check(server.console.get_string("bot_difficulty", "") == "medium" and bot_settings.difficulty() == "medium",
 		"bot_difficulty is the module's and medium is the default")
 	var _hard := _run_command("bot_difficulty hard")
-	_check(bot_settings.difficulty() == "hard" and is_equal_approx(server.console.get_float("bot_reaction"), DotBotProfile.preset_value("hard", "reaction")),
+	_check(bot_settings.difficulty() == "hard" and is_equal_approx(server.console.get_float("bot_reaction"), GSBotProfile.preset_value("hard", "reaction")),
 		"bot_difficulty hard writes every bot_* setting", server.console.get_string("bot_reaction"))
 	var _old := _run_command("sc_bot_spread 9")
 	_check(is_equal_approx(bot_settings.profile.aim_error, 9.0) and server.console.get_string("bot_aim_error") == "9",
 		"the old sc_bot_spread sets bot_aim_error", server.console.get_string("bot_aim_error"))
 	var _reset := _run_command("bot_settings_reset")
 	var _medium := _run_command("bot_difficulty medium")
-	_check(is_equal_approx(bot_settings.profile.aim_error, DotBotProfile.preset_value("medium", "aim_error")),
+	_check(is_equal_approx(bot_settings.profile.aim_error, GSBotProfile.preset_value("medium", "aim_error")),
 		"and bot_settings_reset puts the preset back", "%.2f" % bot_settings.profile.aim_error)
 	var _lean := _run_command("sc_bot_lean_notice 4")
 	_check(is_equal_approx(game.config.bot_lean_notice_degrees, 4.0), "sc_bot_lean_notice is this game's own",
 		"%.2f" % game.config.bot_lean_notice_degrees)
 	var _lean_back := _run_command("sc_bot_lean_notice 1.15")
 
-	# Named from this game's list through DotBotNames: never twice.
+	# Named from this game's list through GSBotNames: never twice.
 	var names := {}
 	var named := true
 	for id: StringName in game.players:
@@ -205,11 +205,11 @@ func _test_the_stand_ins() -> void:
 
 func _check_hit_zone(player: ScPlayer) -> void:
 	if game.progress != null and player != null:
-		var zoned := DotDamage.make(player.entity_id, 9999, 5.0, game.combat.damage_type(&"kinetic"))
-		zoned.hit_group = DotHitGroup.NECK
+		var zoned := GSDamage.make(player.entity_id, 9999, 5.0, game.combat.damage_type(&"kinetic"))
+		zoned.hit_group = GSHitGroup.NECK
 		zoned.weapon_id = &"probe"
 		game.progress.report_damage(zoned)
-		_check(game.progress.session_values(&"u717").get_cell(DotStatsHitzones.HITS, "zone:neck") >= 1.0,
+		_check(game.progress.session_values(&"u717").get_cell(GSStatsHitzones.HITS, "zone:neck") >= 1.0,
 			"a hit with a hit_group is filed by body zone through the dot-stats hitzone hook")
 		_check(game.progress.stats.schema.validate().ok, "the stats schema, hitzones included, validates")
 	else:
@@ -228,7 +228,7 @@ func _test_a_covered_seat_is_not_harmed() -> void:
 	side.name = "CoverClient"
 	add_child(side)
 	get_tree().set_multiplayer(MultiplayerAPI.create_default_interface(), side.get_path())
-	var link := DotClientLink.new()
+	var link := GSClientLink.new()
 	link.name = "Server"
 	link.player_name = "Covered"
 	link.transport_preference = "udp"
@@ -252,7 +252,7 @@ func _test_a_covered_seat_is_not_harmed() -> void:
 	link.spawned.connect(func() -> void: spawned[0] = true)
 	link.connect_to_server("127.0.0.1:%d" % PORT)
 	var joined := await _until(func() -> bool:
-		return spawned[0] or link.phase == DotClientLink.Phase.FAILED, 30.0)
+		return spawned[0] or link.phase == GSClientLink.Phase.FAILED, 30.0)
 	joined = joined and spawned[0]
 	var peer := side.multiplayer.get_unique_id() if joined else 0
 	var session := 0
@@ -283,7 +283,7 @@ func _test_a_covered_seat_is_not_harmed() -> void:
 	var before := victim.health.health
 	var tick: int = game._tick
 	for why: StringName in [&"shot", &"crushed", &"fell"]:
-		var hit := DotDamage.make(0, victim.entity_id, victim.health.max_health * 10.0, null)
+		var hit := GSDamage.make(0, victim.entity_id, victim.health.max_health * 10.0, null)
 		hit.tick = tick
 		hit.context = {"why": why}
 		var _applied: Variant = game.combat.apply_damage(hit)
@@ -295,16 +295,16 @@ func _test_a_covered_seat_is_not_harmed() -> void:
 	_check(victim.is_alive(), "and the floor's own kill leaves it up")
 
 	var slain: Variant = (module.get("services") as Object).call("_mod_hurt", StringName(str(session)), -1.0)
-	_check(slain is DotResult and (slain as DotResult).ok and not victim.is_alive(),
+	_check(slain is GSResult and (slain as GSResult).ok and not victim.is_alive(),
 		"an admin's slay still passes", str(slain))
 	victim.health.alive = true
 	victim.health.health = before
 
-	DotGameClient.report_cover(link, false)
+	GSGameClient.report_cover(link, false)
 	var lifted := await _until(func() -> bool: return not bool(module.call("is_peer_loading", peer)), 10.0)
 	_check(lifted and game.can_be_harmed(key), "its cover report crosses the wire and ends the loading state")
 	var after_lift := victim.health.health
-	var late := DotDamage.make(0, victim.entity_id, 1.0, null)
+	var late := GSDamage.make(0, victim.entity_id, 1.0, null)
 	late.tick = game._tick
 	late.context = {"why": &"late"}
 	var _late_applied: Variant = game.combat.apply_damage(late)
@@ -334,8 +334,8 @@ func _test_map_rotation_file() -> void:
 		return
 
 	var catalogue := maps.catalogue
-	var director: DotVoteDirector = vote.get("director")
-	var built := DotMapRotationFile.from_trees([{"defaults": {
+	var director: GSVoteDirector = vote.get("director")
+	var built := GSMapRotationFile.from_trees([{"defaults": {
 		"rotation": "one",
 		"rotations": {
 			"one": {"mode": "random", "cooldown": 0, "maps": ["checker"]},
@@ -370,7 +370,7 @@ func _test_map_rotation_file() -> void:
 
 	vote.call("refresh_maps")
 	var ids: Array = []
-	for choice: DotVoteChoice in (vote.get("source") as DotVoteListSource).entries:
+	for choice: GSVoteChoice in (vote.get("source") as GSVoteListSource).entries:
 		ids.append(String(choice.id))
 	_check(not ids.has("full") and ids.has("checker"), "a layout outside it is not on the ballot", str(ids))
 	var nominated := director.nominate(&"console", &"full")
@@ -386,12 +386,12 @@ func _test_map_rotation_file() -> void:
 	_check(not drew_checker, "and the draw follows it")
 	vote.call("advance", 1.1)
 	ids.clear()
-	for choice: DotVoteChoice in (vote.get("source") as DotVoteListSource).entries:
+	for choice: GSVoteChoice in (vote.get("source") as GSVoteListSource).entries:
 		ids.append(String(choice.id))
 	_check(not ids.has("checker") and ids.has("full"), "and the ballot follows it, unprompted", str(ids))
 	_check(not maps.rotation_file.switch(maps.rotation, "nope").ok, "an unknown rotation is refused")
 
-	var rtv := DotVoteCommands.new()
+	var rtv := GSVoteCommands.new()
 	rtv.director = director
 	rtv.spec_fn = module._rotation_commands
 	var bound := rtv.bind(server.console)
@@ -417,7 +417,7 @@ func _test_finish_round_waits_for_a_live_round() -> void:
 	_section("finish_round waits for a live round, not warmup")
 	var module := _module()
 	var vote: Node = module.get("vote") if module != null else null
-	var director: DotVoteDirector = vote.get("director") if vote != null else null
+	var director: GSVoteDirector = vote.get("director") if vote != null else null
 	var hook: Variant = director.get("round_in_progress_fn") if director != null else null
 	_check(hook is Callable and (hook as Callable).is_valid(), "the game tells its vote whether a round is live")
 
@@ -425,21 +425,21 @@ func _test_finish_round_waits_for_a_live_round() -> void:
 		_finished()
 		return
 
-	var match_node: DotMatch = game.match_node
+	var match_node: GSMatch = game.match_node
 	var was := match_node.state
-	match_node.state = DotMatch.State.WARMUP
+	match_node.state = GSMatch.State.WARMUP
 	var warm_applied := []
 	var warm := _finish_round_probe(hook, warm_applied)
 	_check(warm_applied == [&"b"] and not warm.is_finishing_round(),
 		"in warmup a time limit with finish_round changes at once", str(warm_applied))
 
-	match_node.state = DotMatch.State.LIVE
+	match_node.state = GSMatch.State.LIVE
 	var live_applied := []
 	var live := _finish_round_probe(hook, live_applied)
 	_check(live_applied.is_empty() and live.is_finishing_round(),
 		"during a live round it waits for the round", str(live_applied))
 
-	match_node.state = DotMatch.State.INTERMISSION
+	match_node.state = GSMatch.State.INTERMISSION
 	live.advance(0.1)
 	_check(live_applied == [&"b"], "and the round ending is the change", str(live_applied))
 
@@ -451,27 +451,27 @@ func _test_finish_round_waits_for_a_live_round() -> void:
 
 ## A director under `time_up: finish_round` carrying [param hook], its clock run out with a
 ## winner already decided: what dot-vote's own suite builds, with the game's answer in it.
-func _finish_round_probe(hook: Callable, applied: Array) -> DotVoteDirector:
-	var source := DotVoteListSource.new()
-	var _a := source.add(DotVoteChoice.of(&"a", "A"))
-	var _b := source.add(DotVoteChoice.of(&"b", "B"))
-	source.apply_fn = func(id: StringName) -> DotResult:
+func _finish_round_probe(hook: Callable, applied: Array) -> GSVoteDirector:
+	var source := GSVoteListSource.new()
+	var _a := source.add(GSVoteChoice.of(&"a", "A"))
+	var _b := source.add(GSVoteChoice.of(&"b", "B"))
+	source.apply_fn = func(id: StringName) -> GSResult:
 		applied.append(id)
-		return DotResult.success(id)
+		return GSResult.success(id)
 
-	var rules := DotVoteRules.new()
+	var rules := GSVoteRules.new()
 	rules.apply_delay_sec = 0.0
 	rules.duration_sec = 100.0
 	rules.vote_lead_sec = 40.0
 	rules.vote_duration_sec = 5.0
 	rules.include_extend = false
-	rules.apply = DotVoteRules.Apply.END_OF_TIME
+	rules.apply = GSVoteRules.Apply.END_OF_TIME
 	rules.cooldown = 0
-	rules.time_up = DotVoteRules.TimeUp.FINISH_ROUND
+	rules.time_up = GSVoteRules.TimeUp.FINISH_ROUND
 	# For ever: only the hook may release it.
 	rules.finish_round_max_sec = 0.0
 
-	var probe := DotVoteDirector.new()
+	var probe := GSVoteDirector.new()
 	probe.rules = rules
 	probe.source = source
 	probe.register_service = false
@@ -505,7 +505,7 @@ func _test_ambient_cvars_reach_the_client() -> void:
 	var mirror := Node.new()
 	mirror.name = "Dedicated"
 	side.add_child(mirror)
-	var link := DotClientLink.new()
+	var link := GSClientLink.new()
 	link.name = "Server"
 	link.player_name = "Ambient"
 	link.transport_preference = "udp"
@@ -521,8 +521,8 @@ func _test_ambient_cvars_reach_the_client() -> void:
 	link.connect_to_server("127.0.0.1:%d" % PORT)
 	var rules := ScAmbience.make_rules()
 	var _followed := rules.follow_cvars(link)
-	var director := DotAmbienceDirector.new()
-	director.ambient = DotAmbience.new()
+	var director := GSAmbienceDirector.new()
+	director.ambient = GSAmbience.new()
 	director.follow_settings(null, rules)
 	var joined := false
 	for _i in 1800:

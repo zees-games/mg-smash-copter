@@ -68,7 +68,7 @@ func _test_the_spine() -> void:
 			arrived = true
 			break
 
-		var command := DotFpsCommand.new()
+		var command := GSFpsCommand.new()
 		command.yaw = rad_to_deg(atan2(-toward.x, -toward.z))
 		command.move = Vector2(0.0, 1.0)
 		runner.controller.apply_command(command)
@@ -393,7 +393,7 @@ func _test_broadside() -> void:
 	# Long enough for the chopper to drop off its pad and come to rest.
 	await _step(game, 96)
 
-	var copter: DotVehicleInstance = null if game._copter_ids.is_empty() \
+	var copter: GSVehicleInstance = null if game._copter_ids.is_empty() \
 		else game.vehicles.get_vehicle(game._copter_ids[0])
 	var parked := copter.body().global_position if copter != null else Vector3.ZERO
 	var middle := _deck_at_cell(platforms, config.columns / 2, 0)
@@ -515,7 +515,7 @@ func _test_the_airfield() -> void:
 	# Long enough for the chopper to drop off its pad and come to rest.
 	await _step(game, 96)
 
-	var copter: DotVehicleInstance = null if game._copter_ids.is_empty() \
+	var copter: GSVehicleInstance = null if game._copter_ids.is_empty() \
 		else game.vehicles.get_vehicle(game._copter_ids[0])
 	var parked := copter.body().global_position if copter != null else Vector3.ZERO
 	var pad := -1
@@ -592,7 +592,7 @@ func _test_the_airfield() -> void:
 
 
 ## Each side along its own row, jump by jump, then into the machine and out again; returns metres, jumps and the slowest top speed.
-func _airfield_run_routes(game: ScGame, copter: DotVehicleInstance, pad: int, last: int, routes: Array) -> Dictionary:
+func _airfield_run_routes(game: ScGame, copter: GSVehicleInstance, pad: int, last: int, routes: Array) -> Dictionary:
 	var platforms := game.platforms
 	var metres: Array[float] = []
 	var jumps: Array[int] = []
@@ -639,7 +639,7 @@ func _airfield_run_routes(game: ScGame, copter: DotVehicleInstance, pad: int, la
 
 
 ## The pad goes with the platform it rests on.
-func _airfield_pad_collapses(game: ScGame, copter: DotVehicleInstance, pad: int, parked: Vector3, home: int, across: int, first: ScPlayer, second: ScPlayer) -> void:
+func _airfield_pad_collapses(game: ScGame, copter: GSVehicleInstance, pad: int, parked: Vector3, home: int, across: int, first: ScPlayer, second: ScPlayer) -> void:
 	var platforms := game.platforms
 	var last := game.config.columns - 1
 	# The pad goes with the platform it rests on: (last, 1) down, the bridge and the machine

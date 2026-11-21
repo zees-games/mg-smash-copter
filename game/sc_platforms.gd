@@ -22,14 +22,14 @@ func _ready() -> void:
 
 
 ## Lays out the field a layout describes. What the authority calls.
-func build(layout: ScLayouts.Layout, physics: DotPhysicsLayout = null) -> void:
+func build(layout: ScLayouts.Layout, physics: GSPhysicsLayout = null) -> void:
 	build_cells(
 		layout.cells(config), layout.pitch_scale, layout.stiffness_scale, physics,
 		layout.row_pitch_scale, layout.row_shift,
 		layout.field_columns(config), layout.field_rows(config)
 	)
 
-	DotLog.info(CHANNEL, "the platforms are up", {
+	GSLog.info(CHANNEL, "the platforms are up", {
 		"layout": String(layout.id),
 		"platforms": decks.size(),
 		"deck": "%.0f m" % config.deck_height,
@@ -43,7 +43,7 @@ func build_cells(
 	cells: Array[Vector3i],
 	p_pitch_scale: float,
 	p_stiffness_scale: float,
-	physics: DotPhysicsLayout = null,
+	physics: GSPhysicsLayout = null,
 	p_row_pitch_scale: float = 1.0,
 	p_row_shift: float = 0.0,
 	p_columns: int = 0,
@@ -146,7 +146,7 @@ func cells() -> Array[Vector3i]:
 
 ## Everything a previous [method build] put here.
 ##
-## Removed from the tree at once (two fields at one height for the frame would let a spawned body land on the old one) and freed deferred, because a round ends inside the netcode's loop over entities and an immediate `free()` pulls them out from under `DotNetManager.server_tick`.
+## Removed from the tree at once (two fields at one height for the frame would let a spawned body land on the old one) and freed deferred, because a round ends inside the netcode's loop over entities and an immediate `free()` pulls them out from under `GSNetManager.server_tick`.
 func clear() -> void:
 	for child in get_children():
 		remove_child(child)
@@ -273,7 +273,7 @@ func _build_rail(body: AnimatableBody3D, size: Vector3) -> void:
 	var scene := load(ScPaths.rebase(RAIL_MODEL)) as PackedScene
 
 	if scene == null:
-		DotLog.warn(CHANNEL, "the tower rail model would not load", {"path": RAIL_MODEL})
+		GSLog.warn(CHANNEL, "the tower rail model would not load", {"path": RAIL_MODEL})
 		return
 
 	var atlas := load(ScPaths.rebase(RAIL_ATLAS)) as Texture2D
@@ -439,7 +439,7 @@ func _classify(body: Node, layer_id: StringName) -> void:
 	var applied := _physics.apply_to(body, layer_id)
 
 	if not applied.ok:
-		DotLog.warn(CHANNEL, "a body could not be put on its collision layer", {
+		GSLog.warn(CHANNEL, "a body could not be put on its collision layer", {
 			"body": body.name, "layer": String(layer_id), "why": applied.error.message,
 		})
 
@@ -462,7 +462,7 @@ func index_at(x: float, z: float) -> int:
 	return -1
 
 
-## Which platform this collider belongs to, or -1. What `DotFpsState.ground_id` answers.
+## Which platform this collider belongs to, or -1. What `GSFpsState.ground_id` answers.
 func index_of_body(instance_id: int) -> int:
 	return int(_by_body.get(instance_id, -1))
 

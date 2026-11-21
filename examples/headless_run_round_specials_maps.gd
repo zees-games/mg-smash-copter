@@ -213,10 +213,10 @@ func _test_collision_audit() -> void:
 	for layout in ScLayouts.all(game.config):
 		game.platforms.build(layout, game.physics)
 		await _physics_frame()
-		var res := DotCollisionAudit.audit(game, true)
+		var res := GSCollisionAudit.audit(game, true)
 
 		if res.ok:
-			var report: DotCollisionAudit = res.value
+			var report: GSCollisionAudit = res.value
 			print("  ..    %s collision audit: %d of %d" % [String(layout.id), report.count(), report.examined])
 
 			if report.count() > 0:
@@ -251,9 +251,9 @@ func _test_the_map_catalogue() -> void:
 	var session := ScMapSession.new()
 	session.catalogue = catalogue
 	var asked: Array[StringName] = []
-	session.apply_fn = func(id: StringName) -> DotResult:
+	session.apply_fn = func(id: StringName) -> GSResult:
 		asked.append(id)
-		return DotResult.success(id)
+		return GSResult.success(id)
 	add_child(session)
 
 	var changed := await session.change_to(&"ring")
@@ -263,8 +263,8 @@ func _test_the_map_catalogue() -> void:
 	var refused := await session.change_to(&"nowhere")
 	_check(not refused.ok and asked.size() == 1, "and an unknown map is refused")
 
-	session.apply_fn = func(_id: StringName) -> DotResult:
-		return DotResult.fail(DotError.CODE_STATE, "no")
+	session.apply_fn = func(_id: StringName) -> GSResult:
+		return GSResult.fail(GSError.CODE_STATE, "no")
 	var failed := await session.change_to(&"terraces")
 	_check(not failed.ok and session.current.id == &"ring", "and a refusal leaves the map as it was")
 
@@ -312,7 +312,7 @@ func _test_the_throat() -> void:
 		var blocked := 0
 
 		for _shot in range(8):
-			var prop: DotPropInstance = game.cannon.call("_launch_one", 1000.0, active)
+			var prop: GSPropInstance = game.cannon.call("_launch_one", 1000.0, active)
 
 			if prop == null:
 				continue
@@ -333,7 +333,7 @@ func _test_the_throat() -> void:
 			if top < config.deck_height + 2.0:
 				blocked += 1
 
-			var _gone := game.props.remove(prop.instance_id, DotPropSpawner.REASON_CLEANUP)
+			var _gone := game.props.remove(prop.instance_id, GSPropSpawner.REASON_CLEANUP)
 
 		if blocked > 0:
 			stuck.append("%s %d of 8" % [layout.id, blocked])

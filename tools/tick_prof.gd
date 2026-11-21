@@ -10,7 +10,7 @@ var _prof_warm := 640
 var _prof_top := 0
 var _prof_ticks := 0
 var _prof_us := PackedFloat64Array()
-var _prof_scripts: DotProfilerScripts = null
+var _prof_scripts: GSProfilerScripts = null
 
 
 func _ready() -> void:
@@ -22,7 +22,7 @@ func _ready() -> void:
 func _step(delta: float) -> void:
 	_prof_ticks += 1
 	if _prof_ticks == _prof_warm and _prof_top > 0:
-		_prof_scripts = DotProfilerScripts.new()
+		_prof_scripts = GSProfilerScripts.new()
 		var started := _prof_scripts.start()
 		if not started.ok:
 			printerr("TICKPROF ", started.error.message)

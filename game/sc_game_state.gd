@@ -32,8 +32,8 @@ const NET_SNAPSHOT_RATE := 30
 ## this one value: ends that disagree land somewhere else entirely, not just imprecisely.
 const NET_WORLD_EXTENT := 256.0
 
-# Team colours and names are dot-team's, for any number of sides: [method DotTeamSet.palette_colour] and
-# [method DotTeamSet.palette_name] (index 0 is team id 1).
+# Team colours and names are dot-team's, for any number of sides: [method GSTeamSet.palette_colour] and
+# [method GSTeamSet.palette_name] (index 0 is team id 1).
 
 ## Which half of the round it is.
 enum Phase {
@@ -121,15 +121,15 @@ const DIED_BLAST := &"blast"
 @export var config: ScConfig = null
 
 ## The binder that layered [member config] (cfg/ yml, env, argv); null in a suite that built the config by hand.
-var config_binder: DotGameConfigBinder = null
+var config_binder: GSGameConfigBinder = null
 
 ## The workbench's profile rows, made on first ask: the bridge's profile link must exist before the netcode seals, the workbench after.
-var profile_runtime: DotProfileRuntime = null
+var profile_runtime: GSProfileRuntime = null
 
 
-func ensure_runtime() -> DotProfileRuntime:
+func ensure_runtime() -> GSProfileRuntime:
 	if profile_runtime == null:
-		profile_runtime = DotProfileRuntime.new()
+		profile_runtime = GSProfileRuntime.new()
 		profile_runtime.permit = func(actor: Variant, _flag: String) -> bool:
 			return typeof(actor) == TYPE_STRING_NAME and actor == &"local"
 	return profile_runtime
@@ -153,35 +153,35 @@ var block_rules: Object = null
 var arena: ScArena = null
 var platforms: ScPlatforms = null
 var cannon: ScCannon = null
-var props: DotPropSpawner = null
-var prop_damage: DotPropDamage = null
+var props: GSPropSpawner = null
+var prop_damage: GSPropDamage = null
 
 ## `func(player_id: StringName) -> bool`: whether a player may be hurt now, assigned by the
 ## module from dot-game's `can_peer_be_harmed`. Unset offline, and a bot is never loading.
 var harm_gate: Callable = Callable()
-var vehicles: DotVehicleSpawner = null
-var ride: DotVehicleRide = null
-var combat: DotCombatManager = null
-var match_node: DotMatch = null
-var random: DotRandomManager = null
-var physics: DotPhysicsLayout = null
+var vehicles: GSVehicleSpawner = null
+var ride: GSVehicleRide = null
+var combat: GSCombatManager = null
+var match_node: GSMatch = null
+var random: GSRandomManager = null
+var physics: GSPhysicsLayout = null
 
 ## What a dead body does, and which death reactions the server allows: dot-player-char's
 ## `sv_ragdoll*` cvars, bound by the module (REPLICATED) and followed by a client through its
 ## link, because the client draws the bodies. The game's, not the map's.
-var ragdoll_rules: DotPlayerRagdollRules = DotPlayerRagdollRules.new()
+var ragdoll_rules: GSPlayerRagdollRules = GSPlayerRagdollRules.new()
 
 ## dot-props' `sv_toys*`, bound by the module (REPLICATED) and followed by a client.
-var toy_rules: DotPropBodyRules = DotPropBodyRules.new()
+var toy_rules: GSPropBodyRules = GSPropBodyRules.new()
 
 ## Aim-down-sights numbers (`zee_ads_rules`, REPLICATED): the server's cfg over the shipped defaults, handed to every weapon
 ## rig. Bound by the module and followed by a client, so its prediction agrees. Nothing sets the aim bit yet.
 var ads_rules: ZeeAdsRules = ZeeAdsRules.load_config()
 
-## The field's toys (dot-props' [DotPropBodyBox]): a beach ball on every platform, which rides a leaning deck,
+## The field's toys (dot-props' [GSPropBodyBox]): a beach ball on every platform, which rides a leaning deck,
 ## rolls off it at the edge, and is knocked flying by what the cannon throws. Placed from the layout on both
 ## ends, in deck order (see [method build_toys]). Null between fields.
-var toys: DotPropBodyBox = null
+var toys: GSPropBodyBox = null
 
 ## The field's toys are about to go, on both ends: what the bridge releases their entities on.
 signal toys_clearing()
@@ -189,16 +189,16 @@ signal toys_clearing()
 ## dot-player-controller's `mp_forceview` (may a player switch to third person) and `mp_solidplayers` (do
 ## players and stand-ins block each other). Bound by the module (REPLICATED) and followed by a client through
 ## its link: the client places its camera under the first and predicts its own player under the second.
-var view_rules: DotPlayerViewRules = DotPlayerViewRules.new()
-var body_rules: DotPlayerBodyRules = DotPlayerBodyRules.new()
+var view_rules: GSPlayerViewRules = GSPlayerViewRules.new()
+var body_rules: GSPlayerBodyRules = GSPlayerBodyRules.new()
 ## The ambience cvars (`sc_ambient*`): bound by the module (REPLICATED), followed by a client through its link.
-var ambient_rules: DotAmbienceRules = ScAmbience.make_rules()
+var ambient_rules: GSAmbienceRules = ScAmbience.make_rules()
 ## dot-mobile's touch cvars (`sv_mobile_*`, `sv_aim_assist*`, `sv_autofire*`): bound by the module (REPLICATED), followed by a client through its link. Auto-fire and aim assist stay off (their defaults) and the overlay gets no crosshair query, so an operator turning them on changes nothing here yet.
-var mobile_rules: DotMobileRules = DotMobileRules.new()
+var mobile_rules: GSMobileRules = GSMobileRules.new()
 
 ## The flashlight's config and binder, made on first use so a suite that builds a game by hand still has one; the layout the lights were last set for.
-var flashlight_config: DotFlashlightConfig = null
-var flashlight_binder: DotGameConfigBinder = null
+var flashlight_config: GSFlashlightConfig = null
+var flashlight_binder: GSGameConfigBinder = null
 var _flashlight_layout: String = ""
 
 
@@ -209,14 +209,14 @@ func _init() -> void:
 
 ## The weapon definitions by id, for the death reaction a weapon asks for. Built on first use.
 var _weapon_defs: Dictionary = {}
-var effects: DotFxManager = null
+var effects: GSFxManager = null
 
 ## Where somebody who is out looks. See [ScSpectate].
 var spectate: ScSpectate = null
 ## Who a spectator may watch and whether they may fly a free camera: dot-spectate's `mp_forcecamera`, `mp_freeroam`
 ## and `mp_freeroam_speed`. One object for the life of the game, shared with [ScSpectate]'s manager so a cvar change
 ## reaches the rules in use; bound by the module and followed by a client.
-var spectate_rules: DotSpectatorRules = DotSpectatorRules.new()
+var spectate_rules: GSSpectatorRules = GSSpectatorRules.new()
 
 ## The numbers a player keeps and what they earn. Null on a client and when
 ## [member ScConfig.keep_progress] is off. See [ScProgress].
@@ -253,7 +253,7 @@ var active := ScSpecials.Active.new()
 ## Every world object this game has an id for, from one allocator. An id carries its kind, so a range check answers
 ## "is this a player": a falling prop is also registered with dot-combat, and a kill handler that could not tell
 ## them apart would file a scoreboard row against a crate.
-var entities := DotEntityTable.new()
+var entities := GSEntityTable.new()
 
 ## What the server last said about numbers a client cannot count for itself; negative means "count it yourself". A
 ## client runs no cannon or platform model, so `standing_platforms()` there would count whatever its mirrors say.
@@ -274,7 +274,7 @@ var _copter_ids: Array[int] = []
 ## Instance id -> seconds since that chopper last dropped something.
 var _copter_drop: Dictionary = {}
 
-## Ticks a mid-round special last fired on, for [DotRandomSchedule].
+## Ticks a mid-round special last fired on, for [GSRandomSchedule].
 var _last_special_tick: int = -100000
 
 ## id -> seconds left. A start-of-round special is not in here; it lasts the round.
@@ -316,7 +316,7 @@ func _apply_gravity() -> void:
 	var world := get_world_3d()
 
 	if world == null:
-		DotLog.warn(CHANNEL, "no world to set gravity on", {})
+		GSLog.warn(CHANNEL, "no world to set gravity on", {})
 		return
 
 	PhysicsServer3D.area_set_param(
@@ -439,16 +439,16 @@ func set_tick_rate(rate: int) -> bool:
 ## The fall a death gets: dot-player-char's reaction rule over the server's weights, seeded from
 ## the player and the tick, with the killing weapon's def (zee's sniper and launcher always throw
 ## the body). A death with no sideways direction (a fall, a trap) pushes nothing.
-func decide_death(player: ScPlayer, damage: DotDamage) -> DotPlayerDeath:
+func decide_death(player: ScPlayer, damage: GSDamage) -> GSPlayerDeath:
 	if _weapon_defs.is_empty():
 		_weapon_defs = ZeeWeaponPack.table()
 	var direction := damage.direction
 	var attacker: ScPlayer = players.get(entities.key_for_id(damage.attacker)) if damage.attacker != 0 else null
 	if direction.length_squared() < 0.0001 and attacker != null and attacker != player:
 		direction = player.controller.state.position - attacker.controller.state.position
-	return DotPlayerDeath.decide(
+	return GSPlayerDeath.decide(
 		ragdoll_rules.reactions(), damage.is_headshot(), damage.amount, direction,
-		DotPlayerDeath.seed_of(player.entity_id, _tick), _weapon_defs.get(damage.weapon_id)
+		GSPlayerDeath.seed_of(player.entity_id, _tick), _weapon_defs.get(damage.weapon_id)
 	)
 
 

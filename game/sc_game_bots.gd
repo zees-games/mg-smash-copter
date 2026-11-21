@@ -4,13 +4,13 @@ extends "sc_game_state.gd"
 
 
 ## What a stand-in does, the least that makes a round look like a round: it plays the actual game (toward a leaning
-## platform's high side, off one going over; in the showdown it shoots through dot-bot's [DotBotAim]). View,
+## platform's high side, off one going over; in the showdown it shoots through dot-bot's [GSBotAim]). View,
 ## reaction and aim are dot-bot's `bot_*`; what is true only here is `sc_bot_*` ([ScConfig]).
 
 ## What the stand-ins are called, solo and on a server; past the end dot-bot numbers them.
 const BOT_NAMES := ["Wobble", "Teeter", "Lurch", "Tilt", "Keel", "Sway", "Pitch", "Yaw"]
 
-## Each stand-in's eyes and trigger finger for this round, player id -> [DotBotAim]. Cleared
+## Each stand-in's eyes and trigger finger for this round, player id -> [GSBotAim]. Cleared
 ## when the next round is laid out, and the round is in the seed (see [method _bot_aim_of]).
 var _bot_aims: Dictionary = {}
 
@@ -27,7 +27,7 @@ func _drive_bots(_delta: float) -> void:
 		if not player.is_bot or not player.is_alive() or player.riding:
 			continue
 
-		var command := DotFpsCommand.new()
+		var command := GSFpsCommand.new()
 		command.yaw = player.controller.state.yaw
 		command.pitch = player.controller.state.pitch
 		_bot_aim_of(player).view_from(command.yaw, command.pitch)
@@ -57,10 +57,10 @@ func _drive_bots(_delta: float) -> void:
 				# Walking rather than running when it is nearly there, which is the control
 				# this whole game is about and the one thing a bot should be seen using.
 				if toward.length() < 3.0 or deck.tilt() > 0.1:
-					command.set_button(DotFpsCommand.BUTTON_WALK, true)
+					command.set_button(GSFpsCommand.BUTTON_WALK, true)
 
 			if not deck.is_standing():
-				command.set_button(DotFpsCommand.BUTTON_JUMP, true)
+				command.set_button(GSFpsCommand.BUTTON_JUMP, true)
 
 		var aimed := false
 
@@ -107,7 +107,7 @@ func _nearest_enemy(player: ScPlayer) -> ScPlayer:
 ## Turns a stand-in on the nearest enemy and fires when dot-bot allows. Returns the flat world-space way it walks
 ## (ZERO to hold), or [constant Vector3.INF] with nobody to fight. It sees through dot-bot's eyes (`bot_fov`,
 ## `bot_sight`); an unseen enemy is only turned toward, so the first shot waits `bot_reaction`.
-func _aim_bot(player: ScPlayer, command: DotFpsCommand) -> Vector3:
+func _aim_bot(player: ScPlayer, command: GSFpsCommand) -> Vector3:
 	var best := _nearest_enemy(player)
 	var aim := _bot_aim_of(player)
 
@@ -148,7 +148,7 @@ func _aim_bot(player: ScPlayer, command: DotFpsCommand) -> Vector3:
 	var velocity := player.controller.state.velocity
 	var walking := Vector2(velocity.x, velocity.z).length() > 1.0
 	var reach := _bot_weapon_reach(player, walking and not holds)
-	command.set_button(DotFpsCommand.BUTTON_USER_0, _bot_trigger(player, wants and distance <= reach))
+	command.set_button(GSFpsCommand.BUTTON_USER_0, _bot_trigger(player, wants and distance <= reach))
 
 	if holds:
 		return Vector3.ZERO
@@ -275,7 +275,7 @@ func _showdown_zone(at: Vector3) -> Dictionary:
 
 ## Whether this engagement is one [param player] stands still for: `bot_stop_to_shoot` is a
 ## chance per engagement, drawn from the engagement itself so it is the same answer every tick.
-func _bot_stops_to_shoot(player: ScPlayer, profile: DotBotProfile) -> bool:
+func _bot_stops_to_shoot(player: ScPlayer, profile: GSBotProfile) -> bool:
 	var aim := _bot_aim_of(player)
 	var roll := float(hash("%s#%d#%.4f" % [String(player.player_id), aim.target_id, aim.engaged_at]) & 0xffff) / 65535.0
 	return roll < profile.stop_to_shoot
@@ -286,7 +286,7 @@ func _bot_stops_to_shoot(player: ScPlayer, profile: DotBotProfile) -> bool:
 ## so a mover holds fire until close or stops ([method _bot_stops_to_shoot]).
 func _bot_weapon_reach(player: ScPlayer, moving: bool) -> float:
 	var def := _bot_weapon(player)
-	var ballistics := def.tuning as DotWeaponBallistics if def != null else null
+	var ballistics := def.tuning as GSWeaponBallistics if def != null else null
 
 	if ballistics == null:
 		return INF
@@ -300,7 +300,7 @@ func _bot_weapon_reach(player: ScPlayer, moving: bool) -> float:
 	return reach
 
 
-func _bot_weapon(player: ScPlayer) -> DotWeaponDef:
+func _bot_weapon(player: ScPlayer) -> GSWeaponDef:
 	if player.weapons == null or player.weapons.arsenal == null:
 		return null
 
@@ -317,9 +317,9 @@ func _bot_trigger(player: ScPlayer, wants: bool) -> bool:
 
 	if def != null:
 		match def.fire_mode:
-			DotWeaponDef.Fire.SEMI, DotWeaponDef.Fire.BURST:
+			GSWeaponDef.Fire.SEMI, GSWeaponDef.Fire.BURST:
 				down = wants and not was_down
-			DotWeaponDef.Fire.CHARGE:
+			GSWeaponDef.Fire.CHARGE:
 				var since: int = _bot_charges.get(player.player_id, -1)
 
 				if wants and not was_down:
@@ -344,9 +344,9 @@ func _bot_sees(player: ScPlayer, eye: Vector3, at: Vector3) -> bool:
 
 	# Already engaged, a target just behind the shoulder is still the target: the cone is
 	# for noticing somebody, and a person tracking one does not lose them by turning.
-	var engaged := aim.target_id >= 0 and _bot_now() - aim.last_seen_at <= DotBotAim.CONTINUE_WINDOW
+	var engaged := aim.target_id >= 0 and _bot_now() - aim.last_seen_at <= GSBotAim.CONTINUE_WINDOW
 
-	if not engaged and rad_to_deg(DotBotAim.direction(aim.yaw, aim.pitch).angle_to(toward)) > profile.fov * 0.5:
+	if not engaged and rad_to_deg(GSBotAim.direction(aim.yaw, aim.pitch).angle_to(toward)) > profile.fov * 0.5:
 		return false
 
 	if profile.through_walls > 0.5 or combat == null or combat.trace == null:
@@ -356,9 +356,9 @@ func _bot_sees(player: ScPlayer, eye: Vector3, at: Vector3) -> bool:
 
 
 ## Aims a stand-in at [param at] (target [param id]) and says whether it fires this tick:
-## dot-bot's [DotBotAim], so the view turns at `bot_turn_rate`, the first shots miss by
+## dot-bot's [GSBotAim], so the view turns at `bot_turn_rate`, the first shots miss by
 ## `bot_aim_error` and settle, and the trigger waits `bot_reaction` after first sight.
-func _bot_shoot(player: ScPlayer, command: DotFpsCommand, id: int, at: Vector3, velocity: Vector3) -> bool:
+func _bot_shoot(player: ScPlayer, command: GSFpsCommand, id: int, at: Vector3, velocity: Vector3) -> bool:
 	var aim := _bot_aim_of(player)
 	var eye := player.eye_position()
 	var now := _bot_now()
@@ -376,7 +376,7 @@ func _bot_shoot(player: ScPlayer, command: DotFpsCommand, id: int, at: Vector3, 
 
 ## Turns a stand-in toward [param at] the way a person turns: at `bot_turn_rate`, never in one
 ## tick. Writes the view into [param command].
-func _bot_look(player: ScPlayer, command: DotFpsCommand, at: Vector3) -> void:
+func _bot_look(player: ScPlayer, command: GSFpsCommand, at: Vector3) -> void:
 	var view := _bot_aim_of(player).look_at_point(player.eye_position(), at, delta_for_tick())
 	command.yaw = view.x
 	command.pitch = clampf(view.y, -89.0, 89.0)
@@ -397,16 +397,16 @@ static func _bot_walk(yaw: float, world_dir: Vector3) -> Vector2:
 	return Vector2(flat.dot(right), flat.dot(forward)).limit_length(1.0)
 
 
-## A stand-in's [DotBotAim] for this round, made on first use. The round is in the seed: the corners and slots are
+## A stand-in's [GSBotAim] for this round, made on first use. The round is in the seed: the corners and slots are
 ## symmetric, so seeded from the id alone an empty server's showdown is a pure function of an arrangement the round
 ## does not change (twelve rounds, twelve wins for one side).
-func _bot_aim_of(player: ScPlayer) -> DotBotAim:
+func _bot_aim_of(player: ScPlayer) -> GSBotAim:
 	var found: Variant = _bot_aims.get(player.player_id)
 
 	if found != null:
-		return found as DotBotAim
+		return found as GSBotAim
 
-	var aim := DotBotAim.new(
+	var aim := GSBotAim.new(
 		hash("%s#%d" % [String(player.player_id), round_number]), _bot_settings_of(player)
 	)
 	aim.view_from(player.controller.state.yaw, player.controller.state.pitch)
@@ -415,13 +415,13 @@ func _bot_aim_of(player: ScPlayer) -> DotBotAim:
 
 
 ## The settings a stand-in plays by: the game's (`bot_difficulty` and the `bot_*` cvars), or
-## its own when something attached one to the player ([method DotBotSettings.attach]), which is
+## its own when something attached one to the player ([method GSBotSettings.attach]), which is
 ## how a measurement pins a reference player whatever the server's preset is.
-func _bot_settings_of(player: ScPlayer) -> DotBotSettings:
-	if player.has_meta(DotBotSettings.META):
-		return DotBotSettings.of(player)
+func _bot_settings_of(player: ScPlayer) -> GSBotSettings:
+	if player.has_meta(GSBotSettings.META):
+		return GSBotSettings.of(player)
 
-	return DotBotSettings.of(self)
+	return GSBotSettings.of(self)
 
 
 ## The game clock in seconds, for the bots' aim.

@@ -1,4 +1,4 @@
-extends DotGameCheckSuite
+extends GSGameCheckSuite
 
 const ScMapConfig := preload("../game/sc_map_config.gd")
 
@@ -13,7 +13,7 @@ const FIXTURE_CFG := "res://examples/fixtures/mapcfg"
 var _sections := 0
 
 
-class SmashModule extends DotGameModule:
+class SmashModule extends GSGameModule:
 	func _module_name() -> String:
 		return "smash"
 
@@ -25,23 +25,23 @@ class SmashModule extends DotGameModule:
 
 
 func _ready() -> void:
-	DotLog.set_level(DotLog.Level.ERROR)
+	GSLog.set_level(GSLog.Level.ERROR)
 	_run.call_deferred()
 
 
 func _run() -> void:
 	print("mg-smash-copter: per-layout cvars")
-	if not ResourceLoader.exists(DotGameMapConfig.SCRIPT_PATH):
+	if not ResourceLoader.exists(GSGameMapConfig.SCRIPT_PATH):
 		print("SKIPPED: dot-map is not linked into this project (addons/dot_map)")
 		get_tree().quit(0)
 		return
 
-	DotAddonConfig.config_root = ProjectSettings.globalize_path(FIXTURE_CFG)
-	var console := DotConsole.new()
+	GSAddonConfig.config_root = ProjectSettings.globalize_path(FIXTURE_CFG)
+	var console := GSConsole.new()
 	add_child(console)
-	console.cvar("sc_gravity", "9.8", "", DotConVar.FLAG_ARCHIVE)
-	console.cvar("sc_cannon_interval", "4", "", DotConVar.FLAG_ARCHIVE)
-	console.cvar("sc_teams", "2", "", DotConVar.FLAG_ARCHIVE)
+	console.cvar("sc_gravity", "9.8", "", GSConVar.FLAG_ARCHIVE)
+	console.cvar("sc_cannon_interval", "4", "", GSConVar.FLAG_ARCHIVE)
+	console.cvar("sc_teams", "2", "", GSConVar.FLAG_ARCHIVE)
 	var module := SmashModule.new()
 	module.console = console
 	add_child(module)

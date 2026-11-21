@@ -1,6 +1,6 @@
 extends RefCounted
 
-## Every key this game reads, as one dot-menu [DotMenuBindings] table: the action, the setting
+## Every key this game reads, as one dot-menu [GSMenuBindings] table: the action, the setting
 ## that stores it, the words a player sees, the default, and the card it goes on.
 ##
 ## [b]A table, because four things read it:[/b] the client matches events against the actions,
@@ -31,8 +31,8 @@ const CHAT_TEAM := &"chat_open_team"
 const SLOTS: Array[StringName] = [&"sc_slot_1", &"sc_slot_2", &"sc_slot_3", &"sc_slot_4", &"sc_slot_5"]
 
 
-static func make() -> DotMenuBindings:
-	var keys := DotMenuBindings.new()
+static func make() -> GSMenuBindings:
+	var keys := GSMenuBindings.new()
 	keys.add_movement("Movement", "Ctrl", "Crouch (chopper: down)")
 	keys.add(&"dot_fps_forward", &"bind_forward", "Forward (chopper: tilt forward)", "W", "Movement")
 	keys.add(&"dot_fps_back", &"bind_back", "Back (chopper: tilt back)", "S", "Movement")

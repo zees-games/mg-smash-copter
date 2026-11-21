@@ -1,4 +1,4 @@
-extends DotMenuGameSettings
+extends GSMenuGameSettings
 
 const ScBindings := preload("sc_bindings.gd")
 
@@ -15,7 +15,7 @@ const ScBindings := preload("sc_bindings.gd")
 ## settings.open()                     # Escape does this in the client
 ## [/codeblock]
 ##
-## [b]dot-menu's `DotMenuGameSettings` with this game's spec[/b] (2026-10-09). It was a 250-line
+## [b]dot-menu's `GSMenuGameSettings` with this game's spec[/b] (2026-10-09). It was a 250-line
 ## copy of mg-wipeout's file — a manager, a `match` over four keys and a bare settings
 ## screen — and the same copy was in five other games. What is left here is what is this
 ## game's: where the document lives, and the stock keys it has nothing to apply to.
@@ -48,8 +48,8 @@ func _init() -> void:
 
 
 ## The game's settings as data: names, field of view, extra settings, keys and the help screen's goal and rules.
-static func spec_for() -> DotMenuGameSpec:
-	var s := DotMenuGameSpec.new()
+static func spec_for() -> GSMenuGameSpec:
+	var s := GSMenuGameSpec.new()
 	s.schema_version = SCHEMA_VERSION
 	s.brand_name = "Smash Copter"
 	s.settings_dir = SETTINGS_DIR
@@ -61,7 +61,7 @@ static func spec_for() -> DotMenuGameSpec:
 	s.not_applied = NOT_APPLIED
 	# The touch Menu button sits top left, clear of the field-count line and the thumbs.
 	s.menu_button_corner = &"top_left"
-	s.bindings_maker = func() -> DotMenuBindings: return ScBindings.make()
+	s.bindings_maker = func() -> GSMenuBindings: return ScBindings.make()
 	s.help_about = "Two to six teams stand on platforms balanced on pillars forty metres up while a cannon in the middle throws props at them. A platform leans toward whoever stands on it, and past sixteen degrees it comes off and takes everybody down. Stay up."
 	s.help_cards = [
 		["Staying up", "Shift is a brake, not a sprint: running leans a platform about three times as far as standing, so slow down to cross one somebody else is on. When you fall you are out until the next round, watching somebody on your side."],

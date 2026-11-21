@@ -1,6 +1,6 @@
-extends DotGameClientBench
+extends GSGameClientBench
 
-## Client prediction bench (dot-game's DotGameClientBench): see that class for the flags.
+## Client prediction bench (dot-game's GSGameClientBench): see that class for the flags.
 ## The world is the server scene and module a dedicated server loads; `--bots` is ignored.
 
 
@@ -9,21 +9,21 @@ func _configure() -> void:
 	forward_action = &"dot_fps_forward"
 
 
-func _boot_server(_bots_wanted: int, data_dir: String) -> DotNetManager:
+func _boot_server(_bots_wanted: int, data_dir: String) -> GSNetManager:
 	var config := make_server_config(data_dir)
 	config.max_players = 16
-	var server := DotServer.new()
+	var server := GSServer.new()
 	server.name = "Server"
 	server.config = config
 	add_child(server)
 	for _i in 60:
 		await get_tree().process_frame
-		if server.state == DotServer.State.RUNNING:
+		if server.state == GSServer.State.RUNNING:
 			break
 	var scene: Node = (load("res://scenes/sc_server.tscn") as PackedScene).instantiate()
 	add_child(scene)
 	await get_tree().process_frame
-	var loaded: DotResult = await server.modules.load_module("res://game/sc_module.gd")
+	var loaded: GSResult = await server.modules.load_module("res://game/sc_module.gd")
 	if not loaded.ok:
 		printerr("client_bench server: ", loaded.error)
 		return null

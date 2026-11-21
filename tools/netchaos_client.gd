@@ -1,6 +1,6 @@
-extends DotGameNetchaosClient
+extends GSGameNetchaosClient
 
-## Smash Copter's side of `tools/netchaos.sh` (dot-game's DotGameNetchaosClient). No fire action: the pilot only walks and jumps.
+## Smash Copter's side of `tools/netchaos.sh` (dot-game's GSGameNetchaosClient). No fire action: the pilot only walks and jumps.
 
 
 func _configure() -> void:

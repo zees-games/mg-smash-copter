@@ -1,6 +1,6 @@
-extends DotConfig
+extends GSConfig
 
-## Every number this game has, layered like every other [DotConfig]: defaults < JSON < environment < command line.
+## Every number this game has, layered like every other [GSConfig]: defaults < JSON < environment < command line.
 ##
 ## Lengths are converted from the source map's units once, here, so no second set of units can drift. `ScModule` exposes the operator-facing ones as cvars that write through to this object.
 
@@ -175,7 +175,7 @@ extends DotConfig
 
 ## Seed the layouts, the cannon and the special rounds are all drawn from.
 ##
-## Reproducible on purpose: the same seed plays the same round, which makes bug reports and suite assertions meaningful. [DotRandom] rather than `randi()`, whose global generator is shared with the process.
+## Reproducible on purpose: the same seed plays the same round, which makes bug reports and suite assertions meaningful. [GSRandom] rather than `randi()`, whose global generator is shared with the process.
 @export var seed_value: int = 20260916
 
 
@@ -415,8 +415,8 @@ const CFG_FILES := {
 
 
 ## The binder every entry point uses: [param config] layered, one cfg file per [constant CFG_FILES] entry.
-static func make_binder(config: DotConfig, json_path := "") -> DotGameConfigBinder:
-	var b := DotGameConfigBinder.create(config, "mg-smash-copter", "sc", json_path)
+static func make_binder(config: GSConfig, json_path := "") -> GSGameConfigBinder:
+	var b := GSGameConfigBinder.create(config, "mg-smash-copter", "sc", json_path)
 	b.grouped = true
 	b.group_files = CFG_FILES
 	return b
@@ -440,35 +440,35 @@ func showdown_starts_at() -> float:
 	return survival_seconds + showdown_warmup_seconds
 
 
-func validate() -> DotResult:
+func validate() -> GSResult:
 	var res := _validate_world()
 	if not res.ok:
 		return res
 	return _validate_rules()
 
 
-func _validate_world() -> DotResult:
+func _validate_world() -> GSResult:
 	if survival_seconds <= 0.0 or showdown_seconds <= 0.0:
-		return DotResult.fail(
-			DotError.CODE_INVALID, "Both phases of a round have to last some time."
+		return GSResult.fail(
+			GSError.CODE_INVALID, "Both phases of a round have to last some time."
 		)
 
 	if team_count < 2:
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"team_count is %d; this game plays with two sides or more." % team_count,
 		)
 
 	var room := corner_distance_for(team_count)
 	if is_inf(room):
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"team_count %d is more catwalks than the showdown ring's edge has room for at a corner_size of %.1f m; set corner_size higher."
 				% [team_count, corner_size],
 		)
 	if corner_distance < room:
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"team_count %d does not fit round a corner_distance of %.0f m: the pads, perches and catwalks would overlap. Set corner_distance to %.0f or more, or corner_size lower."
 				% [team_count, corner_distance, ceilf(room)],
 		)
@@ -476,8 +476,8 @@ func _validate_world() -> DotResult:
 	# A platform wider than the gap between two of them is two platforms sharing a volume,
 	# which the physics resolves by flinging whatever is standing there across the map.
 	if column_pitch <= platform_size:
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"column_pitch (%.2f m) is not past platform_size (%.2f m), so neighbours overlap."
 				% [column_pitch, platform_size],
 		)
@@ -485,15 +485,15 @@ func _validate_world() -> DotResult:
 	# A pillar as wide as its platform is a plinth. Everything this game is about needs the
 	# platform to be able to tip off the thing holding it up.
 	if pillar_radius * 2.0 >= platform_size * 0.8:
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"pillar_radius (%.2f m) is most of platform_size (%.2f m); nothing would tip."
 				% [pillar_radius, platform_size],
 		)
 
 	if deck_height <= kill_height + 2.0:
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"deck_height (%.1f m) is not above kill_height (%.1f m) by enough to fall."
 				% [deck_height, kill_height],
 		)
@@ -502,17 +502,17 @@ func _validate_world() -> DotResult:
 	# reads as the accumulating-damage model being broken rather than as two numbers that
 	# disagree.
 	if platform_shatter_impulse <= 0.0:
-		return DotResult.fail(
-			DotError.CODE_INVALID, "platform_shatter_impulse has to be positive."
+		return GSResult.fail(
+			GSError.CODE_INVALID, "platform_shatter_impulse has to be positive."
 		)
 
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
-func _validate_rules() -> DotResult:
+func _validate_rules() -> GSResult:
 	if cannon_tier_weights.size() != 4 or cannon_tier_unlock.size() != 4:
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"cannon_tier_weights and cannon_tier_unlock are one entry per tier, so four each.",
 			"weights=%d unlock=%d" % [cannon_tier_weights.size(), cannon_tier_unlock.size()],
 		)
@@ -520,32 +520,32 @@ func _validate_rules() -> DotResult:
 	var total := 0.0
 	for weight in cannon_tier_weights:
 		if weight < 0.0:
-			return DotResult.fail(
-				DotError.CODE_INVALID, "A tier weight cannot be negative."
+			return GSResult.fail(
+				GSError.CODE_INVALID, "A tier weight cannot be negative."
 			)
 		total += weight
 
 	if total <= 0.0:
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"Every cannon tier weight is zero, so the cannon could never choose anything.",
 		)
 
 	if spectate_camera < 0 or spectate_camera > 2:
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"spectate_camera is %d; it is 0 (anybody), 1 (own side) or 2 (nobody)."
 				% spectate_camera,
 		)
 
 	if chopper_lift <= 1.0:
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"chopper_lift is %.2f; at or below 1.0 a chopper cannot leave the pad."
 				% chopper_lift,
 		)
 
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
 ## How wide a flank perch is (the small pad between two teams' pads); [ScArena] builds it.

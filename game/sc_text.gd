@@ -6,7 +6,7 @@ extends RefCounted
 
 const ScPaths := preload("sc_paths.gd")
 
-static var _locale: DotLocale = null
+static var _locale: GSLocale = null
 
 
 ## The sentence for [param key] in the player's language, else [param fallback] with its {name} placeholders filled.
@@ -25,17 +25,17 @@ static func reset() -> void:
 	_locale = null
 
 
-static func _build() -> DotLocale:
-	var cfg := DotLocaleConfig.new()
+static func _build() -> GSLocale:
+	var cfg := GSLocaleConfig.new()
 	cfg.directory = ScPaths.rebase("res://locales")
 	var layered := cfg.load_layered()
 
 	if not layered.ok:
-		cfg = DotLocaleConfig.new()
+		cfg = GSLocaleConfig.new()
 		cfg.directory = ScPaths.rebase("res://locales")
 
 	var made := cfg.make()
-	return made.value as DotLocale if made.ok else null
+	return made.value as GSLocale if made.ok else null
 
 
 static func _fill(text: String, args: Dictionary) -> String:

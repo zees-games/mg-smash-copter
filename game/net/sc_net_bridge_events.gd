@@ -35,7 +35,7 @@ func _on_player_added(id: StringName) -> void:
 	# replicate under session 0, which is also dot-net's broadcast address, and a second would replace the first
 	# here. Refused with a line, else one stand-in plays and the other stands still for ever.
 	if player_key(session_id) != id:
-		DotLog.warn(CHANNEL, "a player whose id is not a session key is not replicated", {
+		GSLog.warn(CHANNEL, "a player whose id is not a session key is not replicated", {
 			"id": String(id), "hint": "use add_bot() or ScNetBridge.player_key()",
 		})
 		return
@@ -49,13 +49,13 @@ func _on_player_added(id: StringName) -> void:
 	var registered := net.registry.register(identity, 0, net.clock.tick, net.config)
 
 	if not registered.ok:
-		DotLog.warn(CHANNEL, "could not replicate a player", {"error": str(registered.error)})
+		GSLog.warn(CHANNEL, "could not replicate a player", {"error": str(registered.error)})
 		return
 
 	# Before the JOIN, so the first thing anybody hears about this person is their face.
 	if player.avatar == null and avatar_fn.is_valid():
 		var avatar: Variant = avatar_fn.call(session_id)
-		player.avatar = avatar as DotAvatar if avatar is DotAvatar else null
+		player.avatar = avatar as GSAvatar if avatar is GSAvatar else null
 
 	_broadcast(ScEvents.Kind.JOIN, _join_body(session_id))
 	roster_changed.emit(session_id)
@@ -98,7 +98,7 @@ func _on_world_rebuilt() -> void:
 ## Every prop the world puts out becomes a replicated entity, announced reliably AND replicated by snapshot: the
 ## snapshot moves it, the event says what it IS. Content is named by PATH so a dot-cloud pack can deliver it (a
 ## mounted pack's `class_name` globals are not registered in the host).
-func _on_prop_spawned(prop: DotPropInstance) -> void:
+func _on_prop_spawned(prop: GSPropInstance) -> void:
 	if net == null or not net.is_server or prop == null or prop.node == null:
 		return
 
@@ -125,11 +125,11 @@ func _on_prop_spawned(prop: DotPropInstance) -> void:
 	))
 
 
-func _on_prop_removed(prop: DotPropInstance, reason: StringName) -> void:
+func _on_prop_removed(prop: GSPropInstance, reason: StringName) -> void:
 	_forget_body("p%d" % prop.instance_id, reason)
 
 
-func _on_vehicle_spawned(vehicle: DotVehicleInstance) -> void:
+func _on_vehicle_spawned(vehicle: GSVehicleInstance) -> void:
 	if net == null or not net.is_server or vehicle == null:
 		return
 
@@ -157,23 +157,23 @@ func _on_vehicle_spawned(vehicle: DotVehicleInstance) -> void:
 	))
 
 
-func _on_vehicle_removed(vehicle: DotVehicleInstance, reason: StringName) -> void:
+func _on_vehicle_removed(vehicle: GSVehicleInstance, reason: StringName) -> void:
 	_forget_body("v%d" % vehicle.instance_id, reason)
 
 
 func _on_ride_entered(
-	vehicle: DotVehicleInstance, rider_id: StringName, _seat: DotVehicleSeat
+	vehicle: GSVehicleInstance, rider_id: StringName, _seat: GSVehicleSeat
 ) -> void:
 	_announce_seat(vehicle, rider_id, true)
 
 
 func _on_ride_exited(
-	vehicle: DotVehicleInstance, rider_id: StringName, _seat: DotVehicleSeat, _at: Vector3
+	vehicle: GSVehicleInstance, rider_id: StringName, _seat: GSVehicleSeat, _at: Vector3
 ) -> void:
 	_announce_seat(vehicle, rider_id, false)
 
 
-func _announce_seat(vehicle: DotVehicleInstance, rider_id: StringName, seated: bool) -> void:
+func _announce_seat(vehicle: GSVehicleInstance, rider_id: StringName, seated: bool) -> void:
 	if net == null or not net.is_server:
 		return
 
@@ -319,7 +319,7 @@ func ensure_game_ticked(tick: int) -> void:
 		if not (behaviour as Node).is_inside_tree():
 			continue
 
-		(behaviour as DotNetBehaviour).call(&"pull")
+		(behaviour as GSNetBehaviour).call(&"pull")
 
 
 ## Text for one player: a refusal, a rate limit, a command's reply. To the one person who asked, since "you are
@@ -329,28 +329,28 @@ func notice(peer_id: int, text: String) -> void:
 	_tell(peer_id, ScEvents.Kind.NOTICE, ScEvents.write_notice(text))
 
 
-## One routed line to one peer. What [DotGameServices] sends through, via the link.
+## One routed line to one peer. What [GSGameServices] sends through, via the link.
 func send_chat(peer_id: int, wire: Dictionary) -> void:
 	_tell(peer_id, ScEvents.Kind.CHAT, ScEvents.write_chat(wire))
 
 
 ## A voice frame, in whichever direction. Not a [ScEvent]: voice is fifty packets a second and every event is
-## reliable, which would queue retransmits ahead of a collapsing platform. Nor [DotNetManager]: the packet has its
-## own header, sequence and validation in [DotVoicePacket].
-func receive_voice(peer_id: int, payload: PackedByteArray) -> DotResult:
+## reliable, which would queue retransmits ahead of a collapsing platform. Nor [GSNetManager]: the packet has its
+## own header, sequence and validation in [GSVoicePacket].
+func receive_voice(peer_id: int, payload: PackedByteArray) -> GSResult:
 	if payload.is_empty():
-		return DotResult.fail(DotError.CODE_INVALID, "An empty voice frame.")
+		return GSResult.fail(GSError.CODE_INVALID, "An empty voice frame.")
 
 	if net != null and net.is_server:
 		if peer_id <= 0 or player_for_peer(peer_id) == 0:
 			# A peer with nobody in the world. Refused rather than relayed: the router
 			# stamps the speaker from this id, so relaying one that belongs to nobody puts
 			# a voice in the game with no name on it.
-			return DotResult.fail(
-				DotError.CODE_FORBIDDEN, "That peer has nobody in the world."
+			return GSResult.fail(
+				GSError.CODE_FORBIDDEN, "That peer has nobody in the world."
 			)
 
-		# One path or the other, never both: [DotGameModule] assigns `voice_relay_fn` to the services layer's
+		# One path or the other, never both: [GSGameModule] assigns `voice_relay_fn` to the services layer's
 		# `relay_voice`, and a game that ALSO connected `voice_requested` to the same router would relay every frame
 		# twice (a doubled rate limit, a sequence number the jitter buffer sees go backwards).
 		if voice_relay_fn.is_valid():
@@ -358,10 +358,10 @@ func receive_voice(peer_id: int, payload: PackedByteArray) -> DotResult:
 		else:
 			voice_requested.emit(peer_id, payload)
 
-		return DotResult.success(null)
+		return GSResult.success(null)
 
 	voice_arrived.emit(payload)
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
 ## Somebody who is out asked to look at somebody else. The server's list, the server's rule. [b]A refusal goes
@@ -373,7 +373,7 @@ func _spectate_step(peer_id: int, direction: int) -> void:
 	if session_id == 0 or game.spectate == null:
 		return
 
-	var moved: DotResult = game.spectate.step(player_key(session_id), direction)
+	var moved: GSResult = game.spectate.step(player_key(session_id), direction)
 
 	if not moved.ok:
 		notice(peer_id, moved.error.message)
@@ -387,7 +387,7 @@ func _spectate_roam(peer_id: int) -> void:
 	if session_id == 0 or game.spectate == null:
 		return
 
-	var toggled: DotResult = game.spectate.toggle_roam(player_key(session_id))
+	var toggled: GSResult = game.spectate.toggle_roam(player_key(session_id))
 
 	if not toggled.ok:
 		notice(peer_id, toggled.error.message)

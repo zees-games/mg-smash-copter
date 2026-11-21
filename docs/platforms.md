@@ -23,7 +23,7 @@ A bridge is not a platform with the pillar left out (that pivoted in mid-air, le
 
 ## Freeing the field
 
-- `ScPlatforms.clear` and `ScArena._clear` take children **out of the tree at once and free them at the end of the frame**: the removal stops two fields existing at one height, the deferral stops destruction landing mid-loop, because a round can end inside `DotNetManager.server_tick` while it walks the replicated entities. Neither `free()` nor `queue_free()` alone does both.
+- `ScPlatforms.clear` and `ScArena._clear` take children **out of the tree at once and free them at the end of the frame**: the removal stops two fields existing at one height, the deferral stops destruction landing mid-loop, because a round can end inside `GSNetManager.server_tick` while it walks the replicated entities. Neither `free()` nor `queue_free()` alone does both.
 - A platform's replication behaviour is a child of its body, so freeing the field frees the behaviours. The server emits `world_clearing` so the bridge drops them first, and the tick loop has a validity guard as well; a client rebuilding its field (`_apply_layout`) unregisters the old identities the same way.
 
 ## Readability

@@ -5,8 +5,8 @@ const ScAudio := preload("../game/sc_audio.gd")
 ## Asks whether this game actually makes a noise, on a machine that has a sound card.
 ##
 ## [b]Every assertion in `headless_run` about this game's audio passes on a machine that
-## cannot make one.[/b] A headless run has no audio device, so [DotAudioManager] correctly
-## builds a [DotAudioSinkNull] and the suite asserts against the real manager recording
+## cannot make one.[/b] A headless run has no audio device, so [GSAudioManager] correctly
+## builds a [GSAudioSinkNull] and the suite asserts against the real manager recording
 ## instead of playing — which proves the catalogue, the stand-ins, the culling and the
 ## creak's hysteresis, and cannot prove a speaker moves. This is the audio half of what
 ## `tools/shot.sh` is for the picture.
@@ -37,7 +37,7 @@ var _draining := 0
 
 
 func _initialize() -> void:
-	DotLog.set_level(DotLog.Level.WARN)
+	GSLog.set_level(GSLog.Level.WARN)
 	print("driver:  %s" % AudioServer.get_driver_name())
 
 
@@ -50,7 +50,7 @@ func _process(_delta: float) -> bool:
 	if _code >= 0:
 		return _finish()
 
-	if not DotAudioSink.device_present():
+	if not GSAudioSink.device_present():
 		print("")
 		print("No audio device. Run this through tools/audio_probe.sh, which uses xvfb-run;")
 		print("--headless gives a Dummy driver and this probe cannot say anything.")
@@ -77,7 +77,7 @@ func _build() -> bool:
 
 	_audio = audio
 
-	var sink := audio.manager.sink as DotAudioSinkGodot
+	var sink := audio.manager.sink as GSAudioSinkGodot
 
 	print("sink:    %s" % audio.manager.sink.sink_name())
 
@@ -101,7 +101,7 @@ func _build() -> bool:
 
 
 func _sound() -> bool:
-	var sink := _audio.manager.sink as DotAudioSinkGodot
+	var sink := _audio.manager.sink as GSAudioSinkGodot
 
 	for id in PROBES:
 		# Through the MANAGER, not the sink: the limits, the culling and the mixer are the

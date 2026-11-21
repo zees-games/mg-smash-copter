@@ -55,15 +55,15 @@ const WORLD_OWNER := &"world"
 
 
 ## Everything the cannon and the chopper can throw.
-static func props(_config: ScConfig) -> DotPropCatalogue:
-	var catalogue := DotPropCatalogue.new()
+static func props(_config: ScConfig) -> GSPropCatalogue:
+	var catalogue := GSPropCatalogue.new()
 
 	# Survivable by standing still, and that is what it teaches: the first twenty seconds are only crates, so a player learns that a platform leans toward the load on it while the cost is a stumble.
 
-	var crate := DotPropDef.make(CRATE, CRATE_SCENE)
+	var crate := GSPropDef.make(CRATE, CRATE_SCENE)
 	crate.display_name = "Crate"
 	crate.category = &"debris"
-	crate.size = DotPropDef.Size.SMALL
+	crate.size = GSPropDef.Size.SMALL
 	crate.mass = 35.0
 	crate.rideable = true
 	crate.max_health = 60.0
@@ -74,10 +74,10 @@ static func props(_config: ScConfig) -> DotPropCatalogue:
 	crate.meta = {META_TIER: 1}
 	catalogue.add(crate)
 
-	var tyre := DotPropDef.make(TYRE, TYRE_SCENE)
+	var tyre := GSPropDef.make(TYRE, TYRE_SCENE)
 	tyre.display_name = "Tyre"
 	tyre.category = &"debris"
-	tyre.size = DotPropDef.Size.SMALL
+	tyre.size = GSPropDef.Size.SMALL
 	tyre.mass = 28.0
 	tyre.rideable = true
 	# Indestructible, and the only tier-one prop that is. A tyre ROLLS and where it ends up is decided by the lean of the platform it landed on, so it tells a player which way the floor is going before they feel it.
@@ -85,10 +85,10 @@ static func props(_config: ScConfig) -> DotPropCatalogue:
 	tyre.meta = {META_TIER: 1}
 	catalogue.add(tyre)
 
-	var cone := DotPropDef.make(CONE, CONE_SCENE)
+	var cone := GSPropDef.make(CONE, CONE_SCENE)
 	cone.display_name = "Cone"
 	cone.category = &"debris"
-	cone.size = DotPropDef.Size.SMALL
+	cone.size = GSPropDef.Size.SMALL
 	cone.mass = 15.0
 	cone.rideable = false
 	cone.max_health = 25.0
@@ -103,11 +103,11 @@ static func props(_config: ScConfig) -> DotPropCatalogue:
 	return catalogue
 
 
-static func _add_tier_two(catalogue: DotPropCatalogue) -> void:
-	var barrel := DotPropDef.make(BARREL, BARREL_SCENE)
+static func _add_tier_two(catalogue: GSPropCatalogue) -> void:
+	var barrel := GSPropDef.make(BARREL, BARREL_SCENE)
 	barrel.display_name = "Barrel"
 	barrel.category = &"hazard"
-	barrel.size = DotPropDef.Size.SMALL
+	barrel.size = GSPropDef.Size.SMALL
 	barrel.mass = 60.0
 	barrel.rideable = true
 	# A third of a crate's health, because the point of a barrel is that everything sets
@@ -120,10 +120,10 @@ static func _add_tier_two(catalogue: DotPropCatalogue) -> void:
 	barrel.meta = {META_TIER: 2}
 	catalogue.add(barrel)
 
-	var boulder := DotPropDef.make(BOULDER, BOULDER_SCENE)
+	var boulder := GSPropDef.make(BOULDER, BOULDER_SCENE)
 	boulder.display_name = "Boulder"
 	boulder.category = &"debris"
-	boulder.size = DotPropDef.Size.MEDIUM
+	boulder.size = GSPropDef.Size.MEDIUM
 	boulder.mass = 110.0
 	boulder.rideable = true
 	boulder.max_health = 0.0
@@ -131,21 +131,21 @@ static func _add_tier_two(catalogue: DotPropCatalogue) -> void:
 	catalogue.add(boulder)
 
 
-static func _add_tier_three(catalogue: DotPropCatalogue) -> void:
-	var container := DotPropDef.make(CONTAINER, CONTAINER_SCENE)
+static func _add_tier_three(catalogue: GSPropCatalogue) -> void:
+	var container := GSPropDef.make(CONTAINER, CONTAINER_SCENE)
 	container.display_name = "Container"
 	container.category = &"debris"
-	container.size = DotPropDef.Size.LARGE
+	container.size = GSPropDef.Size.LARGE
 	container.mass = 260.0
 	container.rideable = true
 	container.max_health = 0.0
 	container.meta = {META_TIER: 3}
 	catalogue.add(container)
 
-	var slab := DotPropDef.make(SLAB, SLAB_SCENE)
+	var slab := GSPropDef.make(SLAB, SLAB_SCENE)
 	slab.display_name = "Slab"
 	slab.category = &"debris"
-	slab.size = DotPropDef.Size.LARGE
+	slab.size = GSPropDef.Size.LARGE
 	slab.mass = 340.0
 	slab.rideable = true
 	slab.max_health = 0.0
@@ -153,12 +153,12 @@ static func _add_tier_three(catalogue: DotPropCatalogue) -> void:
 	catalogue.add(slab)
 
 
-static func _add_tier_four(catalogue: DotPropCatalogue) -> void:
+static func _add_tier_four(catalogue: GSPropCatalogue) -> void:
 	# Rare, and it has to be: at one in twenty it is what a round is remembered for. See [member ScConfig.cannon_tier_weights].
-	var monolith := DotPropDef.make(MONOLITH, MONOLITH_SCENE)
+	var monolith := GSPropDef.make(MONOLITH, MONOLITH_SCENE)
 	monolith.display_name = "Monolith"
 	monolith.category = &"debris"
-	monolith.size = DotPropDef.Size.HUGE
+	monolith.size = GSPropDef.Size.HUGE
 	monolith.mass = 900.0
 	# Not rideable, and that is a mercy rather than a detail: a slab that lands flat and
 	# can be stood on would be the safest place on a map it has just destroyed.
@@ -170,7 +170,7 @@ static func _add_tier_four(catalogue: DotPropCatalogue) -> void:
 
 ## Which tier a definition belongs to, or zero for anything that is not a cannon prop.
 ## Read out of the meta rather than off a parallel list, which drifts; the tier travels with the definition into an operator's JSON file.
-static func tier_of(def: DotPropDef) -> int:
+static func tier_of(def: GSPropDef) -> int:
 	if def == null:
 		return 0
 
@@ -178,7 +178,7 @@ static func tier_of(def: DotPropDef) -> int:
 
 
 ## Every prop id in a tier, in catalogue order.
-static func ids_in_tier(catalogue: DotPropCatalogue, tier: int) -> Array[StringName]:
+static func ids_in_tier(catalogue: GSPropCatalogue, tier: int) -> Array[StringName]:
 	var out: Array[StringName] = []
 
 	if catalogue == null:
@@ -192,22 +192,22 @@ static func ids_in_tier(catalogue: DotPropCatalogue, tier: int) -> Array[StringN
 
 
 ## The chopper, and nothing else.
-## `CUSTOM` with a chassis script, because neither shipped chassis is a helicopter: [DotVehicleWheeled] needs wheels on the ground and [DotVehicleHover] refuses to thrust when its rays find nothing, the state a helicopter lives in.
+## `CUSTOM` with a chassis script, because neither shipped chassis is a helicopter: [GSVehicleWheeled] needs wheels on the ground and [GSVehicleHover] refuses to thrust when its rays find nothing, the state a helicopter lives in.
 ## `chassis_script_path` is dot-vehicle's extension point for a fourth kind, and [ScCopter] is one.
-static func vehicles(config: ScConfig) -> DotVehicleCatalogue:
-	var catalogue := DotVehicleCatalogue.new()
+static func vehicles(config: ScConfig) -> GSVehicleCatalogue:
+	var catalogue := GSVehicleCatalogue.new()
 
-	var copter := DotVehicleDef.new()
+	var copter := GSVehicleDef.new()
 	copter.id = COPTER
 	copter.display_name = "Chopper"
 	copter.category = &"aircraft"
 	copter.scene_path = COPTER_SCENE
 	copter.chassis_script_path = ScPaths.rebase("res://game/sc_copter.gd")
-	copter.kind = DotVehicleDef.Kind.CUSTOM
+	copter.kind = GSVehicleDef.Kind.CUSTOM
 	# Indestructible: there is no weapon in the survival phase and the showdown is elsewhere, so only the cannon could destroy one, and a chopper deleted by a crate costs two players the round for a reason they could not see coming.
 	copter.max_health = 0.0
 
-	var tunables := DotVehicleTunables.new()
+	var tunables := GSVehicleTunables.new()
 	tunables.mass = 1400.0
 	# Read off the configuration rather than written here. `chopper_speed` is a cvar an
 	# operator turns between rounds and a tunable that ignored it would be a number
@@ -221,7 +221,7 @@ static func vehicles(config: ScConfig) -> DotVehicleCatalogue:
 	tunables.steering_rate_deg = config.chopper_yaw_rate
 	tunables.steering_speed_falloff = 1.0
 	# Unused by [ScCopter] — a helicopter has no suspension — but validated by
-	# [DotVehicleTunables], so they are left at something that passes rather than at zero.
+	# [GSVehicleTunables], so they are left at something that passes rather than at zero.
 	tunables.suspension_travel = 0.25
 	tunables.suspension_stiffness = 45.0
 	tunables.centre_of_mass_drop = 1.2
@@ -234,7 +234,7 @@ static func vehicles(config: ScConfig) -> DotVehicleCatalogue:
 	tunables.allow_exit_when_inverted = true
 	copter.tunables = tunables
 
-	var pilot := DotVehicleSeat.new()
+	var pilot := GSVehicleSeat.new()
 	pilot.id = &"pilot"
 	pilot.display_name = "Pilot"
 	pilot.drives = true
@@ -250,7 +250,7 @@ static func vehicles(config: ScConfig) -> DotVehicleCatalogue:
 	]
 	pilot.exit_clearance = 0.5
 
-	var gunner := DotVehicleSeat.new()
+	var gunner := GSVehicleSeat.new()
 	gunner.id = &"rider"
 	gunner.display_name = "Rider"
 	gunner.drives = false

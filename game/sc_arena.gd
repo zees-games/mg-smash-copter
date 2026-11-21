@@ -47,7 +47,7 @@ func build() -> void:
 	_build_tube()
 	_build_showdown()
 
-	DotLog.info(CHANNEL, "the arena is up", describe())
+	GSLog.info(CHANNEL, "the arena is up", describe())
 
 
 ## Out of the tree at once, freed at the end of the frame. See [method ScPlatforms.clear]
@@ -88,7 +88,7 @@ func _build_light() -> void:
 	var holder := Node3D.new()
 	holder.name = "Lighting"
 	add_child(holder)
-	var sun := DotLightRig.apply(holder, DotLightDocument.from_dictionary(DAYLIGHT), light_profile())
+	var sun := GSLightRig.apply(holder, GSLightDocument.from_dictionary(DAYLIGHT), light_profile())
 	for node in holder.get_children():
 		if node is WorldEnvironment and (node as WorldEnvironment).environment.sky != null:
 			var material := (node as WorldEnvironment).environment.sky.sky_material as ProceduralSkyMaterial
@@ -103,8 +103,8 @@ func _build_light() -> void:
 ## What this machine draws of [constant DAYLIGHT]: dot-lighting's `painted()`.
 ##
 ## Shadows stay on in the browser, unlike dot-lighting's `web()`: a platform's shadow on the deck below is how a player sees where a deck is from above. `painted()` is the family's profile for flat colours (lower exposure, so the grid a tilt is read from is not 30 % white).
-static func light_profile() -> DotLightProfile:
-	var p := DotLightProfile.painted()
+static func light_profile() -> GSLightProfile:
+	var p := GSLightProfile.painted()
 	p.sun_shadows = true
 	p.sky_below_horizon = true
 	return p
@@ -294,7 +294,7 @@ func showdown_spawn(team_index: int, team_count: int, slot: int, slots: int) -> 
 
 ## Which way a player faces when they arrive: toward the middle, in degrees.
 ##
-## Degrees because [DotFpsState.yaw] is, while `DotSpawnSite.yaw` is radians. The motor's forward is `(-sin y, 0, -cos y)`, so the yaw is `atan2(-dx, -dz)`; a wrong one passes every count and the player arrives facing a wall.
+## Degrees because [GSFpsState.yaw] is, while `GSSpawnSite.yaw` is radians. The motor's forward is `(-sin y, 0, -cos y)`, so the yaw is `atan2(-dx, -dz)`; a wrong one passes every count and the player arrives facing a wall.
 func showdown_yaw(team_index: int, team_count: int) -> float:
 	var centre := corner_point(team_index, team_count)
 	var middle := showdown_centre()

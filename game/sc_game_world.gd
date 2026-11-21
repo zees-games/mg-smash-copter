@@ -8,7 +8,7 @@ func _clear_world() -> void:
 
 	for prop in props.all_props():
 		cannon.forget(prop.instance_id)
-		var _gone := props.remove(prop.instance_id, DotPropSpawner.REASON_CLEANUP)
+		var _gone := props.remove(prop.instance_id, GSPropSpawner.REASON_CLEANUP)
 
 	_prop_velocity.clear()
 
@@ -18,7 +18,7 @@ func _clear_world() -> void:
 		if copter == null:
 			continue
 
-		# Riders out before the machine goes: `DotVehicleRide` holds its own index and does not watch the spawner,
+		# Riders out before the machine goes: `GSVehicleRide` holds its own index and does not watch the spawner,
 		# so a chopper removed under somebody leaves them "already in a vehicle" for good. `occupants` is keyed by
 		# SEAT and valued by RIDER, and `exit` wants the rider, not the seat name.
 		for rider_id: StringName in copter.occupants.values():
@@ -55,7 +55,7 @@ func _roll_round_special() -> void:
 	_refold()
 
 	special_changed.emit(special.id, true, special.blurb)
-	DotLog.info(CHANNEL, "this round is a special", {"special": String(special.id)})
+	GSLog.info(CHANNEL, "this round is a special", {"special": String(special.id)})
 
 
 ## Mid-round specials: when one starts, and when the running ones stop.
@@ -84,7 +84,7 @@ func _advance_specials(delta: float) -> void:
 			_last_special_tick = _tick
 			changed = true
 			special_changed.emit(special.id, true, special.blurb)
-			DotLog.info(CHANNEL, "something changed mid-round", {
+			GSLog.info(CHANNEL, "something changed mid-round", {
 				"special": String(special.id),
 			})
 
@@ -180,7 +180,7 @@ func _apply_wind(delta: float) -> void:
 		# Only in the air. A person leaning into a gale is still walking; a person who has
 		# just jumped between two platforms is a sail, and that is the moment the wind is
 		# supposed to be frightening.
-		if player.controller.state.mode == DotFpsState.Mode.AIR:
+		if player.controller.state.mode == GSFpsState.Mode.AIR:
 			player.controller.state.velocity += push * delta
 
 
@@ -274,7 +274,7 @@ func _watch_props(delta: float) -> void:
 
 
 ## Something arrived. What it hit, and what that cost.
-func _land(prop: DotPropInstance, at: Vector3, speed: float, _delta: float) -> void:
+func _land(prop: GSPropInstance, at: Vector3, speed: float, _delta: float) -> void:
 	var impulse := prop.def.mass * speed
 
 	var index := platforms.index_at(at.x, at.z)
@@ -318,7 +318,7 @@ func _crush_nearby(at: Vector3, impulse: float) -> void:
 		if amount < 1.0:
 			continue
 
-		var damage := DotDamage.make(0, player.entity_id, amount, null)
+		var damage := GSDamage.make(0, player.entity_id, amount, null)
 		damage.point = player.controller.state.position
 		damage.direction = Vector3.DOWN
 		# [b]Stamped, and a damage event with no tick is refused for ever.[/b] Spawn protection compares
@@ -381,7 +381,7 @@ func _watch_rider_fall(player: ScPlayer) -> void:
 
 
 func _kill_by_fall(player: ScPlayer, at: Vector3) -> void:
-	var damage := DotDamage.make(0, player.entity_id, player.health.max_health * 4.0, null)
+	var damage := GSDamage.make(0, player.entity_id, player.health.max_health * 4.0, null)
 	damage.point = at
 	damage.direction = Vector3.DOWN
 	damage.tick = _tick

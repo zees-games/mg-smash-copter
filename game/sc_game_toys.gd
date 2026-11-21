@@ -4,7 +4,7 @@ extends "sc_game_bots.gd"
 
 
 ## One tick of everybody's weapons and what they produced. Shots are resolved HERE rather than by the rig:
-## zee-dot-weapons returns an outcome and applies nothing (a behaviour reaching into a `DotHealth` would be a client
+## zee-dot-weapons returns an outcome and applies nothing (a behaviour reaching into a `GSHealth` would be a client
 ## deciding who dies), and this game hands outcomes to dot-combat.
 func _advance_weapons() -> void:
 	if phase != Phase.SHOWDOWN or combat == null:
@@ -42,7 +42,7 @@ func build_toys() -> void:
 		var off := Vector3(deck.half * 0.45, 0.0, -deck.half * 0.45).rotated(Vector3.UP, float(index) * PI * 0.5)
 		var at := deck.centre + off
 		placements.append({"toy": "beach_ball", "at": [at.x, at.y, at.z]})
-	toys = DotPropBodyBox.new()
+	toys = GSPropBodyBox.new()
 	toys.name = "Toys"
 	toys.authoritative = authoritative
 	toys.rules = toy_rules
@@ -58,7 +58,7 @@ func build_toys() -> void:
 	add_child(toys)
 	var built := toys.build(placements)
 	if not built.ok:
-		DotLog.warn(CHANNEL, "the field's toys would not build", {"why": built.error.message})
+		GSLog.warn(CHANNEL, "the field's toys would not build", {"why": built.error.message})
 	var _sounds := toys.sound.connect(func(id: StringName, at: Vector3, strength: float) -> void: toy_sound.emit(id, at, strength))
 
 
@@ -93,7 +93,7 @@ func _advance_toys(delta: float) -> void:
 
 ## A shot against the toys: the first one on its ray is pushed and the shot goes on to the
 ## combat, whose trace never sees a toy, so a ball is never cover in the showdown. Server side.
-func _shoot_toys(shot: DotShot) -> void:
+func _shoot_toys(shot: GSShot) -> void:
 	if not authoritative or toys == null or toys.count() == 0:
 		return
 	var directions: Array = shot.pellets if not shot.pellets.is_empty() else [shot.direction]
@@ -104,23 +104,23 @@ func _shoot_toys(shot: DotShot) -> void:
 ## Turns a player's movement command into a weapon command. The buttons are the game's to assign:
 ## dot-player-controller reserves three bits and this game spends all three (fire, alt-fire bash, reload); the slot
 ## wanted rides in this game's own input message, as the movement command has no room.
-func weapon_command_for(player: ScPlayer) -> DotWeaponCommand:
-	var command := DotWeaponCommand.new()
+func weapon_command_for(player: ScPlayer) -> GSWeaponCommand:
+	var command := GSWeaponCommand.new()
 	var pending := player.controller.current_command
 
 	if pending == null:
 		return command
 
 	command.set_button(
-		DotWeaponCommand.BUTTON_ATTACK, pending.is_pressed(DotFpsCommand.BUTTON_USER_0)
+		GSWeaponCommand.BUTTON_ATTACK, pending.is_pressed(GSFpsCommand.BUTTON_USER_0)
 	)
 	command.set_button(
-		DotWeaponCommand.BUTTON_ALT, pending.is_pressed(DotFpsCommand.BUTTON_USER_1)
+		GSWeaponCommand.BUTTON_ALT, pending.is_pressed(GSFpsCommand.BUTTON_USER_1)
 	)
 	command.set_button(
-		DotWeaponCommand.BUTTON_RELOAD, pending.is_pressed(DotFpsCommand.BUTTON_USER_2)
+		GSWeaponCommand.BUTTON_RELOAD, pending.is_pressed(GSFpsCommand.BUTTON_USER_2)
 	)
-	command.set_button(DotWeaponCommand.BUTTON_AIM, player.aiming)
+	command.set_button(GSWeaponCommand.BUTTON_AIM, player.aiming)
 	command.yaw = pending.yaw
 	command.pitch = pending.pitch
 	command.slot = player.wanted_slot
@@ -151,17 +151,17 @@ func _fly_choppers(delta: float) -> void:
 			continue
 
 		var pending := player.controller.current_command
-		var command := DotVehicleCommand.new()
+		var command := GSVehicleCommand.new()
 
 		if pending != null:
 			# The collective, which is the one control that is not where a player expects
 			# it: jump climbs and crouch descends, so the two keys that already mean up and
 			# down keep meaning up and down.
-			var up := 1.0 if pending.is_pressed(DotFpsCommand.BUTTON_JUMP) else 0.0
-			var down := 1.0 if pending.is_pressed(DotFpsCommand.BUTTON_CROUCH) else 0.0
+			var up := 1.0 if pending.is_pressed(GSFpsCommand.BUTTON_JUMP) else 0.0
+			var down := 1.0 if pending.is_pressed(GSFpsCommand.BUTTON_CROUCH) else 0.0
 			command.throttle = up - down
 			command.steer = clampf(pending.move.x, -1.0, 1.0)
-			command.brake = 1.0 if pending.is_pressed(DotFpsCommand.BUTTON_WALK) else 0.0
+			command.brake = 1.0 if pending.is_pressed(GSFpsCommand.BUTTON_WALK) else 0.0
 			command.aim_yaw = pending.yaw
 			command.aim_pitch = pending.pitch
 
@@ -169,7 +169,7 @@ func _fly_choppers(delta: float) -> void:
 
 		copter.command = command
 
-		var chassis := copter.chassis as DotVehicleChassis
+		var chassis := copter.chassis as GSVehicleChassis
 
 		if chassis != null:
 			chassis.drive(command, delta)
@@ -181,7 +181,7 @@ func _fly_choppers(delta: float) -> void:
 ## tour, and one that can put a crate on somebody's platform is a second cannon with a person aiming it, which has
 ## to be overhead and so can be seen coming.
 func _advance_drop(
-	copter: DotVehicleInstance, player: ScPlayer, pending: DotFpsCommand, delta: float
+	copter: GSVehicleInstance, player: ScPlayer, pending: GSFpsCommand, delta: float
 ) -> void:
 	if not config.chopper_may_drop or pending == null or cannon == null:
 		return
@@ -192,7 +192,7 @@ func _advance_drop(
 	if since < config.chopper_drop_interval:
 		return
 
-	if not pending.is_pressed(DotFpsCommand.BUTTON_USER_0):
+	if not pending.is_pressed(GSFpsCommand.BUTTON_USER_0):
 		return
 
 	var body := copter.body()
@@ -211,7 +211,7 @@ func _advance_drop(
 
 	if dropped != null:
 		_copter_drop[copter.instance_id] = 0.0
-		DotLog.debug(CHANNEL, "a chopper dropped something", {
+		GSLog.debug(CHANNEL, "a chopper dropped something", {
 			"pilot": String(player.player_id),
 		})
 
@@ -230,11 +230,11 @@ func _on_platform_struck(index: int, at: Vector3, impulse: float, outcome: int) 
 	platform_struck.emit(index, at, impulse, outcome)
 
 
-func _on_prop_spawned(_prop: DotPropInstance) -> void:
+func _on_prop_spawned(_prop: GSPropInstance) -> void:
 	pass
 
 
-func _on_prop_removed(prop: DotPropInstance, _reason: StringName) -> void:
+func _on_prop_removed(prop: GSPropInstance, _reason: StringName) -> void:
 	_prop_velocity.erase(prop.instance_id)
 
 	if cannon != null:
@@ -242,7 +242,7 @@ func _on_prop_removed(prop: DotPropInstance, _reason: StringName) -> void:
 
 
 ## A prop that is not a barrel broke; a barrel's end is the blast.
-func _on_prop_broken(prop: DotPropInstance, at: Vector3, _by: StringName) -> void:
+func _on_prop_broken(prop: GSPropInstance, at: Vector3, _by: StringName) -> void:
 	if prop == null or prop.def == null:
 		return
 
@@ -290,7 +290,7 @@ func _on_prop_exploded(
 			continue
 
 		var falloff := 1.0 - (distance / radius)
-		var damage := DotDamage.make(
+		var damage := GSDamage.make(
 			attacker, player.entity_id, damage_amount * falloff, null
 		)
 		damage.point = player.controller.state.position
@@ -307,8 +307,8 @@ func _on_prop_exploded(
 		player.controller.state.velocity += push + Vector3.UP * falloff * 4.5
 
 
-func _on_player_died(player: ScPlayer, damage: DotDamage) -> void:
-	# One dictionary read of the reverse index [DotEntityTable] keeps, instead of walking every player comparing
+func _on_player_died(player: ScPlayer, damage: GSDamage) -> void:
+	# One dictionary read of the reverse index [GSEntityTable] keeps, instead of walking every player comparing
 	# ints, on every death. An attacker of 0 is dot-combat's "the world" (a fall, a crate, a barrel nobody set off),
 	# for which the table returns an empty key.
 	var by := entities.key_for_id(damage.attacker)
@@ -334,7 +334,7 @@ func _on_player_died(player: ScPlayer, damage: DotDamage) -> void:
 	# [b]Only a player is reported to dot-match.[/b] Anything registered with dot-combat arrives at this
 	# handler looking the same, and a scoreboard row filed against a falling crate is a row nobody can
 	# explain. The kind is in the id, which is what dot-entity's whole layout is for.
-	if match_node != null and DotEntity.is_kind(player.entity_id, DotEntity.KIND_PLAYER):
+	if match_node != null and GSEntity.is_kind(player.entity_id, GSEntity.KIND_PLAYER):
 		match_node.report_kill(
 			String(by), String(player.player_id), why, _tick
 		)
@@ -344,7 +344,7 @@ func _on_player_died(player: ScPlayer, damage: DotDamage) -> void:
 		player.death = decide_death(player, damage)
 
 	player_died.emit(player.player_id, by, why, damage.weapon_id)
-	DotLog.debug(CHANNEL, "player died", {
+	GSLog.debug(CHANNEL, "player died", {
 		"id": String(player.player_id), "by": String(by), "why": String(why),
 	})
 
@@ -352,17 +352,17 @@ func _on_player_died(player: ScPlayer, damage: DotDamage) -> void:
 ## Every damage a weapon's shot did to somebody else, as [signal hit_landed] for the shooter.
 ## Only what took health and only on the authority: a refused hit, a dead body or the
 ## shooter's own splash is no confirmation anybody wants a marker for.
-func _note_hits(shooter: ScPlayer, shot: DotShot) -> void:
+func _note_hits(shooter: ScPlayer, shot: GSShot) -> void:
 	if not authoritative or shot == null or shooter == null:
 		return
 	if progress != null:
 		progress.report_shot(shot)
-	for damage: DotDamage in shot.damages:
+	for damage: GSDamage in shot.damages:
 		if damage == null or damage.refused or damage.health_lost <= 0.0 or damage.victim == shooter.entity_id:
 			continue
 		if progress != null:
 			progress.report_damage(damage)
-		hit_landed.emit(shooter.player_id, damage.point, damage.lethal, damage.hit_group == DotHitGroup.HEAD)
+		hit_landed.emit(shooter.player_id, damage.point, damage.lethal, damage.hit_group == GSHitGroup.HEAD)
 
 
 ## Where chopper [param index] is parked on [param on_layout]: the middle of the platform the layout names for the
@@ -391,7 +391,7 @@ func _place_choppers() -> void:
 		var copter := vehicles.spawn(ScContent.COPTER, at, ScContent.WORLD_OWNER)
 
 		if copter == null:
-			DotLog.warn(CHANNEL, "a chopper could not be spawned", {"index": index})
+			GSLog.warn(CHANNEL, "a chopper could not be spawned", {"index": index})
 			continue
 
 		_copter_ids.append(copter.instance_id)
@@ -415,7 +415,7 @@ func _place_choppers() -> void:
 			var applied := physics.apply_to(body, &"vehicle")
 
 			if not applied.ok:
-				DotLog.warn(CHANNEL, "a chopper could not be put on its layer", {
+				GSLog.warn(CHANNEL, "a chopper could not be put on its layer", {
 					"why": applied.error.message,
 				})
 
@@ -426,4 +426,4 @@ func _set_phase(to: int) -> void:
 
 	phase = to
 	phase_changed.emit(to)
-	DotLog.debug(CHANNEL, "the round changed phase", {"phase": Phase.keys()[to]})
+	GSLog.debug(CHANNEL, "the round changed phase", {"phase": Phase.keys()[to]})

@@ -83,7 +83,7 @@ func _retune_peak(game: ScGame, runner: ScPlayer, start: Vector3, direction: Vec
 	runner.place_at(start, 0.0)
 	runner.controller.state.velocity = Vector3.ZERO
 	runner.aiming = aim
-	var command := DotFpsCommand.new()
+	var command := GSFpsCommand.new()
 	command.move = direction
 	await _step(game, 4)
 	var top := 0.0
@@ -120,7 +120,7 @@ func _retune_glide(game: ScGame, runner: ScPlayer, start: Vector3) -> float:
 	runner.controller.state.velocity = Vector3.ZERO
 	await _step(game, 6)
 	runner.controller.state.velocity = Vector3(4.0, 0.0, 0.0)
-	runner.controller.apply_command(DotFpsCommand.new())
+	runner.controller.apply_command(GSFpsCommand.new())
 	await _step(game, 6)
 	var v := runner.controller.state.velocity
 	return Vector2(v.x, v.z).length()

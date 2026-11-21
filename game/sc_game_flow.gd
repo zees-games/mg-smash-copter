@@ -78,7 +78,7 @@ func add_player(
 		var applied := physics.apply_to(player, &"player")
 
 		if not applied.ok:
-			DotLog.warn(CHANNEL, "a player could not be put on its collision layer", {
+			GSLog.warn(CHANNEL, "a player could not be put on its collision layer", {
 				"why": applied.error.message,
 			})
 
@@ -88,7 +88,7 @@ func add_player(
 		_apply_body_mask(player)
 
 	var opened := entities.open(
-		DotEntity.KIND_PLAYER,
+		GSEntity.KIND_PLAYER,
 		player,
 		&"",
 		player_id,
@@ -99,13 +99,13 @@ func add_player(
 		# A refusal here means this player id is already an entity, which cannot happen — `add_player` returns
 		# early on a duplicate. Logged rather than ignored, because arming them anyway would register a second
 		# health record against one body and the symptom of that is a player taking half damage.
-		DotLog.error(CHANNEL, "could not open an entity for a player", {
+		GSLog.error(CHANNEL, "could not open an entity for a player", {
 			"id": String(player_id), "why": opened.error.message,
 		})
 
-	player.entity_id = (opened.value as DotEntityHandle).id if opened.ok else 0
+	player.entity_id = (opened.value as GSEntityHandle).id if opened.ok else 0
 
-	var health := DotHealth.new()
+	var health := GSHealth.new()
 	health.name = "Health"
 	health.max_health = config.player_health
 	health.health = config.player_health
@@ -116,7 +116,7 @@ func add_player(
 		combat.register_health(player.entity_id, health)
 		_give_hitboxes(player)
 
-	health.died.connect(func(damage: DotDamage) -> void: _on_player_died(player, damage))
+	health.died.connect(func(damage: GSDamage) -> void: _on_player_died(player, damage))
 
 	players[player_id] = player
 	sides[player_id] = team
@@ -127,7 +127,7 @@ func add_player(
 		# ERROR, because a refusal here leaves the round rule counting a side short, and the
 		# last time one was refused nothing said so.
 		if not seated.ok:
-			DotLog.error(CHANNEL, "dot-match refused a player's side", {
+			GSLog.error(CHANNEL, "dot-match refused a player's side", {
 				"id": String(player_id), "team": team, "why": seated.error.message,
 			})
 
@@ -136,7 +136,7 @@ func add_player(
 	# server ended the round inside the netcode's identity loop.
 	place_one(player)
 
-	DotLog.debug(CHANNEL, "player joined", {"id": String(player_id), "team": team})
+	GSLog.debug(CHANNEL, "player joined", {"id": String(player_id), "team": team})
 
 	# Last, after the health and the side: the bridge answers this by building the
 	# replicated entity and announcing the join, and an entity built over a half-made
@@ -145,19 +145,19 @@ func add_player(
 	return player
 
 
-## Somewhere on a player that a shot can land: [DotCombatManager] traces against registered [DotHitboxSet]s, so a
-## player with a `DotHealth` and no hitboxes is silently bulletproof. Two boxes (a head worth more than a chest, for
+## Somewhere on a player that a shot can land: [GSCombatManager] traces against registered [GSHitboxSet]s, so a
+## player with a `GSHealth` and no hitboxes is silently bulletproof. Two boxes (a head worth more than a chest, for
 ## the sniper) with `precedence` set, not left to child order.
 func _give_hitboxes(player: ScPlayer) -> void:
-	var boxes := DotHitboxSet.new()
+	var boxes := GSHitboxSet.new()
 	boxes.name = "Hitboxes"
-	boxes.owner_ref = DotNodeRef.of_path(^"..")
+	boxes.owner_ref = GSNodeRef.of_path(^"..")
 	player.add_child(boxes)
 
-	var body := DotHitbox.new()
+	var body := GSHitbox.new()
 	body.name = "Chest"
-	body.group = DotHitGroup.CHEST
-	body.shape = DotHitbox.Shape.CAPSULE
+	body.group = GSHitGroup.CHEST
+	body.shape = GSHitbox.Shape.CAPSULE
 	body.radius = 0.34
 	body.height = 1.25
 	body.position = Vector3(0.0, 0.78, 0.0)
@@ -165,10 +165,10 @@ func _give_hitboxes(player: ScPlayer) -> void:
 	body.precedence = 0
 	boxes.add_child(body)
 
-	var head := DotHitbox.new()
+	var head := GSHitbox.new()
 	head.name = "Head"
-	head.group = DotHitGroup.HEAD
-	head.shape = DotHitbox.Shape.SPHERE
+	head.group = GSHitGroup.HEAD
+	head.shape = GSHitbox.Shape.SPHERE
 	head.radius = 0.19
 	head.position = Vector3(0.0, ScPlayer.EYE_HEIGHT + 0.06, 0.0)
 	head.damage_scale = 2.2
@@ -257,12 +257,12 @@ func remove_player(player_id: StringName) -> void:
 		if aboard != null:
 			var _left := ride.exit(aboard, player_id, true)
 
-	# Before the node goes: dot-combat keyed a `DotHealth` on this entity and nothing else tells it to let go, so
+	# Before the node goes: dot-combat keyed a `GSHealth` on this entity and nothing else tells it to let go, so
 	# every player who ever joined would leave a record pointing at a freed node. A stale entity is never asked
 	# about, so the leak shows nothing until memory runs out.
 	if combat != null and is_instance_valid(combat) and player.entity_id != 0:
 		combat.forget(player.entity_id)
-		var _closed := entities.close(player.entity_id, DotEntityTable.REASON_OWNER_LEFT)
+		var _closed := entities.close(player.entity_id, GSEntityTable.REASON_OWNER_LEFT)
 
 	if match_node != null:
 		match_node.remove_player(String(player_id))
@@ -313,7 +313,7 @@ func _on_round_started(number: int) -> void:
 	_set_phase(Phase.SURVIVAL)
 
 	round_began.emit(number, layout.id if layout != null else &"")
-	DotLog.info(CHANNEL, "round began", {
+	GSLog.info(CHANNEL, "round began", {
 		"number": number,
 		"layout": String(layout.id) if layout != null else "?",
 		"special": String(_round_special),
@@ -329,7 +329,7 @@ func _on_round_ended(number: int, winner: int, _outcome: int) -> void:
 		progress.on_round_over(winner)
 
 	round_over.emit(number, winner)
-	DotLog.info(CHANNEL, "round over", {"number": number, "winner": winner})
+	GSLog.info(CHANNEL, "round over", {"number": number, "winner": winner})
 
 
 ## Every layout this server plays, as the map menu (M) lists them: `{id, name, detail,
@@ -348,16 +348,16 @@ func layout_rows() -> Array:
 ## The map menu's change: [param id] now, not after this round. The next layout is set and a
 ## fresh round begins on it (dot-match's `begin_round_now`: the round called off has no
 ## winner); with no match running the field is simply laid out again. Authority only.
-func change_layout_now(id: StringName) -> DotResult:
+func change_layout_now(id: StringName) -> GSResult:
 	if not authoritative:
-		return DotResult.fail(DotError.CODE_STATE, "Only the server changes the layout.")
+		return GSResult.fail(GSError.CODE_STATE, "Only the server changes the layout.")
 	if not ScLayouts.allowed(config).any(func(l: ScLayouts.Layout) -> bool: return l.id == id):
-		return DotResult.fail(DotError.CODE_INVALID, "There is no layout called '%s' here." % id)
+		return GSResult.fail(GSError.CODE_INVALID, "There is no layout called '%s' here." % id)
 	next_layout_id = id
 	if match_node == null or not match_node.begin_round_now(_tick):
 		_lay_out_round()
-	DotLog.info(CHANNEL, "layout changed from the map menu", {"layout": String(id)})
-	return DotResult.success(id)
+	GSLog.info(CHANNEL, "layout changed from the map menu", {"layout": String(id)})
+	return GSResult.success(id)
 
 
 ## Everything that happens between one round and the next.
@@ -546,7 +546,7 @@ func _begin_handover() -> void:
 	if progress != null:
 		progress.on_handover()
 
-	DotLog.info(CHANNEL, "the survivors are in the corners", {
+	GSLog.info(CHANNEL, "the survivors are in the corners", {
 		"alive": alive_count(), "teams": teams_alive(),
 	})
 
@@ -578,14 +578,14 @@ func _arm(player: ScPlayer, team: int, seat: int) -> void:
 	rig.authority = authoritative
 	rig.tick_rate = tick_rate
 	rig.wall_extra_mask = player.controller.tunables.collision_mask if player.controller != null else 0
-	rig.player_ref = DotNodeRef.of_path(player.get_path())
+	rig.player_ref = GSNodeRef.of_path(player.get_path())
 	rig.ads_rules = ads_rules
 	player.add_child(rig)
 
 	var ready_now := rig.setup()
 
 	if not ready_now.ok:
-		DotLog.warn(CHANNEL, "a weapon rig would not set up", {
+		GSLog.warn(CHANNEL, "a weapon rig would not set up", {
 			"player": String(player.player_id), "why": ready_now.error.message,
 		})
 		player.remove_child(rig)
@@ -625,7 +625,7 @@ func _arm(player: ScPlayer, team: int, seat: int) -> void:
 
 		player_armed.emit(player.player_id, given[0])
 
-	DotLog.debug(CHANNEL, "a survivor was armed", {
+	GSLog.debug(CHANNEL, "a survivor was armed", {
 		"player": String(player.player_id),
 		"weapons": ", ".join(Array(given).map(func(v: Variant) -> String: return String(v))),
 	})
@@ -686,11 +686,11 @@ static func default_weapon_pool() -> Array[StringName]:
 ## Whoever is nearest a chopper and asking to get in, gets in. Public because the bridge answers a client's
 ## request with it and the suite calls it directly. The reach is generous on purpose: a machine parked on a
 ## pad that is itself on a platform that is leaning is not going to be where anybody expects it.
-func try_board(player_id: StringName) -> DotResult:
+func try_board(player_id: StringName) -> GSResult:
 	var player: ScPlayer = players.get(player_id)
 
 	if player == null:
-		return DotResult.fail(DotError.CODE_INVALID, "Nobody by that name is here.")
+		return GSResult.fail(GSError.CODE_INVALID, "Nobody by that name is here.")
 
 	if player.riding:
 		var aboard := vehicles.get_vehicle(ride.vehicle_id_of(player_id))
@@ -698,16 +698,16 @@ func try_board(player_id: StringName) -> DotResult:
 		if aboard != null:
 			return ride.exit(aboard, player_id, false)
 
-		return DotResult.fail(DotError.CODE_STATE, "You are aboard something that has gone.")
+		return GSResult.fail(GSError.CODE_STATE, "You are aboard something that has gone.")
 
 	var nearest := vehicles.nearest_free(player.controller.state.position, 6.0)
 
 	if nearest == null:
-		return DotResult.fail(DotError.CODE_STATE, "There is nothing here to get into.")
+		return GSResult.fail(GSError.CODE_STATE, "There is nothing here to get into.")
 
 	var seat := nearest.first_free_seat()
 
 	if seat == null:
-		return DotResult.fail(DotError.CODE_STATE, "It is full.")
+		return GSResult.fail(GSError.CODE_STATE, "It is full.")
 
 	return ride.enter(nearest, player_id, player, seat.id)

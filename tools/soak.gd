@@ -6,7 +6,7 @@ const ScLayouts := preload("../game/sc_layouts.gd")
 const ScPlayer := preload("../game/sc_player.gd")
 
 ## Bot soak on the real game: N stand-ins play rounds on one layout for M simulated minutes through
-## dot-bot's DotBotSoak, fed by dot-spawn's DotSpawnWatch ("map" is a layout id). Run: `./game.sh soak
+## dot-bot's GSBotSoak, fed by dot-spawn's GSSpawnWatch ("map" is a layout id). Run: `./game.sh soak
 ## [layout] [minutes]`; writes .godot/test-logs/soak-<layout>.json, prints the SOAK line, exits 1 on failure.
 
 const DEFAULT_MAP := &"terraces"
@@ -22,7 +22,7 @@ var _traced_sec := {}
 
 
 func _ready() -> void:
-	DotLog.set_level(DotLog.Level.ERROR)
+	GSLog.set_level(GSLog.Level.ERROR)
 	_run.call_deferred()
 
 
@@ -36,7 +36,7 @@ func _arg(name: String, fallback: String) -> String:
 
 func _run() -> void:
 	var map_id := _arg("map", String(DEFAULT_MAP))
-	var cfg := DotBotSoakConfig.new()
+	var cfg := GSBotSoakConfig.new()
 	cfg.minutes = DEFAULT_MINUTES
 	cfg.bots = DEFAULT_BOTS
 	# The object count saws up and down with each round's field and props, so a run that ends
@@ -75,17 +75,17 @@ func _run() -> void:
 
 	var taken: Array = []
 	for i in range(cfg.bots):
-		var bot_name := DotBotNames.pick(taken, i, ScGame.BOT_NAMES)
+		var bot_name := GSBotNames.pick(taken, i, ScGame.BOT_NAMES)
 		taken.append(bot_name)
 		var bot := _game.add_player(StringName("u%d" % (900100 + i)), bot_name)
 		bot.is_bot = true
 	_game.start()
 
-	var watch := DotSpawnWatch.new()
+	var watch := GSSpawnWatch.new()
 	watch.rules.enabled = true
 	watch.rules.kill_y = -5000.0
 
-	var soak := DotBotSoak.new(cfg)
+	var soak := GSBotSoak.new(cfg)
 	soak.watch = watch
 	soak.movers_fn = _movers
 	soak.object_count_fn = func() -> int: return int(Performance.get_monitor(Performance.OBJECT_COUNT))
@@ -103,8 +103,8 @@ func _run() -> void:
 	report["rounds"] = _game.round_number
 	report["rounds_over"] = _rounds_over
 	report["showdown_sec"] = snappedf(float(_showdown_ticks) / float(TICK_RATE), 0.1)
-	print(DotBotSoak.summary(report))
-	print(DotBotSoak.report_line(report))
+	print(GSBotSoak.summary(report))
+	print(GSBotSoak.report_line(report))
 	var path := ProjectSettings.globalize_path("res://.godot/test-logs/soak-%s.json" % map_id)
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	if soak.write_report(report, path) != OK:

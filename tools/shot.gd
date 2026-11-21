@@ -43,7 +43,7 @@ func _run() -> void:
 		elif arg.begins_with("--view="):
 			view = arg.substr(7)
 		elif arg == "--touch":
-			DotPlatform.touch_override = 1
+			GSPlatform.touch_override = 1
 		elif arg == "--ballot":
 			ballot = true
 		elif arg == "--workshop":
@@ -71,7 +71,7 @@ func _run() -> void:
 		await _choose_workshop_map(client)
 
 	# Past the load cover (slow on a cold GPU box) before any timing starts; capped, so a stuck cover cannot hang the shot.
-	if not await DotShotGate.wait_lifted(get_tree(), client.get("platform")):
+	if not await GSShotGate.wait_lifted(get_tree(), client.get("platform")):
 		printerr("shot: load cover still up after the wait; shooting anyway")
 
 	# --view=killcam spends --seconds after the round ends, not before.
@@ -107,7 +107,7 @@ func _save_and_quit(game: ScGame, out: String, elapsed: float, view: String) -> 
 	var _saved := image.save_png(ProjectSettings.globalize_path(out))
 
 	print("wrote ", out, " after %.1f s, view=%s" % [elapsed, view])
-	await DotShotSeq.new().record(get_tree(), ProjectSettings.globalize_path(out))
+	await GSShotSeq.new().record(get_tree(), ProjectSettings.globalize_path(out))
 
 	if game != null:
 		for line in game.describe_lines():
@@ -119,15 +119,15 @@ func _save_and_quit(game: ScGame, out: String, elapsed: float, view: String) -> 
 func _choose_workshop_map(client: Node) -> void:
 	while client.get("game") == null:
 		await get_tree().process_frame
-	var chosen: DotResult = (client.get("game") as ScGame).change_layout_now(&"workshop:crown")
+	var chosen: GSResult = (client.get("game") as ScGame).change_layout_now(&"workshop:crown")
 	print("workshop map chosen: ", chosen.ok)
 
 
-## --view=cover: the loading cover dot-game's DotGameClient puts up first, before it lifts.
+## --view=cover: the loading cover dot-game's GSGameClient puts up first, before it lifts.
 func _shoot_cover(client: Node, out: String) -> void:
 	for _i in 2:
 		await RenderingServer.frame_post_draw
-	var platform: DotGameClient = client.get("platform")
+	var platform: GSGameClient = client.get("platform")
 	print("cover %s" % ("lifted" if platform.is_shown() else "up"))
 	var cover_path := ProjectSettings.globalize_path(out)
 	DirAccess.make_dir_recursive_absolute(cover_path.get_base_dir())
@@ -150,7 +150,7 @@ func _stage_view(client: Node, game: ScGame, view: String, seconds: float) -> vo
 		# `_process` putting its camera where `ScSpectate` says — nothing here places one.
 		var out_of_it: Node = client.get("player")
 		if out_of_it != null:
-			var at: Vector3 = (out_of_it.get("controller") as DotFpsController).state.position
+			var at: Vector3 = (out_of_it.get("controller") as GSFpsController).state.position
 			out_of_it.call("place_at", Vector3(at.x, game.config.kill_height - 5.0, at.z), 0.0)
 		var waited := 0.0
 		while waited < 2.4:
@@ -162,7 +162,7 @@ func _stage_view(client: Node, game: ScGame, view: String, seconds: float) -> vo
 		for who: Node in game.players.values():
 			if who != me_k:
 				# Shot by the local player with a pistol, so the banner has a weapon to draw.
-				var shot := DotDamage.make(int(me_k.get("entity_id")), int(who.get("entity_id")), 1.0e6, null)
+				var shot := GSDamage.make(int(me_k.get("entity_id")), int(who.get("entity_id")), 1.0e6, null)
 				shot.weapon_id = &"pistol"
 				shot.tick = game._tick
 				var _hit: Variant = game.combat.apply_damage(shot)
@@ -173,7 +173,7 @@ func _stage_view(client: Node, game: ScGame, view: String, seconds: float) -> vo
 	elif view == "crate":
 		# A crate breaking four metres ahead of the local player's feet, caught mid-burst.
 		var me_c: Node3D = client.get("player")
-		var yaw := deg_to_rad((me_c.get("controller") as DotFpsController).state.yaw)
+		var yaw := deg_to_rad((me_c.get("controller") as GSFpsController).state.yaw)
 		var spot := me_c.global_position + Vector3(-sin(yaw), 0.4, -cos(yaw)) * 4.0
 		var crate := game.props.spawn(ScContent.CRATE, &"world", spot)
 		for _i in range(6):
@@ -248,10 +248,10 @@ func _stage_action(client: Node, game: ScGame, kind: StringName, id: String, out
 		await get_tree().process_frame
 	var figure: Object = client.call("_avatar_figure", 0)
 	print("action %s/%s: figure=%s third_person=%s" % [kind, id, figure != null, client.get("third_person")])
-	var entry := DotAvatarActions.defaults().find(kind, id)
-	var input: Object = (client.get("platform") as DotGameClient).avatar_actions.input
+	var entry := GSAvatarActions.defaults().find(kind, id)
+	var input: Object = (client.get("platform") as GSGameClient).avatar_actions.input
 	input.emit_signal(&"action_requested", entry)
-	var yaw := deg_to_rad((me.get("controller") as DotFpsController).state.yaw)
+	var yaw := deg_to_rad((me.get("controller") as GSFpsController).state.yaw)
 	var ahead := Vector3(-sin(yaw), 0.0, -cos(yaw))
 	var feet: Vector3 = me.global_position
 	var camera := Camera3D.new()
@@ -283,18 +283,18 @@ func _register_fixture_pack() -> void:
 	f.store_string(JSON.stringify({"id": "crown", "name": "Crown", "columns": 7, "rows": 3,
 		"row_pitch_scale": 0.51, "cells": cells}))
 	f.close()
-	var index := DotContentIndex.shared()
-	index.set_session(DotContentIndex.SESSION_SOLO)
+	var index := GSContentIndex.shared()
+	index.set_session(GSContentIndex.SESSION_SOLO)
 	var added := index.add_pack({
 		"content_id": "fixture/shot", "version": "1.0.0", "prefix": "user://ws_shot/",
-		"session": DotContentIndex.SESSION_SOLO, "source": &"subscription",
+		"session": GSContentIndex.SESSION_SOLO, "source": &"subscription",
 		"provides": {"schema": 1, "title": "Fixture Pack", "kinds": ["map"], "entries": [
 			{"kind": "map", "id": "crown", "name": "Crown", "scene": "crown.json", "map_kind": "arena"}]},
 	})
 	print("fixture pack: ", added.ok)
 
 
-## A real ballot from this game's vote (every layout this server plays, four voters, three of whom have voted) drawn as the client shell's notice overlay draws a `map_ballot`, a [DotBallotPanel] down the right.
+## A real ballot from this game's vote (every layout this server plays, four voters, three of whom have voted) drawn as the client shell's notice overlay draws a `map_ballot`, a [GSBallotPanel] down the right.
 ## Waits a second for the voters' discs to slide to their row; a frame too soon catches one between rows.
 func _show_ballot(list: Array, current: StringName) -> void:
 	var names := {&"1": "you", &"2": "bo", &"3": "quiet_one", &"4": "ana"}
@@ -306,15 +306,15 @@ func _show_ballot(list: Array, current: StringName) -> void:
 	vote.set("people_fn", func(voter: StringName) -> Dictionary: return {"name": names.get(voter, "?"), "avatar": ""})
 	vote.set("ballot_fn", func(state: Dictionary) -> void: states.append(state))
 	add_child(vote)
-	var _set: DotResult = vote.call("setup")
+	var _set: GSResult = vote.call("setup")
 	vote.call("note_map", current)
-	var director: DotVoteDirector = vote.get("director")
-	var _opened := director.open_vote(DotVoteClock.REASON_MANUAL)
+	var director: GSVoteDirector = vote.get("director")
+	var _opened := director.open_vote(GSVoteClock.REASON_MANUAL)
 	var options := director.ballot.option_ids()
 	var _a := director.cast_one(&"1", options[0])
 	var _b := director.cast_one(&"2", options[1 % options.size()])
 	var _c := director.cast_one(&"3", options[0])
-	(vote.get("feed") as DotVoteBallotFeed).poll()
+	(vote.get("feed") as GSVoteBallotFeed).poll()
 
 	var layer := CanvasLayer.new()
 	layer.layer = 50
@@ -328,8 +328,8 @@ func _show_ballot(list: Array, current: StringName) -> void:
 	box.offset_top = 110.0
 	box.offset_bottom = -16.0
 	layer.add_child(box)
-	var panel := DotBallotPanel.new()
-	panel.ui_theme = DotUiTheme.space()
+	var panel := GSBallotPanel.new()
+	panel.ui_theme = GSUiTheme.space()
 	panel.local_voter = "1"
 	box.add_child(panel)
 	panel.show_state(states.back() if not states.is_empty() else {})
@@ -623,7 +623,7 @@ func _beacon_a_stand_in(game: ScGame) -> Node3D:
 	return null
 
 
-func _a_copter(game: ScGame) -> DotVehicleInstance:
+func _a_copter(game: ScGame) -> GSVehicleInstance:
 	if game.vehicles == null:
 		return null
 

@@ -235,10 +235,10 @@ func _test_a_shot_lands() -> void:
 	var fired := 0
 
 	for _i in range(int(1.5 * TICK_RATE)):
-		var command := DotFpsCommand.new()
+		var command := GSFpsCommand.new()
 		command.yaw = rad_to_deg(atan2(-line.x, -line.z))
 		command.pitch = clampf(rad_to_deg(asin(clampf(line.y, -1.0, 1.0))), -89.0, 89.0)
-		command.set_button(DotFpsCommand.BUTTON_USER_0, true)
+		command.set_button(GSFpsCommand.BUTTON_USER_0, true)
 		shooter.controller.apply_command(command)
 
 		fired = maxi(fired, shooter.weapons.fire_seq)
@@ -270,10 +270,10 @@ func _test_a_shot_lands() -> void:
 	var mate_before := mate.health.health
 
 	for _i in range(int(1.0 * TICK_RATE)):
-		var command := DotFpsCommand.new()
+		var command := GSFpsCommand.new()
 		command.yaw = rad_to_deg(atan2(-line.x, -line.z))
 		command.pitch = 0.0
-		command.set_button(DotFpsCommand.BUTTON_USER_0, true)
+		command.set_button(GSFpsCommand.BUTTON_USER_0, true)
 		shooter.controller.apply_command(command)
 		game.simulate(TICK)
 		await _physics_frame()
@@ -335,7 +335,7 @@ func _test_the_chopper() -> void:
 
 	# Full collective for two seconds. A helicopter that cannot climb is one nobody can tell
 	# from a broken one.
-	var climb := DotVehicleCommand.new()
+	var climb := GSVehicleCommand.new()
 	climb.throttle = 1.0
 
 	for _i in range(int(2.0 * TICK_RATE)):
@@ -354,7 +354,7 @@ func _test_the_chopper() -> void:
 	# that as "drift" would be asserting that the machine has air brakes.
 	body.linear_velocity = Vector3.ZERO
 	var hovering := body.global_position.y
-	var hover := DotVehicleCommand.new()
+	var hover := GSVehicleCommand.new()
 
 	for _i in range(int(1.0 * TICK_RATE)):
 		chassis.drive(hover, TICK)
@@ -515,7 +515,7 @@ func _test_the_showdown_walk() -> void:
 
 		# Running, which is the case the kerb was stopping. Walking is stopped the same way.
 		for _i in range(int(8.0 * TICK_RATE)):
-			var command := DotFpsCommand.new()
+			var command := GSFpsCommand.new()
 			command.yaw = yaw
 			command.move = Vector2(0.0, 1.0)
 			walker.controller.apply_command(command)

@@ -1,6 +1,6 @@
-extends DotVoteRoundGame
+extends GSVoteRoundGame
 
-## The players choose the next layout: dot-vote's [DotVoteRoundGame] with Smash Copter's names. A round IS a layout, so a ballot opens
+## The players choose the next layout: dot-vote's [GSVoteRoundGame] with Smash Copter's names. A round IS a layout, so a ballot opens
 ## [member open_after_sec] into every layout and applies at its end; the rest is dot-vote's settings (`user://cfg/smash_vote.json`,
 ## `game.yml` metadata `layout_vote:`, the weighted draw alone when the vote cannot be built). [member maps_fn] lists the layouts.
 

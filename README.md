@@ -106,7 +106,7 @@ mp_freeroam 1               // 1 = somebody out may fly a free camera (G); any m
 mp_freeroam_speed 12        // metres per second of the free camera
 ```
 
-The bot count cvars are the family's shared ones (dot-server's `DotBotQuota`), and so are `bot_difficulty` and every `bot_*` setting (dot-bot; `bot_settings` lists them). `sc_min_players` still works and sets `bot_quota`, and `sc_bot_spread` sets `bot_aim_error`; both are deprecated. Solo, the same names are at the console, and `./game.sh -- --bot_difficulty hard` sets the preset at launch.
+The bot count cvars are the family's shared ones (dot-server's `GSBotQuota`), and so are `bot_difficulty` and every `bot_*` setting (dot-bot; `bot_settings` lists them). `sc_min_players` still works and sets `bot_quota`, and `sc_bot_spread` sets `bot_aim_error`; both are deprecated. Solo, the same names are at the console, and `./game.sh -- --bot_difficulty hard` sets the preset at launch.
 
 Dead players fall as ragdolls ([dot-player-char](https://github.com/gamespice-platform/player-char)); the server picks how each one goes down and everybody sees the same fall. `sv_ragdoll 0` makes it a quick fall with no physics, `sv_ragdoll_style` picks ragdoll, stiff, topple or hide, `sv_ragdoll_time` and `sv_ragdoll_max` say how long and how many, and `sv_ragdoll_reactions` weights the falls (`limp`, `face_plant`, `crumple`, `headshot_launch`, `power_launch`; 0 turns one off).
 

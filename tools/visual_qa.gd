@@ -1,4 +1,4 @@
-extends DotGameVisualQaCapture
+extends GSGameVisualQaCapture
 
 ## Smash Copter's visual QA capture (docs/testing.md; the loop is dot-game's docs/visual-qa.md). Four kinds of item, each
 ## recorded frame by frame at --fps in three views (f first person, t behind-right, o an opponent in front):
@@ -92,7 +92,7 @@ func _build() -> void:
 	root.add_child(_holder)
 
 
-func _stage(item: String, clip: String) -> DotResult:
+func _stage(item: String, clip: String) -> GSResult:
 	_clear()
 	first_person.fov = STAGE_FOV
 	views.behind_offset = Vector3(1.6, 1.6, 3.2)
@@ -123,23 +123,23 @@ func _stage(item: String, clip: String) -> DotResult:
 		var id := item.trim_prefix("prop_")
 		var path := _prop_scene(id)
 		if path == "":
-			return DotResult.fail(DotError.CODE_INVALID, "no prop %s" % id)
+			return GSResult.fail(GSError.CODE_INVALID, "no prop %s" % id)
 		_shown_kind = "prop"
 		var made := _make_body(path)
 		if not made.ok:
 			return made
 		_body.freeze = true
 		_frame_prop(_bounds(_body).size)
-	return DotResult.success(clip)
+	return GSResult.success(clip)
 
 
-func _stage_weapon(id: StringName, clip: String) -> DotResult:
+func _stage_weapon(id: StringName, clip: String) -> GSResult:
 	var art: Variant = ZeeWeaponArtTable.table().get(id)
 	if not (art is ZeeWeaponArt):
-		return DotResult.fail(DotError.CODE_INVALID, "no art for %s" % id)
-	var def: DotWeaponDef = _weapon_defs.get(String(id))
+		return GSResult.fail(GSError.CODE_INVALID, "no art for %s" % id)
+	var def: GSWeaponDef = _weapon_defs.get(String(id))
 	if clip == "reload" and (def == null or not def.uses_magazine()):
-		return DotResult.fail(DotError.CODE_UNSUPPORTED, "%s has no magazine" % id)
+		return GSResult.fail(GSError.CODE_UNSUPPORTED, "%s has no magazine" % id)
 	_shown_kind = "weapon"
 	first_person.fov = GAME_FOV
 	# Straight ahead, a held gun points down the lens and draws as a thin stick; from the gun-hand side it reads in profile.
@@ -158,7 +158,7 @@ func _stage_weapon(id: StringName, clip: String) -> DotResult:
 	_model.on_deploy(1.0)
 	_shots_done = 0
 	_struck = false
-	return DotResult.success(clip)
+	return GSResult.success(clip)
 
 
 ## The scene a prop id is thrown as, rebased the way the game loads it.
@@ -175,20 +175,20 @@ func _prop_scene(id: String) -> String:
 	return ""
 
 
-func _make_body(path: String) -> DotResult:
+func _make_body(path: String) -> GSResult:
 	var scene := load(path) as PackedScene
 	if scene == null:
-		return DotResult.fail(DotError.CODE_IO, "%s would not load" % path)
+		return GSResult.fail(GSError.CODE_IO, "%s would not load" % path)
 	_body = scene.instantiate() as RigidBody3D
 	if _body == null:
-		return DotResult.fail(DotError.CODE_INVALID, "%s is not a RigidBody3D" % path)
+		return GSResult.fail(GSError.CODE_INVALID, "%s is not a RigidBody3D" % path)
 	_body.freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
 	_holder.add_child(_body)
 	_body.global_position = Vector3.ZERO
 	# Resting on the floor by its drawn lowest point, as it lands in a round.
 	_rest_y = -_bounds(_body).position.y
 	_body.global_position = Vector3(0.0, _rest_y, 0.0)
-	return DotResult.success(_body)
+	return GSResult.success(_body)
 
 
 ## Cameras that fit the prop: a cone and a container are not one size, so the distance and look height follow it.
@@ -279,7 +279,7 @@ func _drive_copter(clip: String, t: float) -> void:
 func _drive_weapon(clip: String, t: float, step: float) -> void:
 	var id := StringName(_shown_id.trim_prefix("weapon_"))
 	var art := ZeeWeaponArtTable.table().get(id) as ZeeWeaponArt
-	var def: DotWeaponDef = _weapon_defs.get(String(id))
+	var def: GSWeaponDef = _weapon_defs.get(String(id))
 	match clip:
 		"draw":
 			_model.on_deploy(clampf(t / 0.6, 0.0, 1.0))
@@ -297,7 +297,7 @@ func _drive_weapon(clip: String, t: float, step: float) -> void:
 	_model.advance(step)
 
 
-func _fire_interval(def: DotWeaponDef) -> float:
+func _fire_interval(def: GSWeaponDef) -> float:
 	if def == null or def.use_interval_ticks <= 0:
 		return FIRE_EVERY
 	var rate := def.authored_tick_rate if def.authored_tick_rate > 0 else ZeeWeaponPack.TICK_RATE
@@ -310,7 +310,7 @@ func _fire(art: ZeeWeaponArt) -> void:
 		_model.on_swing()
 		_figure.fired(1, ZeeWeaponNet.KIND_SWING)
 	elif art.pose == ZeeWeaponArtTable.POSE_THROWN:
-		var outcome := DotWeaponOutcome.of(DotWeaponOutcome.KIND_THROW)
+		var outcome := GSWeaponOutcome.of(GSWeaponOutcome.KIND_THROW)
 		outcome.used = true
 		_model.on_used(outcome)
 		_figure.fired(1, ZeeWeaponNet.KIND_THROW)
@@ -327,7 +327,7 @@ func _grounded(_item: String, clip: String, t: float) -> bool:
 
 func _before_draw(_item: String, _clip: String, _frame: int) -> void:
 	if _figure != null:
-		var _tagged := DotGameVisualQaViews.tag_layers(_figure, BODY_LAYER)
+		var _tagged := GSGameVisualQaViews.tag_layers(_figure, BODY_LAYER)
 
 
 ## Weapons: the real view model's camera at the person's eye. Copter: the pilot's seat. People and props: an opponent's

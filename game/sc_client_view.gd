@@ -40,15 +40,15 @@ func _arm_locally() -> void:
 	weapons.tick_rate = game.tick_rate
 	# The held weapon lowers at every brush that stops the player, fences and clip included.
 	weapons.wall_extra_mask = player.controller.tunables.collision_mask if player.controller != null else 0
-	weapons.view_model_ref = DotNodeRef.of_path(view_model.get_path())
-	weapons.player_ref = DotNodeRef.of_path(player.get_path())
+	weapons.view_model_ref = GSNodeRef.of_path(view_model.get_path())
+	weapons.player_ref = GSNodeRef.of_path(player.get_path())
 	weapons.ads_rules = game.ads_rules
 	player.add_child(weapons)
 
 	var ready_now := weapons.setup()
 
 	if not ready_now.ok:
-		DotLog.warn(CHANNEL, "the view model would not set up", {
+		GSLog.warn(CHANNEL, "the view model would not set up", {
 			"why": ready_now.error.message,
 		})
 		_disarm_locally()
@@ -61,7 +61,7 @@ func _arm_locally() -> void:
 
 	# Your own shots, from your own rig: a predicted use, heard the tick it happens rather
 	# than when the server's snapshot says it did. At the camera, so it is at full volume.
-	weapons.used.connect(func(outcome: DotWeaponOutcome) -> void:
+	weapons.used.connect(func(outcome: GSWeaponOutcome) -> void:
 		if audio != null and camera != null:
 			var _heard := audio.on_weapon(
 				camera.global_position, ZeeWeaponNet.kind_number(outcome.kind)
@@ -76,7 +76,7 @@ func _give_locally(weapon_id: StringName) -> void:
 		return
 	var given := weapons.give(weapon_id)
 	if not given.ok:
-		DotLog.warn(CHANNEL, "the drawn rig refused a weapon", {"weapon": String(weapon_id), "why": given.error.message})
+		GSLog.warn(CHANNEL, "the drawn rig refused a weapon", {"weapon": String(weapon_id), "why": given.error.message})
 
 
 ## Gives the drawn rig what this player was dealt: offline the world's rig weapons, selected first; connected, every ARMED the server sent (`ScPlayer.dealt`).
@@ -126,7 +126,7 @@ func _build_camera() -> void:
 	camera.current = true
 
 		# Other players and stand-ins: hidden when one is at the lens, faded in third person when between camera and you. Handed the figures rather than looked up by a query: a hull is off while mp_solidplayers is 0, exactly when a body walks through you.
-	_fade = DotCameraFade.new()
+	_fade = GSCameraFade.new()
 	_fade.name = "Fade"
 	_fade.bodies_fn = _other_players
 	camera.add_child(_fade)
@@ -140,7 +140,7 @@ func _build_camera() -> void:
 
 ## Puts the camera where this view mode wants it, rebuilding the rig if the mode changed.
 ##
-## A boom in third person, nothing in first: dot-core's [DotCameraBoom] sweeps a sphere from the eye so backing to a platform edge does not put the view inside the floor, and eases in rather than snapping like a ray.
+## A boom in third person, nothing in first: dot-core's [GSCameraBoom] sweeps a sphere from the eye so backing to a platform edge does not put the view inside the floor, and eases in rather than snapping like a ray.
 func _place_camera(seated: bool) -> void:
 	if camera == null or player == null:
 		return
@@ -163,7 +163,7 @@ func _place_camera(seated: bool) -> void:
 			_fade.focus = null
 		return
 
-	_arm = DotCameraBoom.new()
+	_arm = GSCameraBoom.new()
 	_arm.name = "Chase"
 	_arm.spring_length = CHASE_BACK
 	# The level, never players: they are faded instead (a stand-in behind you would pull the
@@ -242,7 +242,7 @@ func _follow_look() -> void:
 
 
 ## Puts this game's three buttons and the slot onto a command.
-func _stamp(command: DotFpsCommand) -> void:
+func _stamp(command: GSFpsCommand) -> void:
 	if command == null:
 		return
 
@@ -284,22 +284,22 @@ func _present_aim() -> void:
 		hud.follow_hands(hands if hands != null and not is_spectating() else null)
 
 
-func _drive_view_model(command: DotFpsCommand) -> void:
+func _drive_view_model(command: GSFpsCommand) -> void:
 	if weapons == null or player == null:
 		return
 
-	var weapon_command := DotWeaponCommand.new()
-	weapon_command.set_button(DotWeaponCommand.BUTTON_AIM, _aim_sent())
+	var weapon_command := GSWeaponCommand.new()
+	weapon_command.set_button(GSWeaponCommand.BUTTON_AIM, _aim_sent())
 
 	if command != null:
 		weapon_command.set_button(
-			DotWeaponCommand.BUTTON_ATTACK, command.is_pressed(ScNetCommand.BUTTON_FIRE)
+			GSWeaponCommand.BUTTON_ATTACK, command.is_pressed(ScNetCommand.BUTTON_FIRE)
 		)
 		weapon_command.set_button(
-			DotWeaponCommand.BUTTON_ALT, command.is_pressed(ScNetCommand.BUTTON_ALT)
+			GSWeaponCommand.BUTTON_ALT, command.is_pressed(ScNetCommand.BUTTON_ALT)
 		)
 		weapon_command.set_button(
-			DotWeaponCommand.BUTTON_RELOAD, command.is_pressed(ScNetCommand.BUTTON_RELOAD)
+			GSWeaponCommand.BUTTON_RELOAD, command.is_pressed(ScNetCommand.BUTTON_RELOAD)
 		)
 		weapon_command.yaw = command.yaw
 		weapon_command.pitch = command.pitch
@@ -308,8 +308,8 @@ func _drive_view_model(command: DotFpsCommand) -> void:
 
 	var _outcome := weapons.simulate_tick(weapon_command, game.round_number * 100000 + Engine.get_physics_frames())
 
-	var busy := weapon_command.is_pressed(DotWeaponCommand.BUTTON_ATTACK) \
-		or weapon_command.is_pressed(DotWeaponCommand.BUTTON_RELOAD) \
+	var busy := weapon_command.is_pressed(GSWeaponCommand.BUTTON_ATTACK) \
+		or weapon_command.is_pressed(GSWeaponCommand.BUTTON_RELOAD) \
 		or weapons.arsenal.is_reloading() or weapons.arsenal.is_switching()
 	_drawn_quiet = 0.0 if busy else _drawn_quiet + 1.0 / float(maxi(game.tick_rate, 1))
 	var _corrected := correct_drawn()

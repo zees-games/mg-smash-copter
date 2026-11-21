@@ -42,7 +42,7 @@ func _watched_through_eyes() -> ScPlayer:
 
 	var mode := game.spectate.mode_of(player.player_id)
 
-	if mode != DotSpectatorView.Mode.FIRST_PERSON and mode != DotSpectatorView.Mode.FREEZE_CAM:
+	if mode != GSSpectatorView.Mode.FIRST_PERSON and mode != GSSpectatorView.Mode.FREEZE_CAM:
 		return null
 
 	return game.players.get(StringName(game.spectate.watching(player.player_id)))
@@ -78,7 +78,7 @@ func _drive_spectator_camera() -> bool:
 		view_model.visible = false
 
 	# Chase and death cameras pulled out of the course by dot-spectate, given the level.
-	var manager: DotSpectatorManager = game.spectate.manager
+	var manager: GSSpectatorManager = game.spectate.manager
 	if manager != null and manager.camera_world == null and game.physics != null:
 		manager.camera_world = camera.get_world_3d()
 		manager.camera_mask = _level_mask()
@@ -132,7 +132,7 @@ func is_roaming() -> bool:
 ## looked. The pose is kept in the manager too, so a later hand-over starts from it.
 func _fly_free_camera() -> Transform3D:
 	if _free_cam == null:
-		_free_cam = DotSpectatorFreeCam.new()
+		_free_cam = GSSpectatorFreeCam.new()
 		_free_cam.rules = game.spectate_rules
 		_free_cam.seed_from(camera.global_transform)
 
@@ -199,7 +199,7 @@ func spectate_step(direction: int) -> void:
 ## node), every body, every beacon; returns the bodies shown. Static so the net suite drives it.
 ## [param first_person]: [param own]'s camera is behind their eyes. [param alpha]: -1 asks the engine.
 static func present_frame(
-	p_net: DotNetManager,
+	p_net: GSNetManager,
 	p_game: ScGame,
 	own: ScPlayer,
 	first_person: bool,
@@ -235,7 +235,7 @@ static func present_frame(
 		var colour := Color.WHITE
 
 		if team >= 1:
-			colour = DotTeamSet.palette_colour(team - 1)
+			colour = GSTeamSet.palette_colour(team - 1)
 
 		# And whoever a spectator is looking out of: a camera inside somebody's head draws the
 		# inside of their head.
@@ -260,7 +260,7 @@ static func drawn_position(body: ScPlayer, remote: bool) -> Vector3:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Tab, M and a click taking the pointer back are the platform's (DotGameClient).
+	# Tab, M and a click taking the pointer back are the platform's (GSGameClient).
 	if event.is_action_pressed("ui_cancel"):
 		# Opens the settings when the menu left this Escape alone (a released pointer with nothing
 		# to click did half a job). A second Escape never reaches here: dot-ui's stack closes it.
@@ -304,7 +304,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## The phone's controls over the HUD (dot-mobile), on a touch device only. Fire and alt are the click's two buttons (out, they step who is watched); E asks to board; the arrows step the weapon wheel; TAB holds the scoreboard.
 func _build_touch() -> void:
-	if not DotPlatform.has_touch() or hud == null:
+	if not GSPlatform.has_touch() or hud == null:
 		return
 	_touch = ScTouch.new()
 	var _built: Variant = _touch.build(self, _active_sampler(), game.mobile_rules, {
@@ -366,7 +366,7 @@ func _touch_step(step: int, down: bool) -> void:
 		_slot = int(to)
 
 
-func _active_sampler() -> DotFpsSampler:
+func _active_sampler() -> GSFpsSampler:
 	if _offline and player != null:
 		return player.sampler
 	return _sampler
@@ -380,8 +380,8 @@ func _touch_ignores(position: Vector2) -> bool:
 ## A finger on the look or move half goes to the touch sampler.
 func _on_screen_touch(event: InputEvent) -> void:
 	var sampler := _active_sampler()
-	if sampler is DotFpsTouchSampler:
-		(sampler as DotFpsTouchSampler).set_screen_width(get_viewport().get_visible_rect().size.x)
+	if sampler is GSFpsTouchSampler:
+		(sampler as GSFpsTouchSampler).set_screen_width(get_viewport().get_visible_rect().size.x)
 	if sampler != null and not is_roaming():
 		sampler.handle_event(event)
 
@@ -468,7 +468,7 @@ func _handle_pointer(event: InputEvent) -> bool:
 ## The wheel (dot-menu's stock rows) walks the carried slots; true when it took the event.
 func _wheel_pressed(event: InputEvent) -> bool:
 	if _wheel == null:
-		_wheel = DotWeaponWheel.new()
+		_wheel = GSWeaponWheel.new()
 		_wheel.ring_provider = func() -> Array:
 			return weapons.arsenal.slots() if weapons != null and weapons.arsenal != null else []
 		_wheel.current_provider = func() -> Variant:
@@ -505,8 +505,8 @@ func describe() -> Dictionary:
 ## dot-game's chat box and microphone with this game's channels and voice format; also draws
 ## dot-server's own lines (votes, joins, `say`), which arrive on the client link. Static so a suite
 ## builds the same box the client does.
-static func new_chat() -> DotGameChatClient:
-	var box := DotGameChatClient.new()
+static func new_chat() -> GSGameChatClient:
+	var box := GSGameChatClient.new()
 	box.name = "Chat"
 	box.channels = [
 		{"id": ScServices.CH_ALL, "label": "All", "colour": Color(0.93, 0.94, 0.96)},
@@ -519,7 +519,7 @@ static func new_chat() -> DotGameChatClient:
 	# pixels off the bottom; six rows end 162 off it). A wrapped vote line takes two.
 	box.window_settings = {"max_lines": 6}
 	# A phone: three narrow rows in the corner, so a log line is not drawn across the thumbstick and the buttons.
-	if DotPlatform.has_touch():
+	if GSPlatform.has_touch():
 		box.window_settings = {"max_lines": 3, "width": 200.0, "margin_left": 12.0, "margin_bottom": 8.0}
 	return box
 

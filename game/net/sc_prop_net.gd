@@ -1,4 +1,4 @@
-extends DotNetBehaviour
+extends GSNetBehaviour
 
 ## What a prop replicates: where it is and how it is turned.
 ##
@@ -22,10 +22,10 @@ var net_rotation: Quaternion = Quaternion.IDENTITY
 
 
 func _register_net_vars() -> void:
-	replicate(&"net_position", DotNetVar.Type.VECTOR3_POSITION).interpolated()
+	replicate(&"net_position", GSNetVar.Type.VECTOR3_POSITION).interpolated()
 	# Smallest-three, nine bits an element. A tumbling crate's orientation does not need
 	# more: the error is under a degree, and nobody aligns a falling crate to a degree.
-	replicate(&"net_rotation", DotNetVar.Type.QUATERNION).bits(9).interpolated()
+	replicate(&"net_rotation", GSNetVar.Type.QUATERNION).bits(9).interpolated()
 
 
 ## Authority only. The body is moved by the physics server; this copies where it ended up
@@ -54,7 +54,7 @@ func _drawable() -> bool:
 ## Where this body is, for anything that does not care what kind of body it is.
 ##
 ## [b]A method and not a property read, because a chopper does not use [member
-## net_position].[/b] [ScCopterNet] replicates through [DotVehicleNetSync], whose layout is
+## net_position].[/b] [ScCopterNet] replicates through [GSVehicleNetSync], whose layout is
 ## three separate floats — so code that read `net_position` off a mirrored chopper got the
 ## zero it was constructed with, and a joining player was told every machine in the map was
 ## at the origin. It was the announcement to a late joiner that had it in

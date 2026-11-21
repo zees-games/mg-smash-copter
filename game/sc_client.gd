@@ -2,13 +2,13 @@ extends "sc_client_flashlight.gd"
 
 ## One local player, a camera and a HUD over an [ScGame], offline or against a server.
 ##
-## One client for both: offline is the same world class with `authoritative` true, and the whole difference is [ScNetBridge], so there is no second game to keep in step. Which half runs depends on a [DotClientLink] published under `dot_client_link` before the scene loads (`--offline` forces offline). First or third person is camera only, since the simulation is first-person and predictable in both.
+## One client for both: offline is the same world class with `authoritative` true, and the whole difference is [ScNetBridge], so there is no second game to keep in step. Which half runs depends on a [GSClientLink] published under `dot_client_link` before the scene loads (`--offline` forces offline). First or third person is camera only, since the simulation is first-person and predictable in both.
 
 
 func _ready() -> void:
 	# First, before anything is drawn: the platform raises the loading cover (held until the
 	# player exists and the camera is current) and finds the link.
-	platform = DotGameClient.new()
+	platform = GSGameClient.new()
 	platform.name = "Platform"
 	platform.force_offline = force_offline
 	# Offline the project is the content; the lock pins this game's own pack and would hold the cover on a fetch of itself.
@@ -31,7 +31,7 @@ func _ready() -> void:
 	var loaded := binder.load_layers()
 
 	if not loaded.ok:
-		DotLog.warn(CHANNEL, "falling back to defaults", {"why": loaded.error.message})
+		GSLog.warn(CHANNEL, "falling back to defaults", {"why": loaded.error.message})
 
 	link = platform.link as Node
 	_offline = platform.offline
@@ -55,15 +55,15 @@ func _ready() -> void:
 	if _offline:
 		_start_offline()
 	else:
-				# In `_ready`, which runs INSIDE `DotClientLink._load_scene`: the link tells the server it has loaded on the next line, so the netcode must already be up.
+				# In `_ready`, which runs INSIDE `GSClientLink._load_scene`: the link tells the server it has loaded on the next line, so the netcode must already be up.
 		var netted := _build_netcode()
-		DotLog.result(CHANNEL, "the netcode", netted)
+		GSLog.result(CHANNEL, "the netcode", netted)
 		if netted.ok:
 			_start_remote_workbench()
 
 
 ## The world: the field, its toys heard, held under the cover, with the dead's bodies.
-func _build_world(config: ScConfig, binder: DotGameConfigBinder) -> void:
+func _build_world(config: ScConfig, binder: GSGameConfigBinder) -> void:
 	game = ScGame.new()
 	game.name = "World"
 	game.config = config
@@ -86,7 +86,7 @@ func _build_world(config: ScConfig, binder: DotGameConfigBinder) -> void:
 	_build_ragdolls()
 
 
-## The load gate is [member DotGameClient.gate].
+## The load gate is [member GSGameClient.gate].
 ##
 ## Covered also means the round does not run: `ScGame.hold_clock` stops the phase clock, lean, cannon and falls and steps only the bodies. Connected, the server owns the round, and what is left to hold is this end's sampling and keys ([method _covered]).
 
@@ -100,7 +100,7 @@ func _hold_for_fields() -> void:
 
 
 func _build_ragdolls() -> void:
-	ragdolls = DotPlayerRagdolls.new()
+	ragdolls = GSPlayerRagdolls.new()
 	ragdolls.name = "Ragdolls"
 	ragdolls.rules = game.ragdoll_rules
 	ragdolls.sound_fn = _ragdoll_sound
@@ -162,7 +162,7 @@ func _start_offline() -> void:
 
 	# No bridge: the box still opens and still echoes, because a chat box that does nothing
 	# at all reads as broken rather than as absent.
-	DotLog.result(CHANNEL, "chat, offline", chat.attach(null))
+	GSLog.result(CHANNEL, "chat, offline", chat.attach(null))
 
 
 ## A solo stand-in's name: the server's list through dot-bot's pick, so solo and a server name
@@ -171,9 +171,9 @@ static func _bot_name(index: int) -> String:
 	var taken: Array = []
 
 	for i in range(index):
-		taken.append(DotBotNames.pick(taken, i, ScGame.BOT_NAMES))
+		taken.append(GSBotNames.pick(taken, i, ScGame.BOT_NAMES))
 
-	return DotBotNames.pick(taken, index, ScGame.BOT_NAMES)
+	return GSBotNames.pick(taken, index, ScGame.BOT_NAMES)
 
 
 ## Solo, `bot_difficulty` and every `bot_*` setting at the console, the names a server has, and
@@ -182,23 +182,23 @@ static func _bot_name(index: int) -> String:
 func _bind_bot_console() -> void:
 	if console != null:
 		var local: Array = console.sources()
-		if not local.is_empty() and local[0] is DotConsoleLocal:
+		if not local.is_empty() and local[0] is GSConsoleLocal:
 			var _icons := ScWeaponIcons.shared.bind_console(local[0])
 	if not _offline or console == null or game == null:
 		return
 
 	var sources: Array = console.sources()
 
-	if sources.is_empty() or not (sources[0] is DotConsoleLocal):
+	if sources.is_empty() or not (sources[0] is GSConsoleLocal):
 		return
 
-	var _bound := DotBotSettings.of(game).bind_console(sources[0])
+	var _bound := GSBotSettings.of(game).bind_console(sources[0])
 	var args := OS.get_cmdline_user_args()
 	var index := args.find("--bot_difficulty")
 
 	if index >= 0 and index + 1 < args.size():
-		DotLog.result(CHANNEL, "bot difficulty from the command line",
-			DotBotSettings.of(game).set_difficulty(args[index + 1]))
+		GSLog.result(CHANNEL, "bot difficulty from the command line",
+			GSBotSettings.of(game).set_difficulty(args[index + 1]))
 
 
 ## Follows the server's replicated cvars: this end traces, places its camera and predicts under them.
@@ -228,10 +228,10 @@ func _follow_server_cvars() -> void:
 		var _spectate := game.spectate_rules.follow_cvars(link)
 
 
-func _build_netcode() -> DotResult:
+func _build_netcode() -> GSResult:
 	_follow_server_cvars()
 
-	net = DotNetManager.new()
+	net = GSNetManager.new()
 	net.name = "Net"
 	net.is_server = false
 	net.local_peer_id = multiplayer.get_unique_id() if multiplayer != null else 2
@@ -239,7 +239,7 @@ func _build_netcode() -> DotResult:
 	# Empty: by default a stale `user://dot_net.json` silently overrides the game's tick rate.
 	net.config_file = ""
 
-	var config := DotNetConfig.new()
+	var config := GSNetConfig.new()
 	config.tick_rate = game.tick_rate
 	config.snapshot_rate = ScGame.NET_SNAPSHOT_RATE
 	config.enable_prediction = true
@@ -268,9 +268,9 @@ func _build_netcode() -> DotResult:
 	# Under the link, and NAMED the same as the server's — the name is the routing.
 	bridge.open_link(link)
 	# Before the seal and in the server's order (after the bridge), or the actions stay local.
-	DotLog.result(CHANNEL, "avatar action message", DotGameAvatarActionMessage.register(net))
+	GSLog.result(CHANNEL, "avatar action message", GSGameAvatarActionMessage.register(net))
 	# The server's order again (after the avatar frame): the remote workbench's frame.
-	workbench_remote = DotGameWorkbenchRemoteClient.attach(net)
+	workbench_remote = GSGameWorkbenchRemoteClient.attach(net)
 	net.messages.seal()
 
 	_connect_bridge()
@@ -280,7 +280,7 @@ func _build_netcode() -> DotResult:
 		bridge.rtt_source = func() -> float:
 			return float(maxi(0, int(link.call("ping_ms"))))
 
-	DotLog.result(CHANNEL, "chat and voice", chat.attach(bridge))
+	GSLog.result(CHANNEL, "chat and voice", chat.attach(bridge))
 
 	# READY only once the scene exists: anything sent before landed on a missing node.
 	if link != null and link.has_method("is_playing") and bool(link.call("is_playing")):
@@ -365,8 +365,8 @@ func _adopt(candidate: ScPlayer) -> void:
 
 	if hud != null:
 		hud.bind(game, player)
-	if player.sampler is DotFpsTouchSampler:
-		(player.sampler as DotFpsTouchSampler).ignore_fn = _touch_ignores
+	if player.sampler is GSFpsTouchSampler:
+		(player.sampler as GSFpsTouchSampler).ignore_fn = _touch_ignores
 
 
 func _on_seat_changed(session_id: int, seated: bool) -> void:
@@ -424,12 +424,12 @@ func _build_settings() -> void:
 	# decides, by the owner's `sv_map_menu_flag`, and anybody without it gets a vote instead
 	# (dot-vote's map menu, wired in [ScModule]).
 	platform.maps_rows_fn = func() -> Array: return game.layout_rows() if game != null else []
-	platform.maps_change_fn = func(id: StringName) -> DotResult: return game.change_layout_now(id)
+	platform.maps_change_fn = func(id: StringName) -> GSResult: return game.change_layout_now(id)
 	platform.maps_title = "Change layout"
 	platform.maps_noun = "layouts"
-	DotLog.result(CHANNEL, "the platform", platform.setup())
+	GSLog.result(CHANNEL, "the platform", platform.setup())
 	# The starter set: the equipped list needs a credential the client does not hold (the server reads it).
-	DotLog.result(CHANNEL, "avatar actions", platform.add_avatar_actions(net, _avatar_figure))
+	GSLog.result(CHANNEL, "avatar actions", platform.add_avatar_actions(net, _avatar_figure))
 	# Walking is off while the cover is up, a menu is open or a line is typed: the sampler
 	# polls the keyboard, and a player dragging a volume slider with the arrow keys would
 	# otherwise walk off whatever they had stopped on.
@@ -438,7 +438,7 @@ func _build_settings() -> void:
 
 	settings = platform.settings as ScSettings
 	_add_noblock_and_workbench()
-	console = platform.console as DotConsoleController
+	console = platform.console as GSConsoleController
 	if settings == null:
 		return
 
@@ -459,7 +459,7 @@ func _build_settings() -> void:
 		# The HUD in the menu's theme and at the player's HUD size, live.
 		if hud != null:
 			hud.follow_menu(settings.menu)
-		board = platform.board as DotMenuScoreboard
+		board = platform.board as GSMenuScoreboard
 		_dress_board()
 
 
@@ -480,7 +480,7 @@ func _build_audio() -> void:
 
 	if not ready_now.ok:
 		# A game that cannot make a noise still plays; it is the state this one shipped in.
-		DotLog.warn(CHANNEL, "no sound", {"why": ready_now.error.message})
+		GSLog.warn(CHANNEL, "no sound", {"why": ready_now.error.message})
 		remove_child(audio)
 		audio.queue_free()
 		audio = null
@@ -511,27 +511,27 @@ func _build_chat() -> void:
 ## dot-team's block rules followed from the server, and the F9 tuning panel where this process hosts the game.
 func _add_noblock_and_workbench() -> void:
 	if link != null:
-		DotLog.result(CHANNEL, "noblock", platform.add_noblock(game, Callable(game, "team_of_side")))
+		GSLog.result(CHANNEL, "noblock", platform.add_noblock(game, Callable(game, "team_of_side")))
 		return
-	var wb := DotGameWorkbench.new()
+	var wb := GSGameWorkbench.new()
 	wb.name = "Workbench"
 	wb.lazy_panel = true
 	wb.listen_host_fn = func() -> bool: return true
 	wb.config = {"enabled": false}
 	if game.config_binder != null:
-		for set: DotProfileSet in game.config_binder.profile_sets():
+		for set: GSProfileSet in game.config_binder.profile_sets():
 			wb.add_set(set, "Game settings: %s" % set.rel_path.trim_prefix("config_"))
 	var _fl := game.flashlight_conf()
 	if game.flashlight_binder != null:
-		for set: DotProfileSet in game.flashlight_binder.profile_sets():
+		for set: GSProfileSet in game.flashlight_binder.profile_sets():
 			wb.add_set(set, "Flashlight")
 	add_child(wb)
 	var started := wb.start()
-	DotLog.result(CHANNEL, "the workbench", started)
+	GSLog.result(CHANNEL, "the workbench", started)
 	if started.ok and game.config_binder != null:
 		game.config_binder.attach(wb.api.runtime)
 	if started.ok and game.flashlight_binder != null and wb.api != null:
-		game.flashlight_binder.attach(wb.api.runtime as DotProfileRuntime)
+		game.flashlight_binder.attach(wb.api.runtime as GSProfileRuntime)
 	platform.add_workbench(wb)
 
 
@@ -539,21 +539,21 @@ func _add_noblock_and_workbench() -> void:
 func _start_remote_workbench() -> void:
 	if workbench_remote == null:
 		return
-	var wb := DotGameWorkbench.new()
+	var wb := GSGameWorkbench.new()
 	wb.name = "Workbench"
 	wb.remote_client = workbench_remote
 	wb.remote_fn = func() -> bool: return true
 	wb.config = {"enabled": false}
 	if game.config_binder != null:
-		for set: DotProfileSet in game.config_binder.profile_sets():
+		for set: GSProfileSet in game.config_binder.profile_sets():
 			wb.add_set(set, "Game settings: %s" % set.rel_path.trim_prefix("config_"))
 	var _fl := game.flashlight_conf()
 	if game.flashlight_binder != null:
-		for set: DotProfileSet in game.flashlight_binder.profile_sets():
+		for set: GSProfileSet in game.flashlight_binder.profile_sets():
 			wb.add_set(set, "Flashlight")
 	add_child(wb)
 	var started := wb.start(game.ensure_runtime())
-	DotLog.result(CHANNEL, "the remote workbench", started)
+	GSLog.result(CHANNEL, "the remote workbench", started)
 	if not started.ok:
 		wb.queue_free()
 		return
@@ -595,7 +595,7 @@ func _physics_process(delta: float) -> void:
 	if _covered():
 		return
 
-	var move := _sampler.sample(delta) if _sampler != null else DotFpsCommand.new()
+	var move := _sampler.sample(delta) if _sampler != null else GSFpsCommand.new()
 	_stamp(move)
 
 		# Each pass is its own tick: `advance` has moved the clock by all of them, so `input_tick()` is the LAST one every pass, and a two-tick frame would send the second twice and the first never, leaving the predictor's replay stopped at the hole. Arithmetic here, not a new dot-net call, so a pack runs on whatever shell the player has.
@@ -693,7 +693,7 @@ func _process(delta: float) -> void:
 		weapons.drive_view(
 			Vector2(state.yaw, state.pitch),
 			speed,
-			state.mode != DotFpsState.Mode.AIR,
+			state.mode != GSFpsState.Mode.AIR,
 			state.crouch_fraction > 0.5
 		)
 

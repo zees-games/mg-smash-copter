@@ -1,8 +1,8 @@
-extends DotSpectatorHost
+extends GSSpectatorHost
 
 const ScPlayer := preload("sc_player.gd")
 
-## Where somebody who is out looks, and what the server lets them see. The policy (who may watch whom, through which camera) is the server's: an authoritative [DotSpectatorManager] there, and a MIRROR on a client told each change in a `SPECTATE` event; dot-spectate computes a transform and touches no camera.
+## Where somebody who is out looks, and what the server lets them see. The policy (who may watch whom, through which camera) is the server's: an authoritative [GSSpectatorManager] there, and a MIRROR on a client told each change in a `SPECTATE` event; dot-spectate computes a transform and touches no camera.
 ## No delay, as it would protect nothing: every player is always relevant (open air), so every client already receives every live position. `delay_ticks` stays 0 and the mirror's `advance` records no history.
 ## No `class_name`, like everything in this game; reached by preload from [ScGame], which hands it the two dictionaries it reads and a phase callable rather than being preloaded back (no cycle).
 
@@ -38,7 +38,7 @@ var in_showdown_fn: Callable = Callable()
 
 
 ## Builds the manager on [param p_rules], the world's own [member ScGame.spectate_rules].
-func bind(p_authoritative: bool, p_tick_rate: int, p_rules: DotSpectatorRules) -> DotResult:
+func bind(p_authoritative: bool, p_tick_rate: int, p_rules: GSSpectatorRules) -> GSResult:
 	authoritative = p_authoritative
 	tick_rate = p_tick_rate
 	rules = p_rules
@@ -59,7 +59,7 @@ func _channel() -> String:
 
 
 ## `force_camera` and `allow_roaming` are the operator's (`mp_forcecamera`, `mp_freeroam`), not set here.
-func _tune_rules(r: DotSpectatorRules) -> DotSpectatorRules:
+func _tune_rules(r: GSSpectatorRules) -> GSSpectatorRules:
 	# Dead players stay dead until the next round, so a list that included them would be
 	# a list of bodies at the kill height.
 	r.cycle_includes_dead = false
@@ -84,7 +84,7 @@ func on_died(
 
 	death(String(player_id), where, String(by), tick)
 
-	DotLog.debug(CHANNEL, "somebody who is out is watching", {
+	GSLog.debug(CHANNEL, "somebody who is out is watching", {
 		"player": String(player_id), "by": String(by), "fell": fell,
 	})
 
@@ -92,7 +92,7 @@ func on_died(
 ## Somebody is back in the world — a new round, or a join. They stop watching.
 func on_spawned(player_id: StringName) -> void:
 	if is_spectating(String(player_id)):
-		DotLog.debug(CHANNEL, "a new round ends watching", {"player": String(player_id)})
+		GSLog.debug(CHANNEL, "a new round ends watching", {"player": String(player_id)})
 
 	spawned(String(player_id))
 

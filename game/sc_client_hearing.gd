@@ -27,7 +27,7 @@ func _hear_the_world() -> void:
 	game.platform_struck.connect(
 		func(_index: int, at: Vector3, impulse: float, outcome: int) -> void:
 			var _heard := audio.on_impact(at, outcome, impulse))
-	game.props.spawned.connect(func(prop: DotPropInstance) -> void:
+	game.props.spawned.connect(func(prop: GSPropInstance) -> void:
 		var body := prop.body()
 		if body != null:
 			var _heard := audio.on_prop_appeared(body.global_position))
@@ -37,7 +37,7 @@ func _hear_the_world() -> void:
 		var armed: ScPlayer = game.players.get(id)
 		if armed == null or armed == player or armed.weapons == null:
 			return
-		armed.weapons.used.connect(func(outcome: DotWeaponOutcome) -> void:
+		armed.weapons.used.connect(func(outcome: GSWeaponOutcome) -> void:
 			if audio != null and is_instance_valid(armed):
 				var _heard := audio.on_weapon(
 					armed.global_position, ZeeWeaponNet.kind_number(outcome.kind)
@@ -109,4 +109,4 @@ func _fall(who: ScPlayer) -> void:
 		# The level is on `world`; a body lands on it and on nothing else.
 		game.ragdoll_rules.collision_mask = game.physics.layer_mask(&"world")
 	var velocity := who.controller.state.velocity if who.controller != null else Vector3.ZERO
-	var _body := ragdolls.spawn(who.figure, who.death if who.death != null else DotPlayerDeath.new(), velocity)
+	var _body := ragdolls.spawn(who.figure, who.death if who.death != null else GSPlayerDeath.new(), velocity)

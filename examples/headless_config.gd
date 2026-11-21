@@ -1,6 +1,6 @@
-extends DotGameCheckSuite
+extends GSGameCheckSuite
 
-## ScConfig through DotGameConfigBinder: fields, cvars, strict refusal, the diff, a shipped yml loading back, and the workbench round trip.
+## ScConfig through GSGameConfigBinder: fields, cvars, strict refusal, the diff, a shipped yml loading back, and the workbench round trip.
 ## Run: `godot --headless --path . res://examples/headless_config.tscn`
 
 const ScConfig := preload("../game/sc_config.gd")
@@ -17,7 +17,7 @@ var _finished := 0
 
 
 func _ready() -> void:
-	DotLog.set_level(DotLog.Level.FATAL)
+	GSLog.set_level(GSLog.Level.FATAL)
 	_run.call_deferred()
 
 
@@ -46,9 +46,9 @@ func _run() -> void:
 			"impact_hurt_radius", "impact_hurt_per_impulse", "fall_gravity_scale", "fall_tip_rate", "death_cam_seconds", "freeze_cam_seconds"]:
 		_check(keys.has(k), "%s is exposed" % k)
 
-	var console := DotConsole.new()
+	var console := GSConsole.new()
 	add_child(console)
-	binder.bind_cvars(console.cvar, DotConVar.FLAG_ARCHIVE, console.has_name)
+	binder.bind_cvars(console.cvar, GSConVar.FLAG_ARCHIVE, console.has_name)
 	console.set_cvar("sc_impact_hurt_radius", "0.6")
 	_check(is_equal_approx(config.impact_hurt_radius, 0.6) and binder.source_of("impact_hurt_radius") == "cvar", "a cvar writes the field")
 	_check(binder.diff_yaml().contains("impact_hurt_radius: 0.6"), "the diff names the edit")
@@ -101,18 +101,18 @@ func _shipped_yml() -> void:
 	yml.close()
 
 
-func _workbench(binder: DotGameConfigBinder, config: ScConfig, keys: PackedStringArray) -> void:
-	var wb := DotGameWorkbench.new()
+func _workbench(binder: GSGameConfigBinder, config: ScConfig, keys: PackedStringArray) -> void:
+	var wb := GSGameWorkbench.new()
 	wb.panel_mode = 1
 	wb.config = {"enabled": false}
-	for pset: DotProfileSet in binder.profile_sets():
+	for pset: GSProfileSet in binder.profile_sets():
 		wb.add_set(pset, pset.rel_path)
 	add_child(wb)
 	_check(wb.start().ok, "the workbench starts")
 	binder.attach(wb.api.runtime)
 	var listed := PackedStringArray()
 	for kind: String in wb.api.kinds():
-		var lg: DotResult = wb.api.handle(DotGameWorkbench.LOCAL_ACTOR, {"op": "get", "kind": kind, "id": binder.profile_id})
+		var lg: GSResult = wb.api.handle(GSGameWorkbench.LOCAL_ACTOR, {"op": "get", "kind": kind, "id": binder.profile_id})
 		if lg.ok:
 			listed.append_array(PackedStringArray((lg.value as Dictionary).get("values", {}).keys()))
 	var missing := PackedStringArray()
@@ -120,7 +120,7 @@ func _workbench(binder: DotGameConfigBinder, config: ScConfig, keys: PackedStrin
 		if not listed.has(k):
 			missing.append(k)
 	_check(missing.is_empty() and binder.profile_sets().size() == 3, "the workbench lists all %d keys over %d files" % [keys.size(), binder.profile_sets().size()], ",".join(missing))
-	var res: DotResult = wb.api.handle(DotGameWorkbench.LOCAL_ACTOR, {"op": "set", "kind": "config_round", "id": binder.profile_id, "key": "impact_loss", "value": 0.3})
+	var res: GSResult = wb.api.handle(GSGameWorkbench.LOCAL_ACTOR, {"op": "set", "kind": "config_round", "id": binder.profile_id, "key": "impact_loss", "value": 0.3})
 	_check(res.ok and is_equal_approx(config.impact_loss, 0.3), "a workbench edit reaches the live config", "" if res.ok else res.error.message)
 	var files: Dictionary = wb.exporter.call("collect")
 	var text: String = files.get("cfg/game/%s/config_round/game.yml" % GAME, "")
@@ -142,9 +142,9 @@ func _probe() -> void:
 	binder.strict = true
 	binder.roots = PackedStringArray([ProjectSettings.globalize_path(ROOT)])
 	var loaded := binder.load_layers()
-	var console := DotConsole.new()
+	var console := GSConsole.new()
 	add_child(console)
-	binder.bind_cvars(console.cvar, DotConVar.FLAG_ARCHIVE, console.has_name)
+	binder.bind_cvars(console.cvar, GSConVar.FLAG_ARCHIVE, console.has_name)
 	print("PROBE ok=%s surv=%s surv_src=%s cols=%s cols_src=%s cvar=%s cannon=%s cannon_src=%s grav=%s grav_src=%s" % [
 		loaded.ok, config.survival_seconds, binder.source_of("survival_seconds"), config.columns, binder.source_of("columns"),
 		console.find_cvar("sc_columns").get_string(), config.cannon_interval, binder.source_of("cannon_interval"),
@@ -173,12 +173,12 @@ func _layers() -> void:
 	OS.unset_environment("SC_COLUMNS")
 	_write_root("game/%s/config_round/game.yml" % GAME, "cannon_interval: 2.0\n")
 	_check(_child().contains("PROBE ok=false"), "strict: a key in the wrong file is refused")
-	var removed := DotPaths.remove_tree(ProjectSettings.globalize_path(ROOT))
+	var removed := GSPaths.remove_tree(ProjectSettings.globalize_path(ROOT))
 	_check(removed.ok and not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(ROOT)), "the per-process cfg fixture directory is removed", ROOT if removed.ok else str(removed.error))
 
 
 ## The shipped cfg files hold every key, in step with ScConfig, and change nothing as they are.
-func _templates(binder: DotGameConfigBinder) -> void:
+func _templates(binder: GSGameConfigBinder) -> void:
 	var files := binder.template_files()
 	_check(files.size() == 3, "three shipped cfg files", str(files.size()))
 	var stale := PackedStringArray()

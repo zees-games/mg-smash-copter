@@ -1,4 +1,4 @@
-extends DotGameModule
+extends GSGameModule
 
 const ScNetBridge := preload("net/sc_net_bridge.gd")
 const ScServices := preload("sc_services.gd")
@@ -21,17 +21,17 @@ const ROSTER_INTERVAL := 2.0
 
 
 ## The `sc_bots` cvar, held so the tick does not look it up sixty times a second.
-var _bots: DotConVar = null
+var _bots: GSConVar = null
 
 ## dot-workbench over the config and the block rules; the F9 panel off a dedicated server, the HTTP page only with `workbench.enabled`.
-var workbench: DotGameWorkbench = null
+var workbench: GSGameWorkbench = null
 
 ## `mp_forcecamera`, kept so the deprecated `sc_spectate_camera` writes through it.
 var _force_camera_cvar: Object = null
 
 ## How many stand-ins, from how many people: dot-server's one rule for every game. See
 ## [method _keep_the_round_full].
-var _quota: DotBotQuota = null
+var _quota: GSBotQuota = null
 
 var _since_roster_check: float = 0.0
 
@@ -56,7 +56,7 @@ static func _number(value: float) -> String:
 
 
 func _on_say_requested(peer_id: int, channel_id: StringName, text: String) -> void:
-	var said: DotResult = services.call("say", peer_id, channel_id, text)
+	var said: GSResult = services.call("say", peer_id, channel_id, text)
 
 	if said.ok:
 		return
@@ -78,12 +78,12 @@ func _on_chat_command(peer_id: int, command: String, args: PackedStringArray) ->
 		return
 
 	for reply in server.run_command_as_uid(
-		session.uid(), command, args, DotCmdContext.Source.CHAT
+		session.uid(), command, args, GSCmdContext.Source.CHAT
 	):
 		bridge.call("notice", peer_id, reply)
 
 
-func _cmd_say(ctx: DotCmdContext) -> void:
+func _cmd_say(ctx: GSCmdContext) -> void:
 	var text := ctx.rest()
 
 	if text.strip_edges() == "":
@@ -96,14 +96,14 @@ func _cmd_say(ctx: DotCmdContext) -> void:
 
 	var announced: Variant = services.get("chat").call("announce", text, ScServices.CH_ALL)
 
-	if announced is DotResult and not (announced as DotResult).ok:
+	if announced is GSResult and not (announced as GSResult).ok:
 		ctx.reply_error(announced)
 		return
 
 	ctx.reply("Said: %s" % text)
 
 
-func _cmd_status(ctx: DotCmdContext) -> void:
+func _cmd_status(ctx: GSCmdContext) -> void:
 	var world := game as ScGame
 
 	if world == null:
@@ -113,7 +113,7 @@ func _cmd_status(ctx: DotCmdContext) -> void:
 	ctx.reply_lines(world.describe_lines())
 
 
-func _cmd_net(ctx: DotCmdContext) -> void:
+func _cmd_net(ctx: GSCmdContext) -> void:
 	if bridge == null:
 		ctx.reply("No bridge; this server is not replicating anything.")
 		return
@@ -124,7 +124,7 @@ func _cmd_net(ctx: DotCmdContext) -> void:
 		ctx.reply_lines(services.call("describe_lines"))
 
 
-func _cmd_layouts(ctx: DotCmdContext) -> void:
+func _cmd_layouts(ctx: GSCmdContext) -> void:
 	var world := game as ScGame
 
 	if world == null:
@@ -142,7 +142,7 @@ func _cmd_layouts(ctx: DotCmdContext) -> void:
 	ctx.reply_lines(lines)
 
 
-func _cmd_specials(ctx: DotCmdContext) -> void:
+func _cmd_specials(ctx: GSCmdContext) -> void:
 	var world := game as ScGame
 
 	if world == null:

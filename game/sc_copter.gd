@@ -1,7 +1,7 @@
-extends DotVehicleChassis
+extends GSVehicleChassis
 
 ## The chopper: a fourth kind of vehicle, because neither of dot-vehicle's two is one.
-## [DotVehicleHover] returns early with nothing under it (a helicopter's whole life) and [DotVehicleWheeled] needs wheels, so `DotVehicleDef.chassis_script_path` names this script by PATH; nothing in dot-vehicle is forked.
+## [GSVehicleHover] returns early with nothing under it (a helicopter's whole life) and [GSVehicleWheeled] needs wheels, so `GSVehicleDef.chassis_script_path` names this script by PATH; nothing in dot-vehicle is forked.
 ## Controls: `command.throttle` collective, `steer` pedals, `brake` rotor brake; the cyclic (Vector2) rides in `vehicle.meta.cyclic`, as widening dot-vehicle's wire-shaped command would break every game. Not predicted: Godot's solver is not reproducible across machines.
 
 const CHANNEL := "sc.copter"
@@ -44,12 +44,12 @@ var _at_ceiling: bool = false
 var _inverted: bool = false
 
 
-func _setup() -> DotResult:
+func _setup() -> GSResult:
 	var body := vehicle.body()
 
 	if body == null:
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"A chopper needs a RigidBody3D at the root of its scene.",
 			String(vehicle.def.id) if vehicle.def != null else "?"
 		)
@@ -63,10 +63,10 @@ func _setup() -> DotResult:
 	# The linear damping is the tunables' (`linear_damp`), written by dot-vehicle before this.
 	body.angular_damp = 2.4
 
-	return DotResult.success(self)
+	return GSResult.success(self)
 
 
-func _drive(command: DotVehicleCommand, delta: float) -> void:
+func _drive(command: GSVehicleCommand, delta: float) -> void:
 	var body := vehicle.body()
 
 	if body == null or delta <= 0.0:
@@ -85,7 +85,7 @@ func _drive(command: DotVehicleCommand, delta: float) -> void:
 
 ## The rotor. Collective up climbs, collective down drops it out of the sky.
 ## At zero collective it hovers exactly: a neutral that is a slow sink is fought the whole time a player is trying to aim.
-func _apply_lift(body: RigidBody3D, command: DotVehicleCommand, weight: float) -> void:
+func _apply_lift(body: RigidBody3D, command: GSVehicleCommand, weight: float) -> void:
 	var collective := clampf(command.throttle, -1.0, 1.0)
 	var factor := 1.0 + collective * (maxf(lift_ratio, 1.01) - 1.0)
 
@@ -102,7 +102,7 @@ func _apply_lift(body: RigidBody3D, command: DotVehicleCommand, weight: float) -
 
 	if over != _at_ceiling:
 		_at_ceiling = over
-		DotLog.debug(CHANNEL, "a chopper reached the ceiling" if over else "a chopper came down from the ceiling", {
+		GSLog.debug(CHANNEL, "a chopper reached the ceiling" if over else "a chopper came down from the ceiling", {
 			"vehicle": _name(), "ceiling": "%.1f m" % ceiling,
 		})
 
@@ -147,7 +147,7 @@ func _apply_cyclic(body: RigidBody3D, transform: Transform3D, mass: float) -> vo
 	body.apply_torque(pitch_axis * cyclic.y * CYCLIC_TIP * mass * 3.2)
 
 
-## The pedals. [member DotVehicleChassis.steering] is already smoothed by the base.
+## The pedals. [member GSVehicleChassis.steering] is already smoothed by the base.
 func _apply_yaw(body: RigidBody3D, delta: float) -> void:
 	if absf(steering) < 0.0001:
 		return
@@ -172,7 +172,7 @@ func _apply_levelling(body: RigidBody3D, transform: Transform3D) -> void:
 	# rolled is the reason anybody reads this.
 	if inverted != _inverted:
 		_inverted = inverted
-		DotLog.debug(CHANNEL, "a chopper went over on its back" if inverted else "a chopper righted itself", {
+		GSLog.debug(CHANNEL, "a chopper went over on its back" if inverted else "a chopper righted itself", {
 			"vehicle": _name(),
 		})
 

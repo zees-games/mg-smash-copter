@@ -19,8 +19,8 @@ func player_for_peer(peer_id: int) -> int:
 	return int(_player_of_peer.get(peer_id, 0))
 
 
-func _build_entity(player: ScPlayer, peer_id: int) -> DotNetIdentity:
-	# The behaviour is added BEFORE the identity: [DotNetIdentity] collects behaviours in
+func _build_entity(player: ScPlayer, peer_id: int) -> GSNetIdentity:
+	# The behaviour is added BEFORE the identity: [GSNetIdentity] collects behaviours in
 	# `_ready` by walking the subtree, and one added afterwards would never be found.
 	var behaviour := ScPlayerNet.new()
 	behaviour.name = "Net"
@@ -28,13 +28,13 @@ func _build_entity(player: ScPlayer, peer_id: int) -> DotNetIdentity:
 	behaviour.bridge = self
 	player.add_child(behaviour)
 
-	var identity := DotNetIdentity.new()
+	var identity := GSNetIdentity.new()
 	identity.name = "Identity"
 	identity.owner_peer_id = peer_id
 	# SHARED: the server corrects, the owner predicts. SERVER would put a player's own
 	# movement a round trip behind their keys, which in this game is the difference between
 	# stepping off a platform and being told you already did.
-	identity.authority = DotNetIdentity.Authority.SHARED
+	identity.authority = GSNetIdentity.Authority.SHARED
 	# [b]Always, and the map is why.[/b] Interest management is a saving where most players are out of sight;
 	# this one is a field of platforms in open air with nothing taller than a person on it, so everybody can
 	# see everybody and culling would only ever produce a player who vanishes in mid-air.
@@ -100,17 +100,17 @@ func _replicate_platform(index: int) -> void:
 	behaviour.platforms = game.platforms
 	deck.body.add_child(behaviour)
 
-	var identity := DotNetIdentity.new()
+	var identity := GSNetIdentity.new()
 	identity.name = "Identity"
 	identity.owner_peer_id = 0
-	identity.authority = DotNetIdentity.Authority.SERVER
+	identity.authority = GSNetIdentity.Authority.SERVER
 	identity.always_relevant = true
 	deck.body.add_child(identity)
 
 	var registered := net.registry.register(identity, 0, net.clock.tick, net.config)
 
 	if not registered.ok:
-		DotLog.warn(CHANNEL, "could not replicate a platform", {
+		GSLog.warn(CHANNEL, "could not replicate a platform", {
 			"index": index, "error": str(registered.error),
 		})
 		return
@@ -123,20 +123,20 @@ func _replicate_platform(index: int) -> void:
 
 
 ## The half a prop, a chopper and a platform do identically.
-func _replicate_body(behaviour: DotNetBehaviour, body: Node3D) -> int:
-	var identity := DotNetIdentity.new()
+func _replicate_body(behaviour: GSNetBehaviour, body: Node3D) -> int:
+	var identity := GSNetIdentity.new()
 	identity.name = "Identity"
 	identity.owner_peer_id = 0
 	# SERVER, not SHARED: nothing about a rigid body is predicted here, so there is no owner
 	# to share with.
-	identity.authority = DotNetIdentity.Authority.SERVER
+	identity.authority = GSNetIdentity.Authority.SERVER
 	identity.always_relevant = true
 	body.add_child(identity)
 
 	var registered := net.registry.register(identity, 0, net.clock.tick, net.config)
 
 	if not registered.ok:
-		DotLog.warn(CHANNEL, "could not replicate a body", {"error": str(registered.error)})
+		GSLog.warn(CHANNEL, "could not replicate a body", {"error": str(registered.error)})
 		return 0
 
 	_bodies[identity.net_id] = behaviour
@@ -185,7 +185,7 @@ func _clock_body() -> PackedByteArray:
 ## only asked for on a join.
 func _kind_of(behaviour: ScPropNet) -> StringName:
 	if behaviour is ScCopterNet:
-		var copter: DotVehicleInstance = (behaviour as ScCopterNet).vehicle
+		var copter: GSVehicleInstance = (behaviour as ScCopterNet).vehicle
 		return copter.def.id if copter != null and copter.def != null else ScContent.COPTER
 
 	var prop := game.props.prop_for_node(behaviour.prop) if game.props != null else null
@@ -210,7 +210,7 @@ func _join_body(session_id: int) -> PackedByteArray:
 ## Tells everybody who somebody is now: a late profile, a wardrobe change, a rename. Server only. Through JOIN,
 ## which a client already applies to a player it has and which is idempotent, where a second message would be a
 ## second order to race. An empty [param display_name] keeps the current one.
-func refresh_player(session_id: int, display_name: String, avatar: DotAvatar) -> bool:
+func refresh_player(session_id: int, display_name: String, avatar: GSAvatar) -> bool:
 	if net == null or not net.is_server or game == null:
 		return false
 
@@ -286,7 +286,7 @@ func _register_toys() -> void:
 ## A toy's behaviour and identity under [param parent], registered under [param net_id] (0
 ## allocates: the server); null when the registry refused it. The behaviour before the
 ## identity, which collects behaviours in its `_ready`.
-func _toy_entity(toy: DotPropBody, parent: Node, net_id: int) -> ScToyNet:
+func _toy_entity(toy: GSPropBody, parent: Node, net_id: int) -> ScToyNet:
 	var behaviour := ScToyNet.new()
 	behaviour.name = "Net"
 	behaviour.toy = toy
@@ -298,14 +298,14 @@ func _toy_entity(toy: DotPropBody, parent: Node, net_id: int) -> ScToyNet:
 	at.add_child(behaviour)
 	if net.is_server:
 		behaviour.pull()
-	var identity := DotNetIdentity.new()
+	var identity := GSNetIdentity.new()
 	identity.name = "Identity"
 	identity.owner_peer_id = 0
-	identity.authority = DotNetIdentity.Authority.SERVER
+	identity.authority = GSNetIdentity.Authority.SERVER
 	at.add_child(identity)
 	var registered := net.registry.register(identity, net_id, net.clock.tick, net.config)
 	if not registered.ok:
-		DotLog.warn(CHANNEL, "could not replicate a toy", {"toy": _toy_nets.size(), "error": str(registered.error)})
+		GSLog.warn(CHANNEL, "could not replicate a toy", {"toy": _toy_nets.size(), "error": str(registered.error)})
 		at.remove_child(behaviour)
 		at.remove_child(identity)
 		behaviour.queue_free()
@@ -351,7 +351,7 @@ func _pair_pending_toys() -> void:
 		return
 	var box := game.toys if game.toys != null and _toys_map == FIELD else null
 	if box != null and box.count() != _toy_nets.size():
-		DotLog.warn(CHANNEL, "the server's map has a different number of toys", {"server": _toy_nets.size(), "here": box.count()})
+		GSLog.warn(CHANNEL, "the server's map has a different number of toys", {"server": _toy_nets.size(), "here": box.count()})
 	for i in range(_toy_nets.size()):
 		var behaviour: ScToyNet = _toy_nets[i]
 		behaviour.toy = box.toy(i) if box != null else null

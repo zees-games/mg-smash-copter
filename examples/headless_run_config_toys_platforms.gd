@@ -19,8 +19,8 @@ func _test_config() -> void:
 	_check(teams.validate().ok, "and fit once the corners are that far out: no ceiling on sides")
 	teams.team_count = 1
 	_check(not teams.validate().ok, "one side is refused")
-	_check(DotTeamSet.palette_name(6) == "Team 7" and DotTeamSet.palette_colour(6) != DotTeamSet.palette_colour(5)
-		and DotTeamSet.palette_colour(7) != DotTeamSet.palette_colour(6), "past six sides, names and colours are made")
+	_check(GSTeamSet.palette_name(6) == "Team 7" and GSTeamSet.palette_colour(6) != GSTeamSet.palette_colour(5)
+		and GSTeamSet.palette_colour(7) != GSTeamSet.palette_colour(6), "past six sides, names and colours are made")
 
 	var overlapping := ScConfig.new()
 	overlapping.column_pitch = overlapping.platform_size - 1.0
@@ -123,8 +123,8 @@ func _test_layouts() -> void:
 	_check(ids.size() == layouts.size(), "no two layouts share an id")
 
 	# Seeded, so two servers lay out the same round. The whole reason a seed exists.
-	var one := DotRandomStream.new(4242, &"layout")
-	var two := DotRandomStream.new(4242, &"layout")
+	var one := GSRandomStream.new(4242, &"layout")
+	var two := GSRandomStream.new(4242, &"layout")
 	var picks_agree := true
 
 	for _i in range(24):
@@ -184,7 +184,7 @@ func _test_the_toys() -> void:
 	_check(off.is_empty(), "two seconds on, every ball is still on its platform", "; ".join(off))
 	var ball := box.toy(0)
 	var b0 := ball.body.global_position
-	var shot := DotShot.make(&"test", 0, 0, 0)
+	var shot := GSShot.make(&"test", 0, 0, 0)
 	shot.origin = b0 + Vector3(0.0, 0.0, 5.0)
 	shot.direction = Vector3(0.0, 0.0, -1.0)
 	shot.damage = 25.0
@@ -497,7 +497,7 @@ func _test_an_impact() -> void:
 	_finished()
 
 
-## A stand-in in the showdown turns and fires like a person, through dot-bot's [DotBotAim] and [method ScGame._drive_bots].
+## A stand-in in the showdown turns and fires like a person, through dot-bot's [GSBotAim] and [method ScGame._drive_bots].
 ## The turn is held to `bot_turn_rate` and the first shot to `bot_reaction`, and it still hits.
 func _test_a_stand_in_aims() -> void:
 	_section("a stand-in turns, waits and then hits, at bot_difficulty")
@@ -531,12 +531,12 @@ func _test_a_stand_in_aims() -> void:
 	await _step(game, 2)
 
 	shooter.is_bot = true
-	var profile := DotBotSettings.of(game).profile
+	var profile := GSBotSettings.of(game).profile
 	var before := target.health.health
 	var fastest := 0.0
 	var hit_after := -1.0
 
-	var aim: DotBotAim = null
+	var aim: GSBotAim = null
 	var waited := NAN
 
 	# Stopped at the first hit: a kill ends the round, and the next one is a new aim.
@@ -591,9 +591,9 @@ func _test_sides_agree() -> void:
 ## end, the banner. An empty weapon id (a fall) shows the words only.
 func _killcam_icon(client: ScClient, game: ScGame, victim: ScPlayer) -> void:
 	var other: ScPlayer = game.players[&"other"]
-	var wire := ScEvents.read_death(DotNetReader.new(ScEvents.write_death(5, 0, ScGame.DIED_SHOT, null, &"pistol")))
+	var wire := ScEvents.read_death(GSNetReader.new(ScEvents.write_death(5, 0, ScGame.DIED_SHOT, null, &"pistol")))
 	_check(wire["weapon_id"] == &"pistol", "a DEATH carries the weapon id")
-	var unarmed := ScEvents.read_death(DotNetReader.new(ScEvents.write_death(5, 0, ScGame.DIED_FELL)))
+	var unarmed := ScEvents.read_death(GSNetReader.new(ScEvents.write_death(5, 0, ScGame.DIED_FELL)))
 	_check(unarmed["weapon_id"] == &"", "and none reads as empty")
 	var clock := [0.0]
 	var kc := ScKillcam.new()
@@ -619,12 +619,12 @@ func _killcam_icon(client: ScClient, game: ScGame, victim: ScPlayer) -> void:
 		kc.buffer.clear()
 	client.killcam = null
 	kc.camera_mode_fn = func() -> int: return client._killcam_camera
-	_check(kc.camera_mode_fn.call() == DotKillViewRules.Camera.EYE, "the killcam camera is the eye until the server says")
+	_check(kc.camera_mode_fn.call() == GSKillViewRules.Camera.EYE, "the killcam camera is the eye until the server says")
 	client._on_killcam_cvar("mp_killview_camera", "1")
-	_check(kc.camera_mode_fn.call() == DotKillViewRules.Camera.BEHIND, "mp_killview_camera 1 puts the killcam camera behind the killer")
-	var framing := DotKillcamFraming.new(null, 1)
+	_check(kc.camera_mode_fn.call() == GSKillViewRules.Camera.BEHIND, "mp_killview_camera 1 puts the killcam camera behind the killer")
+	var framing := GSKillcamFraming.new(null, 1)
 	var eye := Transform3D(Basis.IDENTITY, Vector3(0, 1.6, 0))
-	var placed: Dictionary = framing.place(DotKillViewRules.Camera.BEHIND, eye, 75.0, Vector3(0, 1.2, -20))
+	var placed: Dictionary = framing.place(GSKillViewRules.Camera.BEHIND, eye, 75.0, Vector3(0, 1.2, -20))
 	_check((placed["transform"] as Transform3D).origin.z > 1.0, "the behind camera sits behind the killer's eye")
 	kc.free()
 
@@ -645,7 +645,7 @@ func _test_falling_off() -> void:
 
 	_check(player.is_alive(), "they start up")
 	_check(player.entity_id != 0, "with an entity id")
-	_check(DotEntity.is_kind(player.entity_id, DotEntity.KIND_PLAYER),
+	_check(GSEntity.is_kind(player.entity_id, GSEntity.KIND_PLAYER),
 		"and the id says what kind of thing they are")
 
 	# Put them under the floor and step once. A height comparison cannot be stepped over,
@@ -661,12 +661,12 @@ func _test_falling_off() -> void:
 	# How the body falls: the server picked it, it travels on DEATH, and a client builds it from
 	# the figure it draws. A death with no figure drawn here is nothing to build, which _fall
 	# must survive.
-	_check(player.death != null and DotPlayerDeathReactions.stock().has(player.death.reaction),
+	_check(player.death != null and GSPlayerDeathReactions.stock().has(player.death.reaction),
 		"the server picked how the body falls", str(player.death.describe()) if player.death != null else "none")
-	var carried: Dictionary = ScEvents.read_death(DotNetReader.new(ScEvents.write_death(5, 0, ScGame.DIED_FELL, player.death)))
-	_check(bool(carried["ok"]) and carried.has("death") and (carried["death"] as DotPlayerDeath).reaction == player.death.reaction,
+	var carried: Dictionary = ScEvents.read_death(GSNetReader.new(ScEvents.write_death(5, 0, ScGame.DIED_FELL, player.death)))
+	_check(bool(carried["ok"]) and carried.has("death") and (carried["death"] as GSPlayerDeath).reaction == player.death.reaction,
 		"DEATH carries it")
-	var bare := ScEvents.read_death(DotNetReader.new(ScEvents.write_death(5, 0, ScGame.DIED_FELL)))
+	var bare := ScEvents.read_death(GSNetReader.new(ScEvents.write_death(5, 0, ScGame.DIED_FELL)))
 	_check(bool(bare["ok"]) and not bare.has("death"), "and a DEATH without it still reads")
 	var client := ScClient.new()
 	client.game = game

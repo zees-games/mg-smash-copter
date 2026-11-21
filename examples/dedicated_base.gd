@@ -1,4 +1,4 @@
-extends DotGameCheckSuite
+extends GSGameCheckSuite
 
 var _sections_entered := 0
 var _sections_finished := 0
@@ -13,8 +13,8 @@ func _finished() -> void:
 	_sections_finished += 1
 
 
-## [b]The one line that leaked a whole script graph at exit.[/b] A script that `extends DotNetMessage`
-## and preloads ITSELF, loaded from a module a [DotServer] loads, leaves every script alive at exit
+## [b]The one line that leaked a whole script graph at exit.[/b] A script that `extends GSNetMessage`
+## and preloads ITSELF, loaded from a module a [GSServer] loads, leaves every script alive at exit
 ## on Godot 4.7.2. That is reported after `quit()`, so this checks the cause: the source text.
 func _test_no_message_preloads_itself() -> void:
 	_section("exiting clean")
@@ -61,7 +61,7 @@ func _test_no_message_preloads_itself() -> void:
 func _extends_message(source: String) -> bool:
 	for line in source.split("\n"):
 		if line.begins_with("extends "):
-			return line.contains("DotNetMessage") or line.contains("dot_net_message.gd")
+			return line.contains("GSNetMessage") or line.contains("dot_net_message.gd")
 	return false
 
 

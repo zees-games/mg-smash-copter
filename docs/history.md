@@ -10,7 +10,7 @@ Kept because each could come back and the story is how it looks. None of them er
 - **The map came back white, and the floor was four hundred metres of red.** Lighting tuned for the wrong renderer; the hazard colour on the one surface nobody survives filled ninety percent of every frame.
 - **The bridge held freed nodes for ever.** A platform's net behaviour is a child of its body and the bridge only cleaned its table on the rebuild, after the free. Hence `world_clearing` and the validity guard. A client rebuilding its field had the same leak in the registry.
 - **A mid-round joiner was never placed**: they started at the origin, forty metres down inside the kill floor, died on their first tick, and on a two-team server ended the round, which re-laid the field and freed every platform from inside the netcode's loop. The suite saw it as a flood of "previously freed instance", three layers from the cause.
-- **Nobody could be shot**: no `DotHitboxSet` and no `combat.trace`, found from dot-combat's boot warning. **A teleport's yaw was taken back** by the motor reading the command. **Lag compensation was on with nothing wired.**
+- **Nobody could be shot**: no `GSHitboxSet` and no `combat.trace`, found from dot-combat's boot warning. **A teleport's yaw was taken back** by the motor reading the command. **Lag compensation was on with nothing wired.**
 - **A seat made the floor survivable**: the fall check skipped riders, whose own position stops moving while carried.
 - **Every round leaked a lag-compensation track per platform**, re-created by a `server_tick` holding the identity list from before the old field went.
 - **The camera moved only on a tick** (it hung off the node).
@@ -27,7 +27,7 @@ Kept because each could come back and the story is how it looks. None of them er
 
 ## The stats warning that was dot-stats' (cross-repo)
 
-`dedicated` printed a new WARN that an unpublished stat would not be reported, on a server that reports nothing: `DotStatsTracker.end()` queued a leaver's delta into the reporter even with reporting off. Publishing the stat to silence it would have been changing a decision to hide a log line; it was fixed in dot-stats instead.
+`dedicated` printed a new WARN that an unpublished stat would not be reported, on a server that reports nothing: `GSStatsTracker.end()` queued a leaver's delta into the reporter even with reporting off. Publishing the stat to silence it would have been changing a decision to hide a log line; it was fixed in dot-stats instead.
 
 ## dot-match's spawn warning (cross-repo)
 

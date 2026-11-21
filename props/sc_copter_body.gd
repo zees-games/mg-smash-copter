@@ -107,7 +107,7 @@ func _build_rotors() -> void:
 		_tail_rotor.add_child(blade)
 
 
-## Where a rider is put. [DotVehicleSeat.attach_path] names these by node path.
+## Where a rider is put. [GSVehicleSeat.attach_path] names these by node path.
 func _build_seats() -> void:
 	var pilot := Marker3D.new()
 	pilot.name = "PilotSeat"

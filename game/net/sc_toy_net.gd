@@ -1,11 +1,11 @@
-extends DotNetBehaviour
+extends GSNetBehaviour
 
-## One of the map's toys on the wire (dot-props' [DotPropBody]): where its moving part is and
+## One of the map's toys on the wire (dot-props' [GSPropBody]): where its moving part is and
 ## how it is turned, whether it is on, and how often it has been used.
 ##
 ## [b]The server's physics, never predicted[/b], for the reason game-fatal-contact's FcProps gives: Godot's
 ## rigid-body solver is not the same on two machines. The client's toy is frozen and posed from
-## these ([method DotPropBody.show_state]), so a see-saw a person stands on there is the plank the
+## these ([method GSPropBody.show_state]), so a see-saw a person stands on there is the plank the
 ## server tipped, an interpolation behind, and a roundabout's spin is measured from the poses.
 ##
 ## [b]Paired by index[/b]: both ends build the same toys in the same order from the map, so the
@@ -16,7 +16,7 @@ extends DotNetBehaviour
 ## a lost packet cost nothing but a late sound. Eight bits; it wraps. game-hide-n-seek's
 ## HsToyNet, game-playlot's PlaylotToyNet and game-fatal-contact's fc_toy_net.gd are the same file.
 
-var toy: DotPropBody = null
+var toy: GSPropBody = null
 
 var net_position: Vector3 = Vector3.ZERO
 var net_rotation: Quaternion = Quaternion.IDENTITY
@@ -25,11 +25,11 @@ var net_count: int = 0
 
 
 func _register_net_vars() -> void:
-	replicate(&"net_position", DotNetVar.Type.VECTOR3_POSITION).interpolated()
+	replicate(&"net_position", GSNetVar.Type.VECTOR3_POSITION).interpolated()
 	# Nine bits an element, under a degree: nobody lines a ball up to a degree.
-	replicate(&"net_rotation", DotNetVar.Type.QUATERNION).bits(9).interpolated()
-	replicate(&"net_on", DotNetVar.Type.BOOL)
-	replicate(&"net_count", DotNetVar.Type.UINT).bits(8)
+	replicate(&"net_rotation", GSNetVar.Type.QUATERNION).bits(9).interpolated()
+	replicate(&"net_on", GSNetVar.Type.BOOL)
+	replicate(&"net_count", GSNetVar.Type.UINT).bits(8)
 
 
 ## Authority only: the toy's state into the replicated fields.

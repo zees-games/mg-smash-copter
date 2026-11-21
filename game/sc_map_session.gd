@@ -1,6 +1,6 @@
-extends DotMapSession
+extends GSMapSession
 
-## A [DotMapSession] whose maps are layouts.
+## A [GSMapSession] whose maps are layouts.
 ##
 ## [b]dot-map assumes a map is a scene it loads and swaps, and here a map is the arrangement of
 ## platforms the same scene lays out each round.[/b] Loading one would replace the world a
@@ -13,33 +13,33 @@ extends DotMapSession
 
 const LOG_CHANNEL := "smash.map.session"
 
-## `func(id: StringName) -> DotResult`: play this layout. The host's.
+## `func(id: StringName) -> GSResult`: play this layout. The host's.
 var apply_fn: Callable = Callable()
 
 
-func change_to_map(map: DotMapDef) -> DotResult:
+func change_to_map(map: GSMapDef) -> GSResult:
 	if map == null:
-		return DotResult.fail(DotError.CODE_INVALID, "No map.")
+		return GSResult.fail(GSError.CODE_INVALID, "No map.")
 
 	if not apply_fn.is_valid():
-		return DotResult.fail(DotError.CODE_STATE, "This session has nobody to change the layout.")
+		return GSResult.fail(GSError.CODE_STATE, "This session has nobody to change the layout.")
 
 	var applied: Variant = apply_fn.call(map.id)
 
-	if applied is DotResult and not (applied as DotResult).ok:
-		change_failed.emit(map, (applied as DotResult).error.message)
-		return applied as DotResult
+	if applied is GSResult and not (applied as GSResult).ok:
+		change_failed.emit(map, (applied as GSResult).error.message)
+		return applied as GSResult
 
 	var previous := current
 	changing.emit(previous, map)
 	note_current(map)
 	changed.emit(map, null)
-	return DotResult.success(map)
+	return GSResult.success(map)
 
 
 ## Records the layout being played, which is what `mapinfo` and the rotation's cooldown read.
 ## Called by the host whenever a layout is laid, however it was chosen.
-func note_current(map: DotMapDef) -> void:
+func note_current(map: GSMapDef) -> void:
 	# Once per layout: the vote and the world both say so, and each would be a play.
 	if map == null or (current != null and current.id == map.id):
 		return
@@ -51,7 +51,7 @@ func note_current(map: DotMapDef) -> void:
 
 
 ## The server's maps.yml, or null when there is none (every layout rotates, as it always did).
-var rotation_file: DotMapRotationFile = null
+var rotation_file: GSMapRotationFile = null
 
 ## The file looked for, with or without an extension. `sv_map_rotation_file`.
 var rotation_file_name: String = DEFAULT_ROTATION_FILE
@@ -60,17 +60,17 @@ const DEFAULT_ROTATION_FILE := "cfg/maps.yml"
 
 
 ## Reads maps.yml and applies it: which layouts the draw, the ballot and nominations may choose.
-## The merge, wildcards and rules are dot-map's [DotMapRotationFile]; this supplies the paths.
+## The merge, wildcards and rules are dot-map's [GSMapRotationFile]; this supplies the paths.
 ## A file that is present and unreadable is an ERROR and changes nothing: rotating every layout
 ## is a better failure than rotating none.
-func load_rotation() -> DotResult:
-	var dir := DotMapRotationFile.config_dir_arg()
-	var found := DotMapRotationFile.find(rotation_file_name, dir)
+func load_rotation() -> GSResult:
+	var dir := GSMapRotationFile.config_dir_arg()
+	var found := GSMapRotationFile.find(rotation_file_name, dir)
 
 	if found == "" and rotation_file_name != "" and (dir != "" or rotation_file_name != DEFAULT_ROTATION_FILE):
 		# The default name being absent is an install with no maps.yml; a name or a directory
 		# somebody chose that finds nothing is a typo they would otherwise never hear about.
-		DotLog.warn(LOG_CHANNEL, "the map rotation file was not found; every layout rotates", {
+		GSLog.warn(LOG_CHANNEL, "the map rotation file was not found; every layout rotates", {
 			"file": rotation_file_name, "config_dir": dir,
 		})
 
@@ -79,10 +79,10 @@ func load_rotation() -> DotResult:
 	if found != "":
 		paths.append(found)
 
-	var read := DotMapRotationFile.load_files(paths, "mg-smash-copter")
+	var read := GSMapRotationFile.load_files(paths, "mg-smash-copter")
 
 	if not read.ok:
-		DotLog.error(LOG_CHANNEL, "the map rotation file could not be read; every layout rotates", {
+		GSLog.error(LOG_CHANNEL, "the map rotation file could not be read; every layout rotates", {
 			"why": read.error.message,
 		})
 		rotation_file = null
@@ -92,7 +92,7 @@ func load_rotation() -> DotResult:
 	rotation_file = read.value
 
 	if rotation_file.has_rotations():
-		DotLog.info(LOG_CHANNEL, "the map rotation file", {
+		GSLog.info(LOG_CHANNEL, "the map rotation file", {
 			"paths": ", ".join(rotation_file.sources), "active": rotation_file.active_name(),
 		})
 
@@ -100,7 +100,7 @@ func load_rotation() -> DotResult:
 	return read
 
 
-## Marks every layout in or out of rotation ([member DotMapDef.in_rotation]) from the file. No
+## Marks every layout in or out of rotation ([member GSMapDef.in_rotation]) from the file. No
 ## file, or one with no rotations, keeps every layout in.
 func apply_rotation() -> void:
 	if catalogue == null or rotation == null:
@@ -108,7 +108,7 @@ func apply_rotation() -> void:
 
 	if rotation_file != null and rotation_file.has_rotations():
 		# An empty rotation leaves every layout in, which is what no file means here too.
-		rotation_file.fallback_in = func(_map: DotMapDef) -> bool: return true
+		rotation_file.fallback_in = func(_map: GSMapDef) -> bool: return true
 		var _applied := rotation_file.apply(rotation)
 		return
 

@@ -33,7 +33,7 @@ signal died(by: StringName)
 ## What this player looks like, as a dot-user-avatar document; null is the stock person.
 ##
 ## Set on a server from the platform (`sc_module._avatar_for`) and carried to every client in JOIN; [method _atlas] falls back to the stock hash when null.
-var avatar: DotAvatar = null
+var avatar: GSAvatar = null
 
 ## Whether a command is sampled from the input devices each tick.
 ##
@@ -49,9 +49,9 @@ var avatar: DotAvatar = null
 ## the game's numbers. Set by [ScGame] before this enters the tree.
 var config: ScConfig = null
 
-var controller: DotFpsController = null
-var sampler: DotFpsSampler = null
-var health: DotHealth = null
+var controller: GSFpsController = null
+var sampler: GSFpsSampler = null
+var health: GSHealth = null
 
 ## The weapons, once the showdown has started. Null for the whole survival phase.
 ##
@@ -86,7 +86,7 @@ var standing_on: int = -1
 
 ## Which weapon slot they have asked for, from this game's own input message.
 ##
-## Here, not in [DotFpsCommand]: widening it would break every game for a field only this one's second half has. [ScNetCommand] carries it.
+## Here, not in [GSFpsCommand]: widening it would break every game for a field only this one's second half has. [ScNetCommand] carries it.
 var wanted_slot: int = 0
 
 ## The aim button, held, as the last command said it (the server: from the wire; offline and the predicting client: from the sights). On foot only: the client never sends it
@@ -114,7 +114,7 @@ var flashlight: bool = false
 var flashlight_ready: bool = false
 
 ## The marker [member beacon] draws, while it does. Client side.
-var beacon_marker: DotFxBeacon = null
+var beacon_marker: GSFxBeacon = null
 
 ## What other people see this player as. Client side: built and shown by
 ## [method present_body], never on a server, which draws nothing.
@@ -122,7 +122,7 @@ var figure: ScFigure = null
 
 ## How this player's body falls on their death: the server's pick ([method ScGame.decide_death]),
 ## carried on DEATH and set here before anybody hears of it. Null before a first death.
-var death: DotPlayerDeath = null
+var death: GSPlayerDeath = null
 
 # What a watcher draws in their hand. Client side.
 # A player this process simulates is read off its own rig; one it only mirrors has no rig here, so it is drawn from the weapons the server ANNOUNCED (`ScEvents.Kind.ARMED`) and the slot the snapshot says is in hand. Neither alone names the weapon.
@@ -146,11 +146,11 @@ var mirror_fire_kind: int = 0
 ## The rig's own counter as the figure last saw it, for a simulated player.
 var _seen_fire_seq: int = -1
 
-static var _weapon_catalogue: DotWeaponCatalogue = null
+static var _weapon_catalogue: GSWeaponCatalogue = null
 
 
 ## The weapon table, built once; every rig shares it so its behaviour scripts load once.
-static func weapon_catalogue() -> DotWeaponCatalogue:
+static func weapon_catalogue() -> GSWeaponCatalogue:
 	if _weapon_catalogue == null:
 		_weapon_catalogue = ZeeWeaponPack.catalogue()
 		# Built under the loading cover; the first spawn then loads no script.
@@ -169,7 +169,7 @@ var tick_rate: int = 64:
 			controller.tick_rate = value
 
 
-## The key [DotWeaponPlayerBridge] identifies this carrier by.
+## The key [GSWeaponPlayerBridge] identifies this carrier by.
 ##
 ## Exactly this name, because the bridge is duck-typed (`player.get("player_key")`) to avoid naming a player class; spelled otherwise, every showdown shot comes from entity zero, which dot-combat reads as "the world".
 var player_key: String:
@@ -178,15 +178,15 @@ var player_key: String:
 
 
 func _ready() -> void:
-	controller = DotFpsController.new()
+	controller = GSFpsController.new()
 	controller.name = "Controller"
 	controller.tick_rate = tick_rate
 
 		# EXTERNAL even offline: the game owns the tick, so "sample, move, then ride what you stand on" is explicit, and a dedicated server and net bridge need that shape anyway.
-	controller.drive = DotFpsController.Drive.EXTERNAL
+	controller.drive = GSFpsController.Drive.EXTERNAL
 	controller.tunables = tunables_for(config, active)
 	# Every player, both ends: an admin's noclip or freeze is a modifier whose index
-	# travels on the wire. See dot-player-controller's DotFpsAdminModifiers.
+	# travels on the wire. See dot-player-controller's GSFpsAdminModifiers.
 	controller.admin_abilities = true
 	add_child(controller)
 
@@ -200,9 +200,9 @@ func _ready() -> void:
 ## How a player moves, and the two decisions in it.
 ##
 ## Static and given the config because a connected client builds a sampler before it has a player (the JOIN arrives frames after the keyboard); a sampler with different tunables than its controller clamps input differently from the simulation. [param active] is the round's specials; null is an ordinary round.
-static func tunables_for(config: ScConfig, active: ScSpecials.Active) -> DotFpsTunables:
+static func tunables_for(config: ScConfig, active: ScSpecials.Active) -> GSFpsTunables:
 	# The platforms and gaps are tuned against the legacy movement profile, not the classic default.
-	var t := DotFpsTunables.with_profile("legacy")
+	var t := GSFpsTunables.with_profile("legacy")
 	var run := config.run_speed if config != null else 6.4
 	var gravity := config.gravity if config != null else 20.0
 	var grip := 1.0
@@ -251,7 +251,7 @@ static func tunables_for(config: ScConfig, active: ScSpecials.Active) -> DotFpsT
 
 ## The clear air a running player crosses in one jump, landing [param rise] metres higher than they left, in metres.
 ##
-## Read off [method tunables_for] via [method DotFpsTunables.jump_reach] so a cvar that shortens the jump shortens this. [param rise] matters because a runner leans the platform toward the edge, so the lip they leave from is below the one they aim for; the suite measures it from [ScPlatforms]. Returns 0.0 for a rise no jump clears.
+## Read off [method tunables_for] via [method GSFpsTunables.jump_reach] so a cvar that shortens the jump shortens this. [param rise] matters because a runner leans the platform toward the edge, so the lip they leave from is below the one they aim for; the suite measures it from [ScPlatforms]. Returns 0.0 for a rise no jump clears.
 static func jump_reach(config: ScConfig, rise: float, p_active: ScSpecials.Active = null) -> float:
 	return tunables_for(config, p_active).jump_reach(rise)
 
@@ -259,8 +259,8 @@ static func jump_reach(config: ScConfig, rise: float, p_active: ScSpecials.Activ
 ## Registers the movement actions, and binds the slow walk to shift.
 ##
 ## dot-player-controller puts walk on alt and sprint on shift; this game has no sprint and its walk is the central control. The existing binding is left alone, so a project's own input map wins.
-static func register_actions(sampler: DotFpsSampler = null) -> void:
-	var _added := DotFpsSampler.register_default_actions(sampler)
+static func register_actions(sampler: GSFpsSampler = null) -> void:
+	var _added := GSFpsSampler.register_default_actions(sampler)
 
 	if not InputMap.has_action(WALK_ACTION):
 		return
@@ -289,8 +289,8 @@ func simulate(tick: int, delta: float) -> void:
 
 	if sampler != null:
 		# Settling under the cover runs the body with its input off (falls, lands, no keys).
-		var gate := DotLoadGate.of(self) if is_inside_tree() else null
-		var sampled := sampler.sample(delta) if gate == null or gate.is_open() else DotFpsCommand.new()
+		var gate := GSLoadGate.of(self) if is_inside_tree() else null
+		var sampled := sampler.sample(delta) if gate == null or gate.is_open() else GSFpsCommand.new()
 
 		if command_stamp.is_valid():
 			command_stamp.call(sampled)
@@ -311,7 +311,7 @@ func simulate(tick: int, delta: float) -> void:
 func step_controller(tick: int, delta: float) -> void:
 	var rig := _rig()
 	# The motor's own tunables, not `controller.tunables`: `retune` replaces that object at a special without rebuilding the motor, which keeps the one it was built with.
-	var tunables: DotFpsTunables = controller.motor.tunables if controller.motor != null else controller.tunables
+	var tunables: GSFpsTunables = controller.motor.tunables if controller.motor != null else controller.tunables
 	var scale := rig.ads_move_scale() if rig != null else 1.0
 
 	if tunables == null or scale >= 1.0:
@@ -325,7 +325,7 @@ func step_controller(tick: int, delta: float) -> void:
 
 
 ## After the move, which is the only place the carry can go.
-func _on_simulated(_tick: int, state: DotFpsState) -> void:
+func _on_simulated(_tick: int, state: GSFpsState) -> void:
 	global_position = state.position
 
 	standing_on = -1
@@ -333,7 +333,7 @@ func _on_simulated(_tick: int, state: DotFpsState) -> void:
 	if platforms == null:
 		return
 
-		# `ground_id` is deliberately not simulation state: [DotFpsState] documents it as a per-machine physics handle, and being carried is resolved per frame from it, not predicted (a platform's collider is moved by whichever end is authoritative).
+		# `ground_id` is deliberately not simulation state: [GSFpsState] documents it as a per-machine physics handle, and being carried is resolved per frame from it, not predicted (a platform's collider is moved by whichever end is authoritative).
 	var index := platforms.index_of_body(state.ground_id)
 
 	if index < 0:
@@ -365,7 +365,7 @@ var _ride_was := Transform3D.IDENTITY
 ## Carries a player standing on a body that moves: a helicopter.
 ##
 ## By the body's own motion over the tick: the motor sweeps against a world that stood still, so a moving floor is slid off. Platforms only move vertically ([method ScPlatforms.lift_at]); a machine flies and turns, so this is the whole transform. The first tick only remembers where the body is, or a transform against identity throws the rider to the origin.
-func _carry_on_body(state: DotFpsState) -> void:
+func _carry_on_body(state: GSFpsState) -> void:
 	var body := instance_from_id(state.ground_id) as Node3D if state.ground_id != 0 else null
 
 	if body == null or not body.has_meta(META_CARRIER):
@@ -411,12 +411,12 @@ func eye_position() -> Vector3:
 
 ## The duck-typed component lookup dot-weapon's player bridge asks a carrier for.
 ##
-## Without it the bridge falls back to the body transform: right position, identity basis (yaw lives in the controller's state), so every shot goes due north and nothing looks broken. Matches `DotFpsController` as well as `DotPlayerController`, because the bridge asks for the base and a name is not a hierarchy.
+## Without it the bridge falls back to the body transform: right position, identity basis (yaw lives in the controller's state), so every shot goes due north and nothing looks broken. Matches `GSFpsController` as well as `GSPlayerController`, because the bridge asks for the base and a name is not a hierarchy.
 func component(type_name: StringName) -> Object:
 	match String(type_name):
-		"DotPlayerController", "DotFpsController":
+		"GSPlayerController", "GSFpsController":
 			return controller
-		"DotHealth":
+		"GSHealth":
 			return health
 		"ZeeWeaponRig":
 			return weapons
@@ -447,12 +447,12 @@ func set_riding(value: bool) -> void:
 	# DEBUG: a state transition. Who boards is decided (and would be refused) in [ScGame];
 	# this is where the movement actually hands over, which is what a report of a pilot
 	# who "fell out" needs lined up against.
-	DotLog.debug(CHANNEL, "took a chopper's controls" if riding else "left a chopper's controls", {
+	GSLog.debug(CHANNEL, "took a chopper's controls" if riding else "left a chopper's controls", {
 		"id": String(player_id),
 	})
 
 	if not riding:
-		controller.state.mode = DotFpsState.Mode.AIR
+		controller.state.mode = GSFpsState.Mode.AIR
 
 
 ## Puts a player somewhere, facing somewhere, with nothing carried over.
@@ -469,7 +469,7 @@ func place_at(at: Vector3, yaw_degrees: float) -> void:
 		sampler.look_at_angles(yaw_degrees, 0.0)
 
 		# And into the pending COMMAND, which the next tick reads: the motor repeats the last command when given none, so a state-only teleport is undone by an empty command with yaw zero.
-	var facing := DotFpsCommand.new()
+	var facing := GSFpsCommand.new()
 	facing.yaw = yaw_degrees
 	facing.pitch = 0.0
 	controller.apply_command(facing)
@@ -520,7 +520,7 @@ func present_beacon(delta: float, at: Vector3, local_view: bool) -> bool:
 		return false
 
 	if beacon_marker == null:
-		beacon_marker = DotFxBeacon.new()
+		beacon_marker = GSFxBeacon.new()
 		beacon_marker.name = "Beacon"
 		add_child(beacon_marker)
 
@@ -562,7 +562,7 @@ func present_body(own_view: bool, at: Vector3, team_colour: Color) -> bool:
 	if shown and controller != null:
 		var velocity := controller.state.velocity
 		figure.set_motion({
-			"on_floor": controller.state.mode == DotFpsState.Mode.GROUND,
+			"on_floor": controller.state.mode == GSFpsState.Mode.GROUND,
 			"vertical": velocity.y,
 			"crouched": controller.state.crouch_fraction > 0.5,
 			# The view's pitch: the upper body, the arms and the weapon follow it.

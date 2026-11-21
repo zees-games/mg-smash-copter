@@ -11,20 +11,20 @@ const DARK_MOODS: PackedStringArray = ["interior_horror", "cave_tunnel", "outdoo
 
 
 ## A config with this game's defaults: F, off while the sky is lit, on in a dark mood.
-static func make_config() -> DotFlashlightConfig:
-	var cfg := DotFlashlightConfig.new()
+static func make_config() -> GSFlashlightConfig:
+	var cfg := GSFlashlightConfig.new()
 	cfg.key = "F"
 	cfg.dark_moods = DARK_MOODS
 	return cfg
 
 
 ## The binder: `sc_flashlight_<field>` cvars, `cfg/game/mg-smash-copter/flashlight/game.yml`, a workbench set.
-static func make_binder(cfg: DotFlashlightConfig) -> DotGameConfigBinder:
-	var b := DotGameConfigBinder.create(cfg, GAME_ID, "sc_flashlight")
+static func make_binder(cfg: GSFlashlightConfig) -> GSGameConfigBinder:
+	var b := GSGameConfigBinder.create(cfg, GAME_ID, "sc_flashlight")
 	b.profile_kind = "flashlight"
 	return b
 
 
 ## Whether a player starts a round with the light on: the sky's mood against the config's dark moods.
-static func starts_on(cfg: DotFlashlightConfig, layout_id: String, mood: String = "") -> bool:
-	return DotFlashlightRules.start_on(cfg, layout_id, 1.0, mood if mood != "" else String(ScAmbience.DEFAULT_MOOD))
+static func starts_on(cfg: GSFlashlightConfig, layout_id: String, mood: String = "") -> bool:
+	return GSFlashlightRules.start_on(cfg, layout_id, 1.0, mood if mood != "" else String(ScAmbience.DEFAULT_MOOD))

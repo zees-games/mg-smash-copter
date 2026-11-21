@@ -42,28 +42,28 @@ const CHASE_UP := 2.1
 var game: ScGame = null
 
 ## The flashlight on the eye and the others' beams (sc_client_flashlight.gd).
-var flash: DotFlashlight = null
-var flash_crowd: DotFlashlightCrowd = null
+var flash: GSFlashlight = null
+var flash_crowd: GSFlashlightCrowd = null
 var _flash_msec := -100000
 var _flash_retain := 0.0
 ## Asks a server whether this player may edit it (sv_workbench_remote); null offline.
-var workbench_remote: DotGameWorkbenchRemoteClient = null
+var workbench_remote: GSGameWorkbenchRemoteClient = null
 ## The tuning panel's host: F9 solo, the admin's remote panel on a server that allows it.
-var workbench: DotGameWorkbench = null
+var workbench: GSGameWorkbench = null
 var player: ScPlayer = null
 var camera: Camera3D = null
 
 ## Keeps the screen covered, and the local body and the input still, until the field, the
-## player and the camera are all in. See [member DotGameClient.gate].
-var gate: DotLoadGate = null
+## player and the camera are all in. See [member GSGameClient.gate].
+var gate: GSLoadGate = null
 
 ## dot-game's client platform: the cover, settings and menu, console, HUD theme, Tab, M, the
-## pointer and the input block. See [DotGameClient].
-var platform: DotGameClient = null
+## pointer and the input block. See [GSGameClient].
+var platform: GSGameClient = null
 ## Solo only: the subscribed map packs this client follows (null connected).
 var workshop: ScWorkshop = null
 var hud: ScHud = null
-var chat: DotGameChatClient = null
+var chat: GSGameChatClient = null
 
 ## What the game sounds like. See [ScAudio].
 var audio: ScAudio = null
@@ -74,8 +74,8 @@ var fx: ScFx = null
 ## The player's own settings and the screen Escape opens. See [ScSettings].
 var settings: ScSettings = null
 
-## The player's console. See [method DotConsoleKit.build].
-var console: DotConsoleController = null
+## The player's console. See [method GSConsoleKit.build].
+var console: GSConsoleController = null
 
 ## The weapons in this player's own hands, once the showdown has started. Drawn, never decided:
 ## every shot that matters is the server's; the rig is a view model that moves (deploy, reload,
@@ -83,20 +83,20 @@ var console: DotConsoleController = null
 var weapons: ZeeWeaponRig = null
 var view_model: ZeeViewModel = null
 
-var net: DotNetManager = null
+var net: GSNetManager = null
 var bridge: ScNetBridge = null
 var link: Node = null
 
-## The Tab board, the menu's. See [member DotGameClient.board].
-var board: DotMenuScoreboard = null
+## The Tab board, the menu's. See [member GSGameClient.board].
+var board: GSMenuScoreboard = null
 ## Records every frame and replays the round's last moment ([ScKillcam]); then the reveal.
 var killcam: ScKillcam = null
-var winner_reveal: DotWinnerReveal = null
+var winner_reveal: GSWinnerReveal = null
 ## The server's `mp_killcam_time`; -1 until it has said, so the config's number stands.
 var _killcam_sec: float = -1.0
 
-## The server's `mp_killview_camera` ([enum DotKillViewRules.Camera]); the eye until it has said.
-var _killcam_camera: int = DotKillViewRules.Camera.EYE
+## The server's `mp_killview_camera` ([enum GSKillViewRules.Camera]); the eye until it has said.
+var _killcam_camera: int = GSKillViewRules.Camera.EYE
 var _round_ending: bool = false
 var _round_end_winner: int = 0
 var _round_end_number: int = 0
@@ -107,22 +107,22 @@ var _hud_was_visible: bool = true
 var _started_msec: int = Time.get_ticks_msec()
 
 var _offline: bool = true
-var _sampler: DotFpsSampler = null
+var _sampler: GSFpsSampler = null
 
 ## The spectator's free camera while roaming, and the mouse motion not yet turned into a look.
-var _free_cam: DotSpectatorFreeCam = null
+var _free_cam: GSSpectatorFreeCam = null
 var _roam_look: Vector2 = Vector2.ZERO
 
 ## The tunables the settings' look is bound to offline. See [method _follow_look].
-var _look_tunables: DotFpsTunables = null
+var _look_tunables: GSFpsTunables = null
 
 ## Which session this client is, once the server has said. -1 until then, so nothing matches
 ## before it does.
 var _watch_id: int = -1
 
 ## The camera rig, in third person. Null in first.
-var _arm: DotCameraBoom = null
-var _fade: DotCameraFade = null
+var _arm: GSCameraBoom = null
+var _fade: GSCameraFade = null
 
 ## How far above the player's feet the camera, or in third person the arm, is hung.
 var _rig_height: float = 0.0
@@ -137,7 +137,7 @@ var _aiming: bool = false
 ## The field of view the menu sets (bound in `_adopt`); the lens zooms from it while aimed, never compounding.
 var base_fov: float = 92.0
 var _slot: int = 0
-var _wheel: DotWeaponWheel
+var _wheel: GSWeaponWheel
 
 ## The phone's on-screen buttons; null off a touch device.
 var _touch: ScTouch = null
@@ -145,7 +145,7 @@ var _touch: ScTouch = null
 
 
 ## Where the dead lie: dot-player-char's ragdolls under the game's (the server's) rules.
-var ragdolls: DotPlayerRagdolls = null
+var ragdolls: GSPlayerRagdolls = null
 
 
 ## Seconds the drawn gun must be quiet before the server's count may overwrite it: longer than a

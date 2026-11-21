@@ -11,7 +11,7 @@ func _ready() -> void:
 		# FATAL is reserved in this family for "the process cannot continue", and a
 		# configuration that contradicts itself is not that: the right answer is to say so
 		# loudly and refuse to run a round, not to take the server down.
-		DotLog.error(CHANNEL, "the configuration is not usable", {"why": valid.error.message})
+		GSLog.error(CHANNEL, "the configuration is not usable", {"why": valid.error.message})
 		return
 
 	_layout_seed = config.seed_value
@@ -36,9 +36,9 @@ func _ready() -> void:
 	_lay_out_round()
 
 	if register_service:
-		DotRegistry.register(SERVICE, self)
+		GSRegistry.register(SERVICE, self)
 
-	DotLog.info(CHANNEL, "world ready", config.describe())
+	GSLog.info(CHANNEL, "world ready", config.describe())
 
 
 func _exit_tree() -> void:
@@ -46,14 +46,14 @@ func _exit_tree() -> void:
 	# register it takes the other world's entry out with it, and the symptom is a module
 	# that cannot find a game sitting in the tree.
 	if register_service:
-		DotRegistry.unregister_instance(SERVICE, self)
+		GSRegistry.unregister_instance(SERVICE, self)
 
 
 ## The named collision layers everything in this world is put on.
 ##
 ## Built and applied, not taken from a preset: five games set a layout and put it on no bodies, so props passed through each other. Every `add_child` here goes through an `apply_to` whose result is checked.
 func _build_physics() -> void:
-	physics = DotPhysicsLayout.custom(&"smash_copter", [
+	physics = GSPhysicsLayout.custom(&"smash_copter", [
 		&"world", &"player", &"prop", &"vehicle", &"pillar", &"toy", &"footprint",
 	])
 
@@ -83,14 +83,14 @@ func _build_physics() -> void:
 	var built := physics.build()
 
 	if not built.ok:
-		DotLog.error(CHANNEL, "the collision layout would not build", {
+		GSLog.error(CHANNEL, "the collision layout would not build", {
 			"why": built.error.message,
 		})
 		physics = null
 
 
 func _build_random() -> void:
-	random = DotRandomManager.new()
+	random = GSRandomManager.new()
 	random.name = "Random"
 		# Off, as the addon says: a registry name is global to the process so the last manager to register wins, and two worlds in one process (server and client, every suite section) laid out different maps from one seed.
 	random.register_as_service = false
@@ -121,10 +121,10 @@ func _build_platforms() -> void:
 
 
 func _build_props() -> void:
-	props = DotPropSpawner.new()
+	props = GSPropSpawner.new()
 	props.name = "Props"
 	props.catalogue = ScContent.props(config)
-	props.limits = DotPropLimits.new()
+	props.limits = GSPropLimits.new()
 		# The map's own furniture is put out by the world, not requested by a player, so the per-player budget and cooldown are the wrong shape; the world cap must stay above what a round throws or the last props never appear.
 	props.limits.spawn_interval = 0.0
 	props.limits.per_player_budget = config.prop_budget + 40
@@ -133,7 +133,7 @@ func _build_props() -> void:
 	props.authoritative = authoritative
 	add_child(props)
 
-	prop_damage = DotPropDamage.new()
+	prop_damage = GSPropDamage.new()
 	prop_damage.name = "PropDamage"
 	prop_damage.authoritative = authoritative
 	props.add_child(prop_damage)
@@ -145,7 +145,7 @@ func _build_props() -> void:
 
 
 func _build_vehicles() -> void:
-	vehicles = DotVehicleSpawner.new()
+	vehicles = GSVehicleSpawner.new()
 	vehicles.name = "Vehicles"
 	vehicles.catalogue = ScContent.vehicles(config)
 	vehicles.authoritative = authoritative
@@ -157,13 +157,13 @@ func _build_vehicles() -> void:
 	vehicles.world_budget = 12
 	add_child(vehicles)
 
-		# The SPAWNER's ride, not a second one: `DotVehicleSpawner` builds one in `_init` and uses it to evacuate a destroyed vehicle, answer `vehicle_of_rider` and count riders, which a game's own beside it would leave reading an empty index.
+		# The SPAWNER's ride, not a second one: `GSVehicleSpawner` builds one in `_init` and uses it to evacuate a destroyed vehicle, answer `vehicle_of_rider` and count riders, which a game's own beside it would leave reading an empty index.
 	ride = vehicles.ride
 	ride.carry_rider_nodes = false
-	ride.on_seated = func(rider_id: StringName, _v: DotVehicleInstance, _s: DotVehicleSeat) -> void:
+	ride.on_seated = func(rider_id: StringName, _v: GSVehicleInstance, _s: GSVehicleSeat) -> void:
 		_set_riding(rider_id, true)
 	ride.on_unseated = func(
-		rider_id: StringName, _v: DotVehicleInstance, _s: DotVehicleSeat, at: Vector3
+		rider_id: StringName, _v: GSVehicleInstance, _s: GSVehicleSeat, at: Vector3
 	) -> void:
 		_set_riding(rider_id, false, at)
 
@@ -179,47 +179,47 @@ func _build_cannon() -> void:
 
 
 func _build_combat() -> void:
-	combat = DotCombatManager.new()
+	combat = GSCombatManager.new()
 	combat.name = "Combat"
 	combat.is_authority = authoritative
 	combat.register_service = false
 
-	var rules := DotDamageRules.new()
+	var rules := GSDamageRules.new()
 	rules.friendly_fire = config.friendly_fire
 	rules.self_damage = true
 	rules.hit_groups = true
 	combat.rules = rules
 
 		# Lag compensation is OFF here and turned on by the bridge together with the callables that make it real: dot-combat defaults it on and warns "no rewind function is wired" at boot, false for this server and true for a client playing alone, which has no history to rewind.
-	var settings := DotCombatConfig.new()
+	var settings := GSCombatConfig.new()
 	settings.lag_compensation = false
 	combat.config = settings
 
-		# A trace, or every shot goes through the arena: dot-combat asks a [DotTrace] where the WORLD is and left unset reports nothing in the way. Before `setup()`, which warns when it finds none, so assigning it a line later logs a false "every shot will pass through world geometry".
-	var trace := DotTracePhysics.for_world(get_world_3d())
+		# A trace, or every shot goes through the arena: dot-combat asks a [GSTrace] where the WORLD is and left unset reports nothing in the way. Before `setup()`, which warns when it finds none, so assigning it a line later logs a false "every shot will pass through world geometry".
+	var trace := GSTracePhysics.for_world(get_world_3d())
 
 	if physics != null:
 		trace.collision_mask = physics.layer_mask(&"world")
 
 	combat.trace = trace
 
-		# Which side an entity is on, or friendly fire is ON in a game that says it is off: [DotDamageResolver._same_team] returns false without a `team_of` [Callable], silently wrong for every team game that forgets it. By entity id, because that is what a damage carries.
-	combat.resolver = DotDamageResolver.with_rules(rules)
-	combat.resolver.hit_groups = DotHitGroup.defaults()
+		# Which side an entity is on, or friendly fire is ON in a game that says it is off: [GSDamageResolver._same_team] returns false without a `team_of` [Callable], silently wrong for every team game that forgets it. By entity id, because that is what a damage carries.
+	combat.resolver = GSDamageResolver.with_rules(rules)
+	combat.resolver.hit_groups = GSHitGroup.defaults()
 	combat.resolver.team_of = func(entity_id: int) -> int:
 		return team_of(entities.key_for_id(entity_id))
 
 	# dot-game's "still loading": the one place every hurt passes (a shot, a blast, a crush, the
 	# floor), and a round counts the living from health, so refusing here keeps a covered seat
 	# alive in the count too. An admin's slay or slap is the operator's word and passes.
-	combat.resolver.adjust = func(damage: DotDamage) -> void:
+	combat.resolver.adjust = func(damage: GSDamage) -> void:
 		if damage.context.get("admin", false):
 			return
 
 		if not can_be_harmed(entities.key_for_id(damage.victim)):
 			damage.refuse("still loading")
 
-		# `add_child` IS the setup: [DotCombatManager._ready] calls `setup()` itself, and a second explicit call doubled every boot line in a delivered server's log.
+		# `add_child` IS the setup: [GSCombatManager._ready] calls `setup()` itself, and a second explicit call doubled every boot line in a delivered server's log.
 	add_child(combat)
 
 
@@ -232,43 +232,43 @@ func _build_effects() -> void:
 		# position on a process with no viewer.
 		return
 
-	var catalogue := DotFxCatalogue.new()
+	var catalogue := GSFxCatalogue.new()
 
-	var knock := DotFxDef.new()
+	var knock := GSFxDef.new()
 	knock.id = &"impact"
-	knock.kind = DotFxDef.Kind.SHAKE
+	knock.kind = GSFxDef.Kind.SHAKE
 	knock.shake_trauma = 0.34
 	knock.max_distance = 70.0
 	catalogue.add(knock)
 
-	var fall := DotFxDef.new()
+	var fall := GSFxDef.new()
 	fall.id = &"collapse"
-	fall.kind = DotFxDef.Kind.SHAKE
+	fall.kind = GSFxDef.Kind.SHAKE
 	fall.shake_trauma = 0.62
 	fall.max_distance = 90.0
 	catalogue.add(fall)
 
-	var strange := DotFxDef.new()
+	var strange := GSFxDef.new()
 	strange.id = &"special"
-	strange.kind = DotFxDef.Kind.SCREEN
+	strange.kind = GSFxDef.Kind.SCREEN
 	strange.flash_peak = 0.28
 	strange.flash_colour = Color(0.95, 0.80, 0.35, 1.0)
 	strange.flash_decay_ms = 420
 	catalogue.add(strange)
 
-	effects = DotFxManager.new()
+	effects = GSFxManager.new()
 	effects.name = "Effects"
 	effects.catalogue = catalogue
-	effects.config = DotFxConfig.new()
+	effects.config = GSFxConfig.new()
 	effects.register_as_service = false
 	add_child(effects)
 
-	DotLog.result(CHANNEL, "the effects layer", effects.setup())
+	GSLog.result(CHANNEL, "the effects layer", effects.setup())
 
 
 ## The intermission is the pause plus the killcam the clients play inside it, so the server never waits on one.
-func apply_intermission(rules: DotMatchRules = null) -> void:
-	var target: DotMatchRules = rules if rules != null else (match_node.rules if match_node != null else null)
+func apply_intermission(rules: GSMatchRules = null) -> void:
+	var target: GSMatchRules = rules if rules != null else (match_node.rules if match_node != null else null)
 	if target == null:
 		return
 	var pause := config.intermission_seconds
@@ -276,17 +276,17 @@ func apply_intermission(rules: DotMatchRules = null) -> void:
 
 
 func _build_match() -> void:
-	match_node = DotMatch.new()
+	match_node = GSMatch.new()
 	match_node.name = "Match"
 	match_node.register_service = false
 
-	var match_config := DotMatchConfig.new()
+	var match_config := GSMatchConfig.new()
 	match_config.tick_rate = tick_rate
 	match_config.auto_start = false
 	match_config.log_transitions = false
 	match_node.config = match_config
 
-	var rules := DotRulesElimination.make(config.round_seconds())
+	var rules := GSRulesElimination.make(config.round_seconds())
 	apply_intermission(rules)
 	rules.warmup_sec = config.warmup_seconds
 	rules.countdown_sec = 0.0
@@ -296,23 +296,23 @@ func _build_match() -> void:
 	rules.min_players = 2
 		# Nobody comes back: dot-match enqueues a respawn on every kill, which would return a faller three seconds later and make surviving the first half worth nothing. Death is final until the next round.
 	rules.respawn_disabled = true
-		# The rule asks the game who is alive, the seam dot-match is built around: being alive is a `DotHealth` in dot-combat, which dot-match does not depend on, and unset it falls back to score and clock so the round runs the full clock.
+		# The rule asks the game who is alive, the seam dot-match is built around: being alive is a `GSHealth` in dot-combat, which dot-match does not depend on, and unset it falls back to score and clock so the round runs the full clock.
 	rules.alive_fn = _is_alive
 	match_node.rules = rules
 
 		# Scoped to the match node itself, which finds nothing, deliberately: this game places its own players, and an unset `spawns_ref` makes dot-match walk the WHOLE scene, picking up another world's spawn points or the outgoing map's.
-	match_node.spawns_ref = DotNodeRef.of_path(^".")
+	match_node.spawns_ref = GSNodeRef.of_path(^".")
 
 	add_child(match_node)
 
 	match_node.round_started.connect(_on_round_started)
 	match_node.round_ended.connect(_on_round_ended)
 
-	var teams: Array[DotTeam] = []
+	var teams: Array[GSTeam] = []
 
 	for index in range(config.team_count):
-		teams.append(DotTeam.make(
-			index + 1, DotTeamSet.palette_name(index), DotTeamSet.palette_colour(index)
+		teams.append(GSTeam.make(
+			index + 1, GSTeamSet.palette_name(index), GSTeamSet.palette_colour(index)
 		))
 
 	match_node.teams.teams = teams
@@ -343,7 +343,7 @@ func _build_spectate() -> void:
 	var ready_now := spectate.bind(authoritative, tick_rate, spectate_rules)
 
 	if not ready_now.ok:
-		DotLog.warn(CHANNEL, "spectating is off", {"why": ready_now.error.message})
+		GSLog.warn(CHANNEL, "spectating is off", {"why": ready_now.error.message})
 		remove_child(spectate)
 		spectate.queue_free()
 		spectate = null
@@ -367,7 +367,7 @@ func _build_progress() -> void:
 	var ready_now := progress.setup(config.progress_directory, config.report_progress)
 
 	if not ready_now.ok:
-		DotLog.warn(CHANNEL, "progress is off", {"why": ready_now.error.message})
+		GSLog.warn(CHANNEL, "progress is off", {"why": ready_now.error.message})
 		remove_child(progress)
 		progress.queue_free()
 		progress = null
@@ -462,11 +462,11 @@ func _step(delta: float) -> void:
 # The flashlight
 
 ## The flashlight config, made on first use.
-func flashlight_conf() -> DotFlashlightConfig:
+func flashlight_conf() -> GSFlashlightConfig:
 	if flashlight_config == null:
 		flashlight_config = ScFlashlight.make_config()
 		flashlight_binder = ScFlashlight.make_binder(flashlight_config)
-		DotLog.result(CHANNEL, "flashlight config", flashlight_binder.load_layers())
+		GSLog.result(CHANNEL, "flashlight config", flashlight_binder.load_layers())
 	return flashlight_config
 
 
@@ -502,7 +502,7 @@ func toggle_flashlight(id: StringName) -> bool:
 
 	if player == null or not player.is_alive() \
 			or (spectate != null and spectate.is_spectating(String(id))) \
-			or not DotFlashlightRules.allowed_on(flashlight_conf(), _flashlight_layout_id()):
+			or not GSFlashlightRules.allowed_on(flashlight_conf(), _flashlight_layout_id()):
 		return false
 
 	player.flashlight = not player.flashlight
