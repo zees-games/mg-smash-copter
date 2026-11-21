@@ -1,6 +1,6 @@
 extends RefCounted
 
-## Every fixed sentence the HUD shows, looked up in dot-locale (`locales/<language>/hud.json`).
+## Every fixed sentence the HUD shows, looked up in gs-locale (`locales/<language>/hud.json`).
 ##
 ## One translator per process, built on first use from `--locale-language` and friends. A build with no catalogue still reads English: [method t] returns the fallback when the key is unknown, so a missing file is never a blank label.
 

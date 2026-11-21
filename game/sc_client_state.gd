@@ -57,7 +57,7 @@ var camera: Camera3D = null
 ## player and the camera are all in. See [member GSGameClient.gate].
 var gate: GSLoadGate = null
 
-## dot-game's client platform: the cover, settings and menu, console, HUD theme, Tab, M, the
+## gs-game's client platform: the cover, settings and menu, console, HUD theme, Tab, M, the
 ## pointer and the input block. See [GSGameClient].
 var platform: GSGameClient = null
 ## Solo only: the subscribed map packs this client follows (null connected).
@@ -144,7 +144,7 @@ var _touch: ScTouch = null
 
 
 
-## Where the dead lie: dot-player-char's ragdolls under the game's (the server's) rules.
+## Where the dead lie: gs-player-char's ragdolls under the game's (the server's) rules.
 var ragdolls: GSPlayerRagdolls = null
 
 

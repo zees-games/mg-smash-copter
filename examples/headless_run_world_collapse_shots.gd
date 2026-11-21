@@ -328,7 +328,7 @@ func _test_the_chopper() -> void:
 	var body := copter.body()
 	var started_at := body.global_position.y
 
-	# dot-vehicle writes the tunables' damping onto the body in REPLACE mode (4f4afaf); before,
+	# gs-vehicle writes the tunables' damping onto the body in REPLACE mode (4f4afaf); before,
 	# the chopper's 0.12 COMBINED with the project's 0.1. The same 0.22 either way.
 	var drag := body.linear_damp + (ProjectSettings.get_setting("physics/3d/default_linear_damp", 0.1) as float if body.linear_damp_mode == RigidBody3D.DAMP_MODE_COMBINE else 0.0)
 	_check(is_equal_approx(drag, 0.22), "and the drag it always flew with", "%.2f" % drag)

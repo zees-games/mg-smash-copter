@@ -29,11 +29,11 @@ A client that predicted nothing passed "a client moves itself and the server agr
 
 ## Visual QA: every figure, weapon, the copter and the props, frame by frame
 
-`tools/visual_qa.gd` (a `GSGameVisualQaCapture`, harness and rules in dot-game's `docs/visual-qa.md`) stages each item alone and records it at 60 fps: the six figure atlases (`person_<atlas>`: idle, walk, run, jump), every weapon a server deals by default (`weapon_<id>`, from `ScGameFlow.default_weapon_pool()`: the view model with arms in first person plus the figure holding it outside; idle, draw, fire, reload), the copter (`copter`: parked idle, and fly with the pilot's eye in the seat) and the cannon props (`prop_<id>`: turntable).
+`tools/visual_qa.gd` (a `GSGameVisualQaCapture`, harness and rules in gs-game's `docs/visual-qa.md`) stages each item alone and records it at 60 fps: the six figure atlases (`person_<atlas>`: idle, walk, run, jump), every weapon a server deals by default (`weapon_<id>`, from `ScGameFlow.default_weapon_pool()`: the view model with arms in first person plus the figure holding it outside; idle, draw, fire, reload), the copter (`copter`: parked idle, and fly with the pilot's eye in the seat) and the cannon props (`prop_<id>`: turntable).
 
 ```
-bash addons/dot_game/tools/dot_game_visual_qa.sh --shot tools/visual_qa_shot.sh --fresh all
-bash addons/dot_game/tools/dot_game_visual_qa.sh --shot tools/visual_qa_shot.sh --fresh copter -- --only copter --clips fly
+bash addons/gs_game/tools/gs_game_visual_qa.sh --shot tools/visual_qa_shot.sh --fresh all
+bash addons/gs_game/tools/gs_game_visual_qa.sh --shot tools/visual_qa_shot.sh --fresh copter -- --only copter --clips fly
 ```
 
 Run it as gamedev (who holds the GPU box key). Output is `screenshots/visual_qa/` (ignored by git): `report.md` first, then the per-item sheets and clips. The numbers (foot slide, floor contact, bone pop) catch only part of it; a change to a figure, weapon, the copter or a prop is judged by looking at its sheets.
@@ -43,11 +43,11 @@ Run it as gamedev (who holds the GPU box key). Output is `screenshots/visual_qa/
 None of the suites reaches a mounted pack; see [delivery.md](delivery.md).
 
 ```bash
-# in dot-server-deploy
+# in gs-server-deploy
 godot --headless --path ../mg-smash-copter --import
 ./server pack smash --source games/mg-smash-copter
 ./server --game smash
 # then connect the client shell to 127.0.0.1:6070
 ```
 
-dot-server-deploy's `examples/smash_client.tscn` joins a delivered pack with a real client over a real socket, and is the first thing that disconnects a client in the middle of a round.
+gs-server-deploy's `examples/smash_client.tscn` joins a delivered pack with a real client over a real socket, and is the first thing that disconnects a client in the middle of a round.

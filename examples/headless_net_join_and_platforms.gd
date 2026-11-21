@@ -5,7 +5,7 @@ extends "headless_net_toys_and_workbench.gd"
 
 ## Every encoder against its own decoder, and nothing else.
 ##
-## Nothing else checks a pair are inverses (dot-moderation once wrote `"voice muted"` and read back a warning). Every pair in `ScEvents` is round-tripped here, so a new one needs a line.
+## Nothing else checks a pair are inverses (gs-moderation once wrote `"voice muted"` and read back a warning). Every pair in `ScEvents` is round-tripped here, so a new one needs a line.
 func _test_the_wire() -> void:
 	_section("every message survives the trip")
 
@@ -251,7 +251,7 @@ func _wire_blast_and_chat() -> void:
 ## Spectator views and impacts.
 func _wire_spectate_and_impact() -> void:
 	var at := Vector3(-41.25, 46.5, 17.75)
-	# The death position is the field dot-spectate's own wire leaves out; see
+	# The death position is the field gs-spectate's own wire leaves out; see
 	# `ScEvents.write_spectate`. A mirror without it puts the death camera in the cannon.
 	var drop := Vector3(-12.25, 44.0, 30.5)
 	var view := ScEvents.read_spectate(_reader(ScEvents.write_spectate(
@@ -291,7 +291,7 @@ func _wire_spectate_and_impact() -> void:
 
 	_finished()
 func _check_wire_limits() -> void:
-		# A reader past its end returns plausible zeros: exhaustion was not sticky in dot-net, so a decoder skipping the `ok` check read a believable value after the overrun.
+		# A reader past its end returns plausible zeros: exhaustion was not sticky in gs-net, so a decoder skipping the `ok` check read a believable value after the overrun.
 	var truncated := ScEvents.read_hello(GSNetReader.new(PackedByteArray([1, 2])))
 	_check(not bool(truncated["ok"]), "and a truncated message says so rather than guessing")
 
@@ -321,7 +321,7 @@ func _test_a_client_joins() -> void:
 	_exchange()
 	_exchange()
 
-		# Then let the round actually begin, which re-lays the field from inside the netcode's loop: dot-match runs a warmup first, and every section below would otherwise assert about a world not started. A real client joining sees the same rebuild each round.
+		# Then let the round actually begin, which re-lays the field from inside the netcode's loop: gs-match runs a warmup first, and every section below would otherwise assert about a world not started. A real client joining sees the same rebuild each round.
 	await _steps(12)
 
 	_check(_client_bridge.local_player_id == SESSION, "and the client is told who it is",

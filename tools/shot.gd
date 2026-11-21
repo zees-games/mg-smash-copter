@@ -123,7 +123,7 @@ func _choose_workshop_map(client: Node) -> void:
 	print("workshop map chosen: ", chosen.ok)
 
 
-## --view=cover: the loading cover dot-game's GSGameClient puts up first, before it lifts.
+## --view=cover: the loading cover gs-game's GSGameClient puts up first, before it lifts.
 func _shoot_cover(client: Node, out: String) -> void:
 	for _i in 2:
 		await RenderingServer.frame_post_draw

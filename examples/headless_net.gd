@@ -130,7 +130,7 @@ func _attach_bridges(server_side: Node, client_side: Node) -> void:
 	_client_net = _make_manager(
 		false, &"client", CLIENT_PEER, client_side, _client_game.tick_rate
 	)
-		# This harness stamps every command itself (`_tick + INPUT_LEAD`), so the client must not ask for dot-net's input-lead report or its clock runs away from commands it never stamped. By the constant map, so it parses against an older dot-net.
+		# This harness stamps every command itself (`_tick + INPUT_LEAD`), so the client must not ask for gs-net's input-lead report or its clock runs away from commands it never stamped. By the constant map, so it parses against an older gs-net.
 	var lead_bit := int((GSNetMessageRegistry as Script).get_script_constant_map().get("FEATURE_INPUT_LEAD", 0))
 	_client_net.messages.features &= ~lead_bit
 
@@ -233,7 +233,7 @@ func _start_the_world() -> void:
 
 
 func _check_lag_compensation() -> void:
-		# The flag and the callable together, because either alone is a lie: dot-combat defaults lag compensation ON and resolves against the present when nothing is wired. The world builds with it off and the bridge turns it on with the two callables, so these three checks are one fact from three sides.
+		# The flag and the callable together, because either alone is a lie: gs-combat defaults lag compensation ON and resolves against the present when nothing is wired. The world builds with it off and the bridge turns it on with the two callables, so these three checks are one fact from three sides.
 		#
 		# Armed: with the assignment in `_wire_lag_compensation` removed, the first fails.
 	_check(

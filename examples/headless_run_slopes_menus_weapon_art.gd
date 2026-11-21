@@ -157,13 +157,13 @@ func _test_help_and_menu() -> void:
 	var leave_button := settings.menu.screen.find_child("Action_leave", true, false) as Button
 	_check(help_button != null and leave_button != null and leave_button.visible,
 		"the Escape menu has Help & commands and Leave")
-	_check(keys.row_for_setting(&"bind_weapon_previous").get("action", &"") == &"dot_menu_weapon_previous"
-		and keys.row_for_setting(&"bind_weapon_next").get("action", &"") == &"dot_menu_weapon_next"
+	_check(keys.row_for_setting(&"bind_weapon_previous").get("action", &"") == &"gs_menu_weapon_previous"
+		and keys.row_for_setting(&"bind_weapon_next").get("action", &"") == &"gs_menu_weapon_next"
 		and keys.row_for_setting(&"bind_weapon_previous").get("default", "") == "Wheel up"
 		and keys.row_for_setting(&"bind_weapon_next").get("default", "") == "Wheel down",
 		"the wheel is previous and next weapon")
 	var wheel_on_jump := keys.rows.filter(func(r: Dictionary) -> bool:
-		return r["action"] == &"dot_fps_jump" and str(r["default"]).begins_with("Wheel"))
+		return r["action"] == &"gs_fps_jump" and str(r["default"]).begins_with("Wheel"))
 	_check(wheel_on_jump.is_empty(), "and the wheel is not on jump")
 	settings.close()
 	settings.queue_free()
@@ -172,7 +172,7 @@ func _test_help_and_menu() -> void:
 
 
 ## The pack carries its art (a delivered game has only what is vendored in assets/), so every
-## model the weapons table names must be here. Sync it with zee-dot-weapons' tools/sync-art.sh.
+## model the weapons table names must be here. Sync it with zee-gs-weapons' tools/sync-art.sh.
 func _test_the_weapon_art_is_vendored() -> void:
 	_section("every model the weapon art table names is vendored in this game")
 	var models := ZeeWeaponArtTable.validate_models()
@@ -354,7 +354,7 @@ func _test_the_drawn_gun() -> void:
 func _check_wheel_step(client: Node, drawn: ZeeWeaponRig) -> void:
 	var ring: Array = drawn.arsenal.slots()
 	var step := InputEventAction.new()
-	step.action = &"dot_menu_weapon_next"
+	step.action = &"gs_menu_weapon_next"
 	step.pressed = true
 	# The pointer is never captured headless, so only that clause of the block is lifted.
 	client.call("_wheel_pressed", InputEventAction.new())
@@ -415,7 +415,7 @@ func _test_the_map_menu() -> void:
 
 
 ## Every bare `"res://…"` in a shipped script naming one of this game's directories, as `file:line`.
-## The rule `dot-server-deploy/tools/check.sh` counts; comments, `rebase("…")` literals and host paths are skipped.
+## The rule `gs-server-deploy/tools/check.sh` counts; comments, `rebase("…")` literals and host paths are skipped.
 func _bare_own_paths() -> PackedStringArray:
 	var skip := ["addons", "examples", "tools", "screenshots"]
 	var owned := PackedStringArray()

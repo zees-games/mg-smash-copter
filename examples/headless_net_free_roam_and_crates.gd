@@ -134,7 +134,7 @@ func _test_leaving() -> void:
 		"%d, was %d" % [_client_game.players.size(), before]
 	)
 
-	# And now the client itself, which is the path that cleans up dot-combat.
+	# And now the client itself, which is the path that cleans up gs-combat.
 	var entity := (_server_game.players[ScNetBridge.player_key(SESSION)] as ScPlayer).entity_id
 	_server_bridge.remove_player(SESSION)
 	_exchange()
@@ -144,7 +144,7 @@ func _test_leaving() -> void:
 		"and the client itself when it goes"
 	)
 
-	# [b]dot-combat keeps a health record per entity and nothing else tells it to let
+	# [b]gs-combat keeps a health record per entity and nothing else tells it to let
 	# go.[/b] game-buses-from-hell leaked one per player who ever joined, pointing at a node
 	# freed with them — invisible, because a stale entity is never asked about.
 	_check(_server_game.combat.health_of(entity) == null, "the combat manager let go of them")

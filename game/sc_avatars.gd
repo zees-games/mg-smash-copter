@@ -1,6 +1,6 @@
 extends RefCounted
 
-## What a player looks like, as a dot-user-avatar document: the schema, the stock avatar a player without one wears, and which skin a document asks for.
+## What a player looks like, as a gs-user-avatar document: the schema, the stock avatar a player without one wears, and which skin a document asks for.
 ## One slot, because every Blocky Character has byte-identical geometry and UVs, so the six people [ScFigure] draws are six atlases on one mesh, the side going on the torso as a tint. Data only, loading nothing, so a dedicated server validates without the art; [constant SKINS] and [code]ScFigure.ATLASES[/code] are the same list in the same order (`headless_run` checks).
 ## The stock avatar is the `hash(player_id)` choice from before there were documents, made into a document by [method stock_avatar], so nobody's character changed when profiles arrived.
 

@@ -116,8 +116,8 @@ var _entities: Node = null
 ## session id -> [ScPlayerNet].
 var _behaviours: Dictionary = {}
 
-## The next session id handed to somebody the world made itself. Well above anything dot-server
-## issues: a player id `bot` parses back to session ZERO, which is also dot-net's broadcast address,
+## The next session id handed to somebody the world made itself. Well above anything gs-server
+## issues: a player id `bot` parses back to session ZERO, which is also gs-net's broadcast address,
 ## so two bots would be one entry in [member _behaviours].
 const FIRST_BOT_SESSION := 900000
 

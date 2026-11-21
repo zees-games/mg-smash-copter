@@ -317,7 +317,7 @@ extends GSConfig
 
 ## Which weapons may be drawn, by id from the pack. Empty means a sensible default set.
 ##
-## Ids, never models: zee-dot-weapons names weapons by role so a server's rules survive the art being replaced.
+## Ids, never models: zee-gs-weapons names weapons by role so a server's rules survive the art being replaced.
 @export var weapon_pool: PackedStringArray = PackedStringArray()
 
 ## Whether both survivors of a team get the same draw.
@@ -343,7 +343,7 @@ extends GSConfig
 
 ## Degrees of lean a stand-in has to feel before it walks uphill (`sc_bot_lean_notice`).
 ##
-## This game's own mistake on top of dot-bot's: raised, a platform tips further before the stand-in moves, as a person's would.
+## This game's own mistake on top of gs-bot's: raised, a platform tips further before the stand-in moves, as a person's would.
 @export_range(0.0, 15.0, 0.05, "or_greater") var bot_lean_notice_degrees: float = 1.15
 
 ## How wide a miss, in metres, a stand-in accepts when it decides to fire (`sc_bot_spray`).
@@ -371,7 +371,7 @@ extends GSConfig
 ## Radians per second a falling platform tips over as it goes.
 @export_range(0.0, 5.0, 0.05) var fall_tip_rate: float = 0.85
 
-# How far a stand-in's aim is off is dot-bot's `bot_aim_error` (and its settling, reaction and
+# How far a stand-in's aim is off is gs-bot's `bot_aim_error` (and its settling, reaction and
 # turn rate): the old per-round fixed offset, `bot_aim_spread_degrees`, is gone, and its cvar
 # `sc_bot_spread` is a deprecated name for `bot_aim_error`.
 
@@ -380,7 +380,7 @@ extends GSConfig
 
 ## Who somebody who is out may watch: 0 anybody, 1 their own side, 2 nobody.
 ##
-## Own side by default: a dead player watching another corner is a free scout on voice, and dot-spectate then forces first person. `sc_spectate_camera` is the cvar.
+## Own side by default: a dead player watching another corner is a free scout on voice, and gs-spectate then forces first person. `sc_spectate_camera` is the cvar.
 @export_enum("anybody", "own side", "nobody") var spectate_camera: int = 0
 
 ## Seconds the death camera holds on the spot a person fell from, then the freeze camera. Both ends read it; client-side only (no replicated state).
@@ -397,7 +397,7 @@ extends GSConfig
 
 ## Where lifetime achievement progress is written. Empty keeps it in memory.
 ##
-## Memory by default, as dot-achievements does: a server silently writing a file per player under `user://` fills the disk unnoticed.
+## Memory by default, as gs-achievements does: a server silently writing a file per player under `user://` fills the disk unnoticed.
 @export var progress_directory: String = ""
 
 ## Whether the numbers and the unlocks are reported to the backbone.

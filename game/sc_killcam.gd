@@ -3,14 +3,14 @@ extends Node
 const ScPlayer := preload("sc_player.gd")
 const ScWeaponIcons := preload("sc_weapon_icons.gd")
 
-## The killcam at a round's end (client side): every drawn frame goes into dot-replay's
+## The killcam at a round's end (client side): every drawn frame goes into gs-replay's
 ## [GSKillcamBuffer], decisive moments are noted, and [GSKillcam] replays the last one from
 ## its player's eyes. Length is `mp_killcam_time`; 0 skips to [signal over].
 
 const CHANNEL := "smashcopter.killcam"
 
 ## Skip keys: jump, the use key and Escape.
-const SKIP_ACTIONS: PackedStringArray = ["dot_fps_jump", "ui_cancel"]
+const SKIP_ACTIONS: PackedStringArray = ["gs_fps_jump", "ui_cancel"]
 
 ## The killcam is over (or never began); the end-of-round flow goes on from here.
 signal over(skipped: bool)

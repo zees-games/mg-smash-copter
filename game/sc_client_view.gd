@@ -140,7 +140,7 @@ func _build_camera() -> void:
 
 ## Puts the camera where this view mode wants it, rebuilding the rig if the mode changed.
 ##
-## A boom in third person, nothing in first: dot-core's [GSCameraBoom] sweeps a sphere from the eye so backing to a platform edge does not put the view inside the floor, and eases in rather than snapping like a ray.
+## A boom in third person, nothing in first: gs-core's [GSCameraBoom] sweeps a sphere from the eye so backing to a platform edge does not put the view inside the floor, and eases in rather than snapping like a ray.
 func _place_camera(seated: bool) -> void:
 	if camera == null or player == null:
 		return

@@ -4,7 +4,7 @@ extends Node
 
 const ScContent := preload("sc_content.gd")
 
-## Dot-fx's break effect. Its own crack stays on: nothing else in this game sounds a break.
+## GS-fx's break effect. Its own crack stays on: nothing else in this game sounds a break.
 var break_fx: GSFxBreak = null
 
 var _world: Node = null

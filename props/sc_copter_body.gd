@@ -47,7 +47,7 @@ func _ready() -> void:
 func _build_collision() -> void:
 	# [b]One box, and the tail is deliberately outside it.[/b] A collider that followed
 	# the silhouette would put a two-metre boom behind the machine that catches on every
-	# platform edge it backs over — and a pilot cannot see it. dot-props documents the same
+	# platform edge it backs over — and a pilot cannot see it. gs-props documents the same
 	# choice from the other end: the art is a shape and the physics is a primitive.
 	var collider := CollisionShape3D.new()
 	collider.name = "Collision"

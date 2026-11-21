@@ -4,7 +4,7 @@ const ScNetCommand := preload("sc_net_command.gd")
 const ScPlayer := preload("../sc_player.gd")
 
 ## What a networked player replicates: the movement state, their health, and whether they are flying.
-## The movement half is dot-player-controller's own [GSFpsNetSync.state_specs] (type names are STRINGS so the addon describes a dot-net layout without naming dot-net); listing the fields here would be a second copy to drift.
+## The movement half is gs-player-controller's own [GSFpsNetSync.state_specs] (type names are STRINGS so the addon describes a gs-net layout without naming gs-net); listing the fields here would be a second copy to drift.
 ## Health and riding are not derivable from movement. Team is deliberately NOT here: it changes once a round at most and arrives reliably in JOIN and TEAM; per-tick property for what changes per tick, an event for a decision.
 
 ## Somebody this client is watching used their weapon, [param times] times since the last
@@ -22,7 +22,7 @@ var net_crouch: float = 0.0
 var net_flags: int = 0
 var net_modifiers: int = 0
 
-## The jump timers (coyote, jump buffer, cooldown), owner only, for the owner's rewind. Opt-in on dot-player-controller API 10; see its docs/networking.md.
+## The jump timers (coyote, jump buffer, cooldown), owner only, for the owner's rewind. Opt-in on gs-player-controller API 10; see its docs/networking.md.
 var net_timers: int = 0
 
 ## Hit points, and the one field with a hard cap on the wire.
@@ -33,7 +33,7 @@ var net_health: float = 100.0
 var net_riding: bool = false
 
 # Seven fields, and the pack's own `ZeeWeaponNet.all_specs()` names all of them; concatenating by hand is a second place to forget the pack's half, which presents as weapons silent for everybody but the holder.
-# The magazine and the reserve are `owner_only`: exact ammunition is information an opponent should not have, as dot-combat decides.
+# The magazine and the reserve are `owner_only`: exact ammunition is information an opponent should not have, as gs-combat decides.
 
 var net_slot: int = 0
 var net_magazine: int = 0
@@ -93,7 +93,7 @@ func _register_net_vars() -> void:
 
 	# Owner-only jump timers, appended after the movement specs (declaration order is wire order).
 	# Guarded: a shell without API 10 has no GSFpsNetSync.rewind_specs().
-	if GSAddonApi.build_level("dot_player_controller") >= 10:
+	if GSAddonApi.build_level("gs_player_controller") >= 10:
 		for spec in GSFpsNetSync.rewind_specs():
 			var _timers := replicate(spec["property"], GSNetVar.Type[spec["type"]]).bits(int(spec["bits"])).to_owner_only()
 

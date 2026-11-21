@@ -4,7 +4,7 @@ const ScConfig := preload("sc_config.gd")
 const ScGame := preload("sc_game.gd")
 const ScMapConfig := preload("sc_map_config.gd")
 
-## What a [GSServer] loads as its game scene; never a client. The work is in `sc_module.gd`: dot-server
+## What a [GSServer] loads as its game scene; never a client. The work is in `sc_module.gd`: gs-server
 ## loads a SCENE, and the world must be in the tree under [constant ScGame.SERVICE] before the module looks.
 ## It lives in `game/`, not `scenes/`: only `scenes/*.tscn` is vendored, so a script there never ships.
 

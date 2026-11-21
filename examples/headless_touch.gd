@@ -45,7 +45,7 @@ func _touch_buttons() -> void:
 				clear = clear and a.distance_to(b) >= ra + float(list[j]["radius"])
 		_check(inside, "every button sits in the right half at %dx%d" % [size.x, size.y])
 		_check(clear, "and no two overlap at %dx%d" % [size.x, size.y])
-	_check(ScTouch.layout().size() == list.size(), "dot-mobile gets every button of the preset")
+	_check(ScTouch.layout().size() == list.size(), "gs-mobile gets every button of the preset")
 	var held := {}
 	for row in ScTouch.layout():
 		held[row["id"]] = int(row.get("hold", 0))
@@ -56,7 +56,7 @@ func _touch_buttons() -> void:
 	_check(ids.size() == list.size(), "every button id is unique")
 
 
-## dot-mobile's overlay on the client's own sampler, built the way the client builds it (a Node host, the overlay on its own CanvasLayer).
+## gs-mobile's overlay on the client's own sampler, built the way the client builds it (a Node host, the overlay on its own CanvasLayer).
 func _overlay() -> void:
 	var state: Node = (load("res://game/sc_game_state.gd") as GDScript).new()
 	var rules: GSMobileRules = state.mobile_rules

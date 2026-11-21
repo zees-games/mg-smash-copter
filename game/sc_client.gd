@@ -2,7 +2,7 @@ extends "sc_client_flashlight.gd"
 
 ## One local player, a camera and a HUD over an [ScGame], offline or against a server.
 ##
-## One client for both: offline is the same world class with `authoritative` true, and the whole difference is [ScNetBridge], so there is no second game to keep in step. Which half runs depends on a [GSClientLink] published under `dot_client_link` before the scene loads (`--offline` forces offline). First or third person is camera only, since the simulation is first-person and predictable in both.
+## One client for both: offline is the same world class with `authoritative` true, and the whole difference is [ScNetBridge], so there is no second game to keep in step. Which half runs depends on a [GSClientLink] published under `gs_client_link` before the scene loads (`--offline` forces offline). First or third person is camera only, since the simulation is first-person and predictable in both.
 
 
 func _ready() -> void:
@@ -18,7 +18,7 @@ func _ready() -> void:
 	add_child(platform)
 	gate = platform.gate
 
-	# [b]zee-dot-weapons' art is this game's copy of it, wherever this game is mounted.[/b]
+	# [b]zee-gs-weapons' art is this game's copy of it, wherever this game is mounted.[/b]
 	# `ZeeWeaponArtTable` names `res://assets/…`, which a delivered pack lacks: guns and arms
 	# would load invisible.
 	ZeeModelCache.set_asset_root(ScPaths.root())
@@ -165,7 +165,7 @@ func _start_offline() -> void:
 	GSLog.result(CHANNEL, "chat, offline", chat.attach(null))
 
 
-## A solo stand-in's name: the server's list through dot-bot's pick, so solo and a server name
+## A solo stand-in's name: the server's list through gs-bot's pick, so solo and a server name
 ## them alike and never twice.
 static func _bot_name(index: int) -> String:
 	var taken: Array = []
@@ -236,7 +236,7 @@ func _build_netcode() -> GSResult:
 	net.is_server = false
 	net.local_peer_id = multiplayer.get_unique_id() if multiplayer != null else 2
 	net.auto_tick = false
-	# Empty: by default a stale `user://dot_net.json` silently overrides the game's tick rate.
+	# Empty: by default a stale `user://gs_net.json` silently overrides the game's tick rate.
 	net.config_file = ""
 
 	var config := GSNetConfig.new()
@@ -275,7 +275,7 @@ func _build_netcode() -> GSResult:
 
 	_connect_bridge()
 
-	# The only RTT source (dot-net owns no transport); without it commands arrive late past ~30 ms.
+	# The only RTT source (gs-net owns no transport); without it commands arrive late past ~30 ms.
 	if link != null and link.has_method("ping_ms"):
 		bridge.rtt_source = func() -> float:
 			return float(maxi(0, int(link.call("ping_ms"))))
@@ -422,7 +422,7 @@ func _build_settings() -> void:
 	platform.board_snapshot_fn = board_snapshot
 	# M: the layout list. Solo a choice changes the layout here at once; connected the server
 	# decides, by the owner's `sv_map_menu_flag`, and anybody without it gets a vote instead
-	# (dot-vote's map menu, wired in [ScModule]).
+	# (gs-vote's map menu, wired in [ScModule]).
 	platform.maps_rows_fn = func() -> Array: return game.layout_rows() if game != null else []
 	platform.maps_change_fn = func(id: StringName) -> GSResult: return game.change_layout_now(id)
 	platform.maps_title = "Change layout"
@@ -508,7 +508,7 @@ func _build_chat() -> void:
 
 ## Walking off and on: typing, or the settings screen up. Both samplers, because offline the
 ## player samples for themselves and connected the client does.
-## dot-team's block rules followed from the server, and the F9 tuning panel where this process hosts the game.
+## gs-team's block rules followed from the server, and the F9 tuning panel where this process hosts the game.
 func _add_noblock_and_workbench() -> void:
 	if link != null:
 		GSLog.result(CHANNEL, "noblock", platform.add_noblock(game, Callable(game, "team_of_side")))
@@ -598,7 +598,7 @@ func _physics_process(delta: float) -> void:
 	var move := _sampler.sample(delta) if _sampler != null else GSFpsCommand.new()
 	_stamp(move)
 
-		# Each pass is its own tick: `advance` has moved the clock by all of them, so `input_tick()` is the LAST one every pass, and a two-tick frame would send the second twice and the first never, leaving the predictor's replay stopped at the hole. Arithmetic here, not a new dot-net call, so a pack runs on whatever shell the player has.
+		# Each pass is its own tick: `advance` has moved the clock by all of them, so `input_tick()` is the LAST one every pass, and a two-tick frame would send the second twice and the first never, leaving the predictor's replay stopped at the hole. Arithmetic here, not a new gs-net call, so a pack runs on whatever shell the player has.
 	for i in range(ticks):
 		if not net.clock.is_synced():
 			continue

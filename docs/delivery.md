@@ -1,10 +1,10 @@
 # Pack delivery: what a delivered game may not do
 
-This game is delivered as a signed dot-cloud pack and was the first verified by a real client on a real socket against a delivered pack (dot-server-deploy's `examples/smash_client.tscn`). Three suites and every render passed on a game that would not run mounted; publishing, booting a server, rendering the delivered map and running stand-ins for twenty rounds found what is below. The family view is dot-cloud's [mounting](../../dot-cloud/docs/mounting.md) and [publishing](../../dot-cloud/docs/publishing.md); mg-buses-from-hell's [delivery.md](../../mg-buses-from-hell/docs/delivery.md) has the sixth form (an imported model's own texture dependency).
+This game is delivered as a signed gs-cloud pack and was the first verified by a real client on a real socket against a delivered pack (gs-server-deploy's `examples/smash_client.tscn`). Three suites and every render passed on a game that would not run mounted; publishing, booting a server, rendering the delivered map and running stand-ins for twenty rounds found what is below. The family view is gs-cloud's [mounting](../../gs-cloud/docs/mounting.md) and [publishing](../../gs-cloud/docs/publishing.md); mg-buses-from-hell's [delivery.md](../../mg-buses-from-hell/docs/delivery.md) has the sixth form (an imported model's own texture dependency).
 
 ## No `class_name`, anywhere in this repository
 
-**A mounted pack's `class_name` globals are not registered in the host**, so a delivered game using one mounts, loads its scenes, and has every script dead with nothing reporting it. Every script is reached by a relative `preload` and every subclass by a relative `extends`. `dot-server-deploy/tools/check.sh` refuses a new one in any game repository.
+**A mounted pack's `class_name` globals are not registered in the host**, so a delivered game using one mounts, loads its scenes, and has every script dead with nothing reporting it. Every script is reached by a relative `preload` and every subclass by a relative `extends`. `gs-server-deploy/tools/check.sh` refuses a new one in any game repository.
 
 ## Every `res://` path goes through `ScPaths.rebase()`, where it is DEFINED
 
@@ -12,7 +12,7 @@ This game is delivered as a signed dot-cloud pack and was the first verified by 
 
 ## The seventh form: a path already rewritten, rebased again
 
-`ScPropBody` loads its model from an exported `model_path`. **The publisher rewrites every `res://` string inside a `.tscn`, `.tres` and `.import` onto the mount prefix, and none inside a `.gd`.** So the exported value arrives absolute, and `rebase()` prefixed it again: `res://dot_cloud/tmc/smash/0.1.0/dot_cloud/tmc/smash/0.1.0/assets/kenney/car/debris-tire.glb`, long enough that the doubling reads as noise. It is the second and third forms (scene paths, script strings) meeting, and only exists because both are closed. **`rebase()` returns a path already under the root unchanged.**
+`ScPropBody` loads its model from an exported `model_path`. **The publisher rewrites every `res://` string inside a `.tscn`, `.tres` and `.import` onto the mount prefix, and none inside a `.gd`.** So the exported value arrives absolute, and `rebase()` prefixed it again: `res://gs_cloud/tmc/smash/0.1.0/gs_cloud/tmc/smash/0.1.0/assets/kenney/car/debris-tire.glb`, long enough that the doubling reads as noise. It is the second and third forms (scene paths, script strings) meeting, and only exists because both are closed. **`rebase()` returns a path already under the root unchanged.**
 
 **And the check for it passed with the bug put back.** Built in, `root()` is `res://` and every `res://` path is under it, so every property of `rebase()` that matters in a pack is a tautology: the idempotence was asserted, the fix reverted, and the suite stayed green. `ScPaths.rebase_onto(path, root)` exists so the suite can hand it a real mount prefix, and `rebase()` is one line over it. **Arming a guard means checking it fails**; this is why that rule is in the family's notes.
 
@@ -31,4 +31,4 @@ A `.tscn` records an external resource as an absolute path plus a UID, and insid
 
 ## Importing before packing
 
-`dot-server-deploy`'s pack step needs this project imported first (`godot --headless --path ../mg-smash-copter --import`): a pack cannot import itself.
+`gs-server-deploy`'s pack step needs this project imported first (`godot --headless --path ../mg-smash-copter --import`): a pack cannot import itself.

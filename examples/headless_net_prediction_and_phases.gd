@@ -198,7 +198,7 @@ func _test_who_somebody_is_crosses() -> void:
 		return
 
 	var _shown := ScClient.present_frame(_client_net, _client_game, mine, true, 1.0 / 60.0, 0.0)
-	# Your own player is drawn at the clock's render alpha (dot-player-controller's
+	# Your own player is drawn at the clock's render alpha (gs-player-controller's
 	# `render_clock`), so a clock slip does not stall or double the eye.
 	_check(
 		mine.controller != null and mine.controller.get(&"render_clock") == _client_net.clock,

@@ -8,7 +8,7 @@ const ScPaths := preload("sc_paths.gd")
 ## That lets a server retune the round by editing a document, and the suite assert the design instead of the code.
 
 ## Where the bodies live, as this game was authored.
-## Rebased where they are defined: a delivered pack mounts at `res://dot_cloud/<id>/<version>/`, so an absolute path to this game's OWN files resolves against the host root.
+## Rebased where they are defined: a delivered pack mounts at `res://gs_cloud/<id>/<version>/`, so an absolute path to this game's OWN files resolves against the host root.
 ## `static var` is the only spelling that can hold the rebased value, because a `const` cannot call, and a rebase at every call site is one new site from wrong.
 static var CRATE_SCENE := ScPaths.rebase("res://props/sc_crate.tscn")
 static var TYRE_SCENE := ScPaths.rebase("res://props/sc_tyre.tscn")
@@ -28,11 +28,11 @@ const BOULDER := &"boulder"
 const CONTAINER := &"container"
 const SLAB := &"slab"
 
-## What breakable props shatter into, by dot-fx material name; the wire carries the index. A barrel is absent: its end is the blast.
+## What breakable props shatter into, by gs-fx material name; the wire carries the index. A barrel is absent: its end is the blast.
 const BREAK_MATERIALS: Array[String] = ["wood", "plastic"]
 
 
-## The dot-fx material a broken [param prop_id] shatters into, or "" for none.
+## The gs-fx material a broken [param prop_id] shatters into, or "" for none.
 static func break_material(prop_id: StringName) -> String:
 	match prop_id:
 		CRATE:
@@ -50,7 +50,7 @@ const META_TIER := &"tier"
 const TIERS := 4
 
 ## Who owns anything the world puts out itself.
-## Not the empty string, which dot-props reads as a player: `may_spawn` charges the owner's budget, so `&""` would run the world's furniture into the per-player limit.
+## Not the empty string, which gs-props reads as a player: `may_spawn` charges the owner's budget, so `&""` would run the world's furniture into the per-player limit.
 const WORLD_OWNER := &"world"
 
 
@@ -193,7 +193,7 @@ static func ids_in_tier(catalogue: GSPropCatalogue, tier: int) -> Array[StringNa
 
 ## The chopper, and nothing else.
 ## `CUSTOM` with a chassis script, because neither shipped chassis is a helicopter: [GSVehicleWheeled] needs wheels on the ground and [GSVehicleHover] refuses to thrust when its rays find nothing, the state a helicopter lives in.
-## `chassis_script_path` is dot-vehicle's extension point for a fourth kind, and [ScCopter] is one.
+## `chassis_script_path` is gs-vehicle's extension point for a fourth kind, and [ScCopter] is one.
 static func vehicles(config: ScConfig) -> GSVehicleCatalogue:
 	var catalogue := GSVehicleCatalogue.new()
 
@@ -225,7 +225,7 @@ static func vehicles(config: ScConfig) -> GSVehicleCatalogue:
 	tunables.suspension_travel = 0.25
 	tunables.suspension_stiffness = 45.0
 	tunables.centre_of_mass_drop = 1.2
-	# The chopper's drag: dot-vehicle writes this onto the body in REPLACE mode at bind (since
+	# The chopper's drag: gs-vehicle writes this onto the body in REPLACE mode at bind (since
 	# 4f4afaf). 0.22 is what it flew with before: its own 0.12 COMBINED with the project's 0.1.
 	tunables.linear_damp = 0.22
 	# High, because getting out of a helicopter is jumping out of one. The refusal exists

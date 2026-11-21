@@ -5,13 +5,13 @@ const ScContent := preload("sc_content.gd")
 
 ## This game, as a module a dedicated server loads.
 ##
-## No `class_name`, a requirement: [method GSModuleHost.load_module] constructs it from a PATH, and a module in a dot-cloud pack cannot register globals in the host. [GSGameModule] holds the netcode, bridge, seal, identity, roster and tick; this adds the operator cvars, two console commands and the rule that keeps enough people in a round. Usage: `server.modules.load_module("res://game/sc_module.gd")`.
+## No `class_name`, a requirement: [method GSModuleHost.load_module] constructs it from a PATH, and a module in a gs-cloud pack cannot register globals in the host. [GSGameModule] holds the netcode, bridge, seal, identity, roster and tick; this adds the operator cvars, two console commands and the rule that keeps enough people in a round. Usage: `server.modules.load_module("res://game/sc_module.gd")`.
 
 # No `const CHANNEL`: [GSGameModule] declares one and GDScript refuses a redeclaration, rightly, since a module logs through [method GSModule.log_info] under its own name and a second channel would split its records.
 
 ## Where the services keep punishments. Empty is [GSGameServices]'s default, `user://smash-copter_punishments.json`, the store a real server enforces.
 ##
-## Static, because dot-server constructs the module from a path so no instance exists to set a field on; `examples/dedicated.tscn` points it at its own directory so runs do not append to the real store.
+## Static, because gs-server constructs the module from a path so no instance exists to set a field on; `examples/dedicated.tscn` points it at its own directory so runs do not append to the real store.
 static var punishments_file: String = ""
 
 
@@ -71,9 +71,9 @@ func _make_services() -> Node:
 	return services
 
 
-## Profiles, avatars and admission: dot-platform's [GSPlatformIdentity] over this game's one-slot schema.
+## Profiles, avatars and admission: gs-platform's [GSPlatformIdentity] over this game's one-slot schema.
 ##
-## [GSGameModule] builds it before the services. Authentication is the host's `dot_auth_server`, not this game's; this layer is the scoped profile, name and face after it. With authentication off everybody is a guest.
+## [GSGameModule] builds it before the services. Authentication is the host's `gs_auth_server`, not this game's; this layer is the scoped profile, name and face after it. With authentication off everybody is a guest.
 func _make_identity() -> Node:
 	var identity_layer := GSPlatformIdentity.new()
 	identity_layer.avatar_schema = ScAvatars.schema()
@@ -94,7 +94,7 @@ func _game_load() -> GSResult:
 	add_command("sc_specials", _cmd_specials, "List the special rounds, and what is in force")
 	add_command("sc_say", _cmd_say, "Say something to everybody, as the server")
 
-	# dot-game's "still loading": a seat behind its client's cover is neither hurt nor eliminated
+	# gs-game's "still loading": a seat behind its client's cover is neither hurt nor eliminated
 	# (see ScGame.harm_gate). Asked by player id, resolved to a peer through the bridge.
 	world.harm_gate = func(player_id: StringName) -> bool:
 		if bridge == null:
@@ -124,7 +124,7 @@ func _game_load() -> GSResult:
 
 	# REPLICATED: where the clients' killcam camera sits (0 the killer's eye, 1 behind the killer).
 	var _camera := add_cvar("mp_killview_camera", "0",
-		"Killcam camera: 0 the killer's eye, 1 behind the killer (dot-replay GSKillcamFraming)",
+		"Killcam camera: 0 the killer's eye, 1 behind the killer (gs-replay GSKillcamFraming)",
 		GSConVar.FLAG_ARCHIVE | GSConVar.FLAG_NOTIFY | GSConVar.FLAG_REPLICATED)
 
 	var configured := _bind_config(world)
@@ -139,7 +139,7 @@ func _game_load() -> GSResult:
 		"Automatic stand-ins: 1 keeps as many as bot_quota and bot_quota_mode say, 0 none at all."
 	)
 
-		# The count is dot-server's [GSBotQuota], so `bot_quota` and `bot_quota_mode` mean the same on every server. The default is `minimum_players` in fill mode: stand-ins top the round up, a joiner takes one's place. `sc_bots` stays the switch.
+		# The count is gs-server's [GSBotQuota], so `bot_quota` and `bot_quota_mode` mean the same on every server. The default is `minimum_players` in fill mode: stand-ins top the round up, a joiner takes one's place. `sc_bots` stays the switch.
 	_quota = GSBotQuota.install(self, world.config.minimum_players)
 
 		# Started here, not in the world's `_ready`: `start()` lays the field out, and before the bridge existed nothing would hear `world_rebuilt`, leaving invisible floors the server knows and no client does.
@@ -177,7 +177,7 @@ func _bind_family_cvars(world: ScGame) -> void:
 	var _ambient := world.ambient_rules.bind_cvars(add_cvar, flags, GSConVar.FLAG_ARCHIVE | GSConVar.FLAG_NOTIFY)
 
 
-## Who somebody is reaches the world: a face as they are seated, and the real name and face once dot-platform has them.
+## Who somebody is reaches the world: a face as they are seated, and the real name and face once gs-platform has them.
 ##
 ## Admission finishes AFTER seating, so the seated name and face are a guest's whenever the profile store is slow; `player_admitted`, a wardrobe change and an operator's `platform_name` all end in [method ScNetBridge.refresh_player], a JOIN everybody can apply.
 func _wire_identity() -> void:
@@ -192,9 +192,9 @@ func _wire_identity() -> void:
 	hook_post("player_renamed", _on_profile)
 
 
-## What a session looks like: what dot-platform resolved for them, or the stock person.
+## What a session looks like: what gs-platform resolved for them, or the stock person.
 ##
-## Through the platform module's `player_for`, never the hub by a key made here: the hub keys by scoped profile key, so `u<session>` finds nobody and silently reads as "no avatar". Duck-typed, since a server without dot-platform is a configuration.
+## Through the platform module's `player_for`, never the hub by a key made here: the hub keys by scoped profile key, so `u<session>` finds nobody and silently reads as "no avatar". Duck-typed, since a server without gs-platform is a configuration.
 func _avatar_for(session_id: int) -> GSAvatar:
 	var session := server.session_by_userid(session_id) if server != null else null
 	var platform: Object = server.modules.get_module("platform") \
@@ -235,7 +235,7 @@ func _add_tunables(world: ScGame) -> void:
 	_tunable("sc_showdown_seconds", config.showdown_seconds,
 		"Seconds the fight in the corners lasts",
 		func(value: float) -> void: config.showdown_seconds = value)
-		# How stand-ins aim and shoot is dot-bot's (`bot_difficulty` and the `bot_*` bundle). Set on the world as metadata, never the registry, since two servers in one process must not share it. `sc_bot_spread` stays a deprecated name for `bot_aim_error`.
+		# How stand-ins aim and shoot is gs-bot's (`bot_difficulty` and the `bot_*` bundle). Set on the world as metadata, never the registry, since two servers in one process must not share it. `sc_bot_spread` stays a deprecated name for `bot_aim_error`.
 	var bot_settings := GSBotSettings.of(world)
 	var _bot_cvars := bot_settings.bind_cvars(add_cvar, GSConVar.FLAG_NOTIFY, add_command)
 	_tunable("sc_bot_spread", bot_settings.profile.aim_error,
@@ -337,7 +337,7 @@ func _hand_cvar(key: String) -> String:
 	return name if console.has_name(name) else ""
 
 
-## Every config field as an `sc_<field>` cvar (the hand-written ones keep their handlers and follow workbench edits), the cfg/ diff commands, the workbench and dot-team's block rules.
+## Every config field as an `sc_<field>` cvar (the hand-written ones keep their handlers and follow workbench edits), the cfg/ diff commands, the workbench and gs-team's block rules.
 func _bind_config(world: ScGame) -> GSResult:
 	var _fl := world.flashlight_conf()
 	if world.flashlight_binder != null:
@@ -559,7 +559,7 @@ func _keep_the_round_full() -> void:
 
 
 ## Names for the stand-ins, so a scoreboard of four of them is readable: this game's own names
-## through dot-bot's [GSBotNames], never one already in [param world] (drawn at random they
+## through gs-bot's [GSBotNames], never one already in [param world] (drawn at random they
 ## could double up), and the same from run to run.
 static func _bot_name(world: ScGame) -> String:
 	var taken: Array = []
@@ -581,7 +581,7 @@ func _wire_chat() -> void:
 	services.connect("command_entered", _on_chat_command)
 
 
-## The layouts and the players' vote for the next one (dot-vote: `!vote`, `!rtv`, `!nominate`); a layout is a round's map.
+## The layouts and the players' vote for the next one (gs-vote: `!vote`, `!rtv`, `!nominate`); a layout is a round's map.
 ##
 ## The vote opens [member ScVote.open_after_sec] into each layout and applies when the round ends (`game/sc_vote.gd`); an owner tunes it in `user://cfg/smash_vote.json` or `game.yml`'s `metadata: layout_vote:`. A vote that cannot be built is a WARN and the weighted draw alone.
 func _build_maps(world: ScGame) -> void:
@@ -591,7 +591,7 @@ func _build_maps(world: ScGame) -> void:
 	maps.apply_fn = world.change_layout_now
 	add_child(maps)
 
-	# `map`, `maps` and `mapinfo`, dot-map's, over the layouts. The change goes through the
+	# `map`, `maps` and `mapinfo`, gs-map's, over the layouts. The change goes through the
 	# game's own `change_layout_now` rather than a scene swap: see `ScMapSession`.
 	var map_commands := GSMapCommands.new()
 	map_commands.session = maps
@@ -644,9 +644,9 @@ func _build_vote(world: ScGame) -> void:
 	var commanded := vote.install_commands(self)
 	GSLog.result(CHANNEL, "the layout vote's commands", commanded)
 
-	# The map menu (M), dot-vote's: a player holding the owner's `sv_map_menu_flag` changes the
+	# The map menu (M), gs-vote's: a player holding the owner's `sv_map_menu_flag` changes the
 	# layout now, not next round, and sees the same rows a solo player does. Read by name,
-	# because a server on a dot-vote older than the menu has no `map_menu` and runs without it.
+	# because a server on a gs-vote older than the menu has no `map_menu` and runs without it.
 	var menu_half: Variant = vote.commands.get(&"map_menu") if vote.commands != null else null
 	if menu_half is Object:
 		(menu_half as Object).set(&"change_fn", world.change_layout_now)
@@ -717,7 +717,7 @@ func _wire_progress(world: ScGame) -> void:
 	if bridge == null:
 		return
 
-	# Filed under dot-game's stable per-server key (guests too), so it outlives the connection
+	# Filed under gs-game's stable per-server key (guests too), so it outlives the connection
 	# and a restart; see [ScProgress].
 	if world.progress != null:
 		world.progress.durable_key_fn = func(id: StringName) -> String:

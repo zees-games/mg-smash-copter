@@ -58,7 +58,7 @@
 # dark_moods: ["interior_horror", "cave_tunnel", "outdoor_night"]
 
 # --- Sound
-# dot-audio catalogue ids for the switch clicks; empty is silent.
+# gs-audio catalogue ids for the switch clicks; empty is silent.
 # click_on: "flashlight_on"
 # click_off: "flashlight_off"
 # Loudness of a click, 0 to 1; 0 is a silent light. The stock clicks are already quieter than a footstep. [0.0..1.0]

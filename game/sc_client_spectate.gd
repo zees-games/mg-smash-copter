@@ -77,7 +77,7 @@ func _drive_spectator_camera() -> bool:
 	if view_model != null and is_instance_valid(view_model):
 		view_model.visible = false
 
-	# Chase and death cameras pulled out of the course by dot-spectate, given the level.
+	# Chase and death cameras pulled out of the course by gs-spectate, given the level.
 	var manager: GSSpectatorManager = game.spectate.manager
 	if manager != null and manager.camera_world == null and game.physics != null:
 		manager.camera_world = camera.get_world_3d()
@@ -90,7 +90,7 @@ func _drive_spectator_camera() -> bool:
 	else:
 		_free_cam = null
 
-	# Identity is dot-spectate's "no answer" — a target it could not find. Holding the last
+	# Identity is gs-spectate's "no answer" — a target it could not find. Holding the last
 	# frame is better than a camera at the world origin, which here is inside the cannon.
 	if where != Transform3D.IDENTITY:
 		camera.global_transform = where
@@ -144,13 +144,13 @@ func _fly_free_camera() -> Transform3D:
 
 	if _pointer_ours() and not _covered():
 		move = Vector3(
-			_strength(&"dot_fps_right") - _strength(&"dot_fps_left"),
-			_strength(&"dot_fps_jump") - _strength(&"dot_fps_crouch"),
-			_strength(&"dot_fps_forward") - _strength(&"dot_fps_back"),
+			_strength(&"gs_fps_right") - _strength(&"gs_fps_left"),
+			_strength(&"gs_fps_jump") - _strength(&"gs_fps_crouch"),
+			_strength(&"gs_fps_forward") - _strength(&"gs_fps_back"),
 		)
 
 	# Walk is the slow key here; this game has no sprint (Shift is the brake), so nothing is fast.
-	var pose := _free_cam.step(move, false, _held(&"dot_fps_walk"), get_process_delta_time())
+	var pose := _free_cam.step(move, false, _held(&"gs_fps_walk"), get_process_delta_time())
 	var _kept := game.spectate.manager.move_free(String(player.player_id), pose.origin, pose.basis)
 	return pose
 
@@ -263,7 +263,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Tab, M and a click taking the pointer back are the platform's (GSGameClient).
 	if event.is_action_pressed("ui_cancel"):
 		# Opens the settings when the menu left this Escape alone (a released pointer with nothing
-		# to click did half a job). A second Escape never reaches here: dot-ui's stack closes it.
+		# to click did half a job). A second Escape never reaches here: gs-ui's stack closes it.
 		if settings != null:
 			settings.open()
 		return
@@ -302,7 +302,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_sampler.handle_event(event)
 
 
-## The phone's controls over the HUD (dot-mobile), on a touch device only. Fire and alt are the click's two buttons (out, they step who is watched); E asks to board; the arrows step the weapon wheel; TAB holds the scoreboard.
+## The phone's controls over the HUD (gs-mobile), on a touch device only. Fire and alt are the click's two buttons (out, they step who is watched); E asks to board; the arrows step the weapon wheel; TAB holds the scoreboard.
 func _build_touch() -> void:
 	if not GSPlatform.has_touch() or hud == null:
 		return
@@ -465,7 +465,7 @@ func _handle_pointer(event: InputEvent) -> bool:
 	return false
 
 
-## The wheel (dot-menu's stock rows) walks the carried slots; true when it took the event.
+## The wheel (gs-menu's stock rows) walks the carried slots; true when it took the event.
 func _wheel_pressed(event: InputEvent) -> bool:
 	if _wheel == null:
 		_wheel = GSWeaponWheel.new()
@@ -502,8 +502,8 @@ func describe() -> Dictionary:
 	return out
 
 
-## dot-game's chat box and microphone with this game's channels and voice format; also draws
-## dot-server's own lines (votes, joins, `say`), which arrive on the client link. Static so a suite
+## gs-game's chat box and microphone with this game's channels and voice format; also draws
+## gs-server's own lines (votes, joins, `say`), which arrive on the client link. Static so a suite
 ## builds the same box the client does.
 static func new_chat() -> GSGameChatClient:
 	var box := GSGameChatClient.new()
@@ -524,7 +524,7 @@ static func new_chat() -> GSGameChatClient:
 	return box
 
 
-## Where a roster row's player stands, for dot-game's look-to-gag key (G, K).
+## Where a roster row's player stands, for gs-game's look-to-gag key (G, K).
 func _look_position(row: Dictionary) -> Variant:
 	if game == null:
 		return null

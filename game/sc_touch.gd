@@ -1,9 +1,9 @@
 extends RefCounted
 
-## The phone's controls: dot-mobile's stick, drag-look and buttons over the HUD, driving the client's own [GSFpsTouchSampler].
-## The buttons are the ones this game always had (dot-game's fps preset, the use button labelled E): fire and alt-fire (in the chopper's seat, the same two),
+## The phone's controls: gs-mobile's stick, drag-look and buttons over the HUD, driving the client's own [GSFpsTouchSampler].
+## The buttons are the ones this game always had (gs-game's fps preset, the use button labelled E): fire and alt-fire (in the chopper's seat, the same two),
 ## jump/up, crouch/down, get in or out of the chopper, reload, the showdown's weapon arrows, the held scoreboard and chat.
-## Auto-fire and aim assist are dot-mobile's and stay off: this is a team game of platforms where a gun is only the last round's, so the overlay is given no crosshair query.
+## Auto-fire and aim assist are gs-mobile's and stay off: this is a team game of platforms where a gun is only the last round's, so the overlay is given no crosshair query.
 
 const FIRE := GSGameTouchLayout.FIRE
 const ALT := GSGameTouchLayout.ALT
@@ -16,7 +16,7 @@ const NEXT := GSGameTouchLayout.NEXT
 const BOARD := GSGameTouchLayout.BOARD
 const CHAT := GSGameTouchLayout.CHAT
 
-## dot-game's fps preset with the use button labelled E, as the keyboard key is.
+## gs-game's fps preset with the use button labelled E, as the keyboard key is.
 static func touch_layout() -> GSGameTouchLayout:
 	var res := GSGameTouchLayout.build(GSGameTouchLayout.FPS, {USE: {"slot": &"inner", "label": "E"}})
 	if not res.ok:
@@ -37,7 +37,7 @@ static func layout() -> Array[Dictionary]:
 
 
 var controls: GSMobileControls = null
-## dot-ui's buttons inside the overlay, for the shell's DPI fit.
+## gs-ui's buttons inside the overlay, for the shell's DPI fit.
 var buttons: GSTouchButtons:
 	get:
 		return controls.buttons if controls != null else null

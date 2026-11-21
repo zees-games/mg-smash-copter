@@ -136,7 +136,7 @@ func _test_layouts() -> void:
 	_finished()
 
 
-## dot-props' toys on the field: a beach ball on every platform, standing on its deck two
+## gs-props' toys on the field: a beach ball on every platform, standing on its deck two
 ## seconds on; a walk into one sends it on; a shot pushes it and the combat's trace sees through
 ## it. In a world of its own: every other world this suite builds stands on the same spot.
 func _test_the_toys() -> void:
@@ -497,7 +497,7 @@ func _test_an_impact() -> void:
 	_finished()
 
 
-## A stand-in in the showdown turns and fires like a person, through dot-bot's [GSBotAim] and [method ScGame._drive_bots].
+## A stand-in in the showdown turns and fires like a person, through gs-bot's [GSBotAim] and [method ScGame._drive_bots].
 ## The turn is held to `bot_turn_rate` and the first shot to `bot_reaction`, and it still hits.
 func _test_a_stand_in_aims() -> void:
 	_section("a stand-in turns, waits and then hits, at bot_difficulty")
@@ -564,12 +564,12 @@ func _test_a_stand_in_aims() -> void:
 
 
 func _test_sides_agree() -> void:
-	_section("dot-match puts everybody where the game did")
+	_section("gs-match puts everybody where the game did")
 
 	var game := await _world()
 
 	# The offline client's own line-up: every stand-in on team 2 before anybody is on 1.
-	# dot-match's default refuses a join that puts a side two ahead, and its elimination
+	# gs-match's default refuses a join that puts a side two ahead, and its elimination
 	# rule counts survivors off its own teams — so a refused stand-in is one it never sees.
 	for i in range(3):
 		game.add_player(StringName("bot%d" % i), "Stand-in", 2)
@@ -580,7 +580,7 @@ func _test_sides_agree() -> void:
 		if game.match_node.teams.team_of(String(id)) != game.team_of(id):
 			disagree.append(String(id))
 
-	_check(disagree.is_empty(), "every stand-in is on a side dot-match can count",
+	_check(disagree.is_empty(), "every stand-in is on a side gs-match can count",
 		"it disagrees about %s" % ", ".join(disagree))
 
 	await _dispose(game)
@@ -685,7 +685,7 @@ func _test_falling_off() -> void:
 	client.ragdolls.queue_free()
 	client.free()
 
-	# [b]dot-combat keeps a health record per entity and nothing else tells it to let
+	# [b]gs-combat keeps a health record per entity and nothing else tells it to let
 	# go.[/b] game-buses-from-hell leaked one per player who ever joined, pointing at a node
 	# freed with them — invisible, because a stale entity is never asked about.
 	var id := player.entity_id

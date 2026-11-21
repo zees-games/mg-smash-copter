@@ -105,8 +105,8 @@ func _connect_server_signals() -> void:
 	_wire_lag_compensation()
 
 
-## Hands dot-combat the two callables that make lag compensation real.
-## dot-combat names no dot-net type, so it takes a rewind and a restore as [Callable]s; unset, it says so once and resolves every shot against the present while the flag claims lag compensation is on. dot-net already records the history.
+## Hands gs-combat the two callables that make lag compensation real.
+## gs-combat names no gs-net type, so it takes a rewind and a restore as [Callable]s; unset, it says so once and resolves every shot against the present while the flag claims lag compensation is on. gs-net already records the history.
 ## The shooter is not excluded, and that is safe: `resolve_shot` fixes `shot.origin` before it rewinds anything and refuses self damage separately.
 func _wire_lag_compensation() -> void:
 	if game.combat == null or net == null:
@@ -237,7 +237,7 @@ func _on_request(message: GSNetMessage) -> void:
 	if ask == null or net == null or not net.is_server:
 		return
 
-	# [b]From the message, which dot-net stamped from the TRANSPORT.[/b] A peer id inside a
+	# [b]From the message, which gs-net stamped from the TRANSPORT.[/b] A peer id inside a
 	# body is a claim; `sender_peer_id` is what the socket said, which is the only version
 	# of it a server may act on.
 	var peer_id := ask.sender_peer_id
@@ -276,7 +276,7 @@ func _on_request(message: GSNetMessage) -> void:
 
 
 ## Everything in the world, to one peer, once its own copy exists.
-## On READY and not on connect: dot-server's signon finishes and THEN the client builds its scene, so earlier JOIN, LAYOUT and PLATFORM land on a node that does not exist yet.
+## On READY and not on connect: gs-server's signon finishes and THEN the client builds its scene, so earlier JOIN, LAYOUT and PLATFORM land on a node that does not exist yet.
 func _admit(peer_id: int) -> void:
 	if peer_id <= 0:
 		return

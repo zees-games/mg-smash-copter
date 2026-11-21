@@ -101,7 +101,7 @@ func _may_roll_mid_round() -> bool:
 	if phase != Phase.SURVIVAL:
 		return false
 
-	# A pure function of the tick, which is why dot-core has a schedule: a server and a replay of it agree when the
+	# A pure function of the tick, which is why gs-core has a schedule: a server and a replay of it agree when the
 	# gravity went off without a message, where a per-tick roll from a stream would differ on a machine that had
 	# drawn a different number of times.
 	var plan := ScSpecials.schedule(config, tick_rate)
@@ -285,7 +285,7 @@ func _land(prop: GSPropInstance, at: Vector3, speed: float, _delta: float) -> vo
 		if outcome == ScPlatforms.Impact.NONE:
 			return
 
-	# And the prop's own health, which is dot-props' half: a barrel that lands hard goes off, a crate splits,
+	# And the prop's own health, which is gs-props' half: a barrel that lands hard goes off, a crate splits,
 	# a boulder does not notice. `impact` is a SPEED test rather than a damage one for exactly this reason —
 	# what breaks a crate is how fast the floor arrived, not how many times it has been leant on.
 	if prop_damage != null:

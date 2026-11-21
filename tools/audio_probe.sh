@@ -4,7 +4,7 @@
 #   tools/audio_probe.sh
 #
 # Uses xvfb-run because this needs an audio device, and `--headless` does not have one:
-# AudioServer reports the `Dummy` driver there, dot-audio correctly builds the sink that
+# AudioServer reports the `Dummy` driver there, gs-audio correctly builds the sink that
 # cannot make a noise, and the one question this asks never comes up. The same reason
 # shot.sh is not headless, for the other sense.
 #

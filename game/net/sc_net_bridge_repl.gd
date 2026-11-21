@@ -238,7 +238,7 @@ func _broadcast(kind: int, body: PackedByteArray) -> void:
 		_tell(int(peer_id), kind, body)
 
 
-## One peer, and never zero. `net.send(msg, 0)` is a BROADCAST in dot-net, so a helper that passed a missing
+## One peer, and never zero. `net.send(msg, 0)` is a BROADCAST in gs-net, so a helper that passed a missing
 ## peer id straight through would send one player's private message to everybody. game-hungario shipped
 ## exactly that.
 func _tell(peer_id: int, kind: int, body: PackedByteArray) -> void:

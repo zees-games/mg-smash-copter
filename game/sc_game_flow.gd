@@ -127,7 +127,7 @@ func add_player(
 		# ERROR, because a refusal here leaves the round rule counting a side short, and the
 		# last time one was refused nothing said so.
 		if not seated.ok:
-			GSLog.error(CHANNEL, "dot-match refused a player's side", {
+			GSLog.error(CHANNEL, "gs-match refused a player's side", {
 				"id": String(player_id), "team": team, "why": seated.error.message,
 			})
 
@@ -257,7 +257,7 @@ func remove_player(player_id: StringName) -> void:
 		if aboard != null:
 			var _left := ride.exit(aboard, player_id, true)
 
-	# Before the node goes: dot-combat keyed a `GSHealth` on this entity and nothing else tells it to let go, so
+	# Before the node goes: gs-combat keyed a `GSHealth` on this entity and nothing else tells it to let go, so
 	# every player who ever joined would leave a record pointing at a freed node. A stale entity is never asked
 	# about, so the leak shows nothing until memory runs out.
 	if combat != null and is_instance_valid(combat) and player.entity_id != 0:
@@ -271,7 +271,7 @@ func remove_player(player_id: StringName) -> void:
 	sides.erase(player_id)
 	player.queue_free()
 
-	# After the roster has dropped them: dot-spectate picks a watcher's replacement target
+	# After the roster has dropped them: gs-spectate picks a watcher's replacement target
 	# from the roster, and one still holding the leaver picks the leaver.
 	if spectate != null:
 		spectate.left(String(player_id))
@@ -286,7 +286,7 @@ func start() -> void:
 	if not authoritative:
 		return
 
-	# Laid out here and not only on `round_started`: dot-match runs a warmup before the first round, so a world
+	# Laid out here and not only on `round_started`: gs-match runs a warmup before the first round, so a world
 	# furnished only when a round began would sit through it as a bare floor with a tube, indistinguishable from a
 	# map that failed to load.
 	_lay_out_round()
@@ -334,7 +334,7 @@ func _on_round_ended(number: int, winner: int, _outcome: int) -> void:
 
 ## Every layout this server plays, as the map menu (M) lists them: `{id, name, detail,
 ## current}`, the blurb under the name. Solo the client's list, online the server's (the module
-## hands it to dot-vote's map menu), so both say the same.
+## hands it to gs-vote's map menu), so both say the same.
 func layout_rows() -> Array:
 	var out: Array = []
 	for l in ScLayouts.allowed(config):
@@ -346,7 +346,7 @@ func layout_rows() -> Array:
 
 
 ## The map menu's change: [param id] now, not after this round. The next layout is set and a
-## fresh round begins on it (dot-match's `begin_round_now`: the round called off has no
+## fresh round begins on it (gs-match's `begin_round_now`: the round called off has no
 ## winner); with no match running the field is simply laid out again. Authority only.
 func change_layout_now(id: StringName) -> GSResult:
 	if not authoritative:

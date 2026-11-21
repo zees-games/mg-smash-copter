@@ -32,7 +32,7 @@ func _ready() -> void:
 func _run() -> void:
 	print("mg-smash-copter: per-layout cvars")
 	if not ResourceLoader.exists(GSGameMapConfig.SCRIPT_PATH):
-		print("SKIPPED: dot-map is not linked into this project (addons/dot_map)")
+		print("SKIPPED: gs-map is not linked into this project (addons/gs_map)")
 		get_tree().quit(0)
 		return
 

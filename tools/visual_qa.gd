@@ -1,6 +1,6 @@
 extends GSGameVisualQaCapture
 
-## Smash Copter's visual QA capture (docs/testing.md; the loop is dot-game's docs/visual-qa.md). Four kinds of item, each
+## Smash Copter's visual QA capture (docs/testing.md; the loop is gs-game's docs/visual-qa.md). Four kinds of item, each
 ## recorded frame by frame at --fps in three views (f first person, t behind-right, o an opponent in front):
 ##   person_<letter>  one of the six people (ScFigure) standing, walking, running, jumping.
 ##   weapon_<id>      a weapon the server deals: f is the real view model (ZeeViewModel with its arms) at the eye, t and o

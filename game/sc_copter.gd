@@ -1,8 +1,8 @@
 extends GSVehicleChassis
 
-## The chopper: a fourth kind of vehicle, because neither of dot-vehicle's two is one.
-## [GSVehicleHover] returns early with nothing under it (a helicopter's whole life) and [GSVehicleWheeled] needs wheels, so `GSVehicleDef.chassis_script_path` names this script by PATH; nothing in dot-vehicle is forked.
-## Controls: `command.throttle` collective, `steer` pedals, `brake` rotor brake; the cyclic (Vector2) rides in `vehicle.meta.cyclic`, as widening dot-vehicle's wire-shaped command would break every game. Not predicted: Godot's solver is not reproducible across machines.
+## The chopper: a fourth kind of vehicle, because neither of gs-vehicle's two is one.
+## [GSVehicleHover] returns early with nothing under it (a helicopter's whole life) and [GSVehicleWheeled] needs wheels, so `GSVehicleDef.chassis_script_path` names this script by PATH; nothing in gs-vehicle is forked.
+## Controls: `command.throttle` collective, `steer` pedals, `brake` rotor brake; the cyclic (Vector2) rides in `vehicle.meta.cyclic`, as widening gs-vehicle's wire-shaped command would break every game. Not predicted: Godot's solver is not reproducible across machines.
 
 const CHANNEL := "sc.copter"
 
@@ -60,7 +60,7 @@ func _setup() -> GSResult:
 	body.can_sleep = false
 
 	# Angular damping of its own, on top of the levelling torque: a spring alone rings, and this stops a bumped chopper rocking for the rest of the round.
-	# The linear damping is the tunables' (`linear_damp`), written by dot-vehicle before this.
+	# The linear damping is the tunables' (`linear_damp`), written by gs-vehicle before this.
 	body.angular_damp = 2.4
 
 	return GSResult.success(self)

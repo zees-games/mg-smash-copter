@@ -61,9 +61,9 @@ func _clear() -> void:
 	_floor_body = null
 
 
-## The sun and the sky, as a dot-lighting document.
+## The sun and the sky, as a gs-lighting document.
 ##
-## Built here, not left to the host scene: with no [DirectionalLight3D] and [WorldEnvironment] a scene is FLAT (every surface its own albedo), so the depth a player judges a forty-metre drop by is absent. The sun is high on purpose, since a low one shades every deck by its neighbour and hides the tilt. Angles follow dot-lighting's source convention (negative pitch is a sun in the sky); fog distances are source units (metres / 0.01905), haze from 120 m.
+## Built here, not left to the host scene: with no [DirectionalLight3D] and [WorldEnvironment] a scene is FLAT (every surface its own albedo), so the depth a player judges a forty-metre drop by is absent. The sun is high on purpose, since a low one shades every deck by its neighbour and hides the tilt. Angles follow gs-lighting's source convention (negative pitch is a sun in the sky); fog distances are source units (metres / 0.01905), haze from 120 m.
 const DAYLIGHT := {
 	"sun": {
 		"pitch_src": -58.0,
@@ -100,9 +100,9 @@ func _build_light() -> void:
 		sun.shadow_blur = 1.5
 
 
-## What this machine draws of [constant DAYLIGHT]: dot-lighting's `painted()`.
+## What this machine draws of [constant DAYLIGHT]: gs-lighting's `painted()`.
 ##
-## Shadows stay on in the browser, unlike dot-lighting's `web()`: a platform's shadow on the deck below is how a player sees where a deck is from above. `painted()` is the family's profile for flat colours (lower exposure, so the grid a tilt is read from is not 30 % white).
+## Shadows stay on in the browser, unlike gs-lighting's `web()`: a platform's shadow on the deck below is how a player sees where a deck is from above. `painted()` is the family's profile for flat colours (lower exposure, so the grid a tilt is read from is not 30 % white).
 static func light_profile() -> GSLightProfile:
 	var p := GSLightProfile.painted()
 	p.sun_shadows = true
@@ -272,7 +272,7 @@ func corner_point(index: int, count: int) -> Vector3:
 
 ## Where one player stands when they arrive in a corner.
 ##
-## Spread along the pad's inner edge: sixteen capsules at one coordinate is dot-spawn's documented failure.
+## Spread along the pad's inner edge: sixteen capsules at one coordinate is gs-spawn's documented failure.
 func showdown_spawn(team_index: int, team_count: int, slot: int, slots: int) -> Vector3:
 	var centre := corner_point(team_index, team_count)
 	var middle := showdown_centre()

@@ -20,7 +20,7 @@ const ScNetCommand := preload("sc_net_command.gd")
 ## The slot is the exception and is a field of its own, because [GSFpsCommand] has eight
 ## buttons and no room for a number — see [member ScPlayer.wanted_slot].
 
-## Fire, and the chopper's drop. `BUTTON_USER_0`, which dot-player-controller reserves.
+## Fire, and the chopper's drop. `BUTTON_USER_0`, which gs-player-controller reserves.
 const BUTTON_FIRE := GSFpsCommand.BUTTON_USER_0
 
 ## The alt-fire, which on every blaster in the pack is a bash.

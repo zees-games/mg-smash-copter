@@ -647,7 +647,7 @@ static func ids(config: ScConfig) -> PackedStringArray:
 	return out
 
 
-## The layouts a server plays, as a dot-map catalogue: what `map`, `maps`, `mapinfo` and the ballot list.
+## The layouts a server plays, as a gs-map catalogue: what `map`, `maps`, `mapinfo` and the ballot list.
 ##
 ## A def per layout, with the layout's id. `scene_path` names the one scene only to satisfy the def's validation and nothing loads it (see `ScMapSession`). [method allowed] decides which are offered.
 static func catalogue(config: ScConfig) -> GSMapCatalogue:

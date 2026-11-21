@@ -162,7 +162,7 @@ func _workbench_refusals(rig: Dictionary, state: Dictionary, flags: Dictionary) 
 func _test_the_remote_workbench() -> void:
 	_section("[a flagged admin edits the server's profiles, and nobody else can]")
 	if not GSGameWorkbench.available():
-		print("  dot-workbench is not linked: skipped")
+		print("  gs-workbench is not linked: skipped")
 		_passed += 16
 		_finished()
 		return

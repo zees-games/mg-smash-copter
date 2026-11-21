@@ -4,7 +4,7 @@ const ScLayouts := preload("sc_layouts.gd")
 
 const CHANNEL := "sc.workshop"
 
-## Subscribed map packs in SOLO play (dot-cloud's Workshop; docs/workshop.md there).
+## Subscribed map packs in SOLO play (gs-cloud's Workshop; docs/workshop.md there).
 ##
 ## [b]A pack's `map` entry names a JSON document in `scene`[/b], because this game's levels are
 ## not scenes: a level is a [ScLayouts.Layout], a list of cells of the platform grid, laid out

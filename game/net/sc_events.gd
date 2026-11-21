@@ -76,7 +76,7 @@ enum Ask {
 }
 
 ## Every decoder returns an `ok` beside its fields, and every caller checks it.
-## A reader past its end returns plausible zeros (dot-net's exhaustion is not sticky), so a truncated packet would otherwise decode as a valid message about nothing.
+## A reader past its end returns plausible zeros (gs-net's exhaustion is not sticky), so a truncated packet would otherwise decode as a valid message about nothing.
 const NAME_BYTES := 64
 const ID_BYTES := 64
 const TEXT_BYTES := 256
@@ -581,8 +581,8 @@ static func read_blast(r: GSNetReader) -> Dictionary:
 
 
 
-## A view dot-spectate decided, for the one player it belongs to.
-## The death position travels, or a mirror puts every death camera at the world origin, inside the cannon. Bit-packed and keyed by session, where dot-spectate's is a string-keyed dictionary; a mirror already has the players.
+## A view gs-spectate decided, for the one player it belongs to.
+## The death position travels, or a mirror puts every death camera at the world origin, inside the cannon. Bit-packed and keyed by session, where gs-spectate's is a string-keyed dictionary; a mirror already has the players.
 ## Sessions rather than keys, as everywhere on this wire; zero is nobody.
 static func write_spectate(
 	viewer: int, mode: int, target: int, killer: int, death_at: Vector3
@@ -671,7 +671,7 @@ const CHAT_KEY_BYTES := 48
 const CHAT_KIND_BITS := 4
 
 
-## Whether every [enum GSChatMessage.Kind] fits in [constant CHAT_KIND_BITS]. dot-chat owns
+## Whether every [enum GSChatMessage.Kind] fits in [constant CHAT_KIND_BITS]. gs-chat owns
 ## that enum, so it can grow under this game; headless_net reads this.
 static func chat_kinds_fit() -> bool:
 	return GSChatMessage.KIND_NAMES.size() <= (1 << CHAT_KIND_BITS)

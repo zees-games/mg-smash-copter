@@ -193,7 +193,7 @@ func _on_collapse(index: int, _why: StringName) -> void:
 	game.effects.shake_at(&"collapse", deck.centre, 42.0)
 
 
-## The Tab board: dot-menu's, with this game's columns.
+## The Tab board: gs-menu's, with this game's columns.
 ##
 ## Online it is the server's roster (names, pings, time on) with the replicated side, alive and warp counts joined in by id; sides are the board's teams. Offline it is [method board_snapshot].
 func _dress_board() -> void:

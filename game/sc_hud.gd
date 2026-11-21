@@ -34,8 +34,8 @@ static func piece_theme() -> Theme:
 	return t
 
 
-## The Escape menu, whose theme this HUD follows (dot-menu's `follow_hud`): the menu sets the theme on the HUD's root now and at every change, and applies the player's HUD size.
-## Duck-typed and called by name, for a client shell older than dot-menu 7.
+## The Escape menu, whose theme this HUD follows (gs-menu's `follow_hud`): the menu sets the theme on the HUD's root now and at every change, and applies the player's HUD size.
+## Duck-typed and called by name, for a client shell older than gs-menu 7.
 var _menu: Object = null
 
 
@@ -64,10 +64,10 @@ var weapons_fn: Callable = Callable()
 var hit_fx: GSHitFeedback = null
 var hit_marker: GSHitMarker = null
 
-## The clock with the phase line under it: dot-ui's [GSScoreStrip], clock alone (the
+## The clock with the phase line under it: gs-ui's [GSScoreStrip], clock alone (the
 ## sides' state is the field line, bottom right).
 var strip: GSScoreStrip = null
-## Health: dot-ui's [GSVitals], bar and number on one plate, red at a quarter.
+## Health: gs-ui's [GSVitals], bar and number on one plate, red at a quarter.
 var vitals: GSVitals = null
 var _field: Label = null
 var _special: Label = null
@@ -251,7 +251,7 @@ func _build_crosshair() -> void:
 	dot.dot_radius = 3.0
 	dot.colour = Color(1.0, 1.0, 1.0, 0.75)
 	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if GSAddonApi.build_level("dot_ui") >= 14:
+	if GSAddonApi.build_level("gs_ui") >= 14:
 		dot.set(&"alive_source", func() -> bool: return player == null or player.is_alive())
 	_root.add_child(dot)
 	_aim_dot = dot
@@ -260,7 +260,7 @@ func _build_crosshair() -> void:
 ## Ammo counter, weapon icon and hit marker, bottom right.
 func _build_hand() -> void:
 	# Bottom right, above the field line: what is in hand and how much is in it. The play test
-	# found a gun with no counter anywhere; dot-ui's GSAmmoCounter is the family's one.
+	# found a gun with no counter anywhere; gs-ui's GSAmmoCounter is the family's one.
 	ammo = GSAmmoCounter.new()
 	ammo.name = "Ammo"
 	ammo.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)

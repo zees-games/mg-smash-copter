@@ -249,7 +249,7 @@ static func ids() -> PackedStringArray:
 
 ## The schedule a mid-round special fires on.
 ##
-## [b]A pure function of the tick, which is the whole reason dot-core has one.[/b] A
+## [b]A pure function of the tick, which is the whole reason gs-core has one.[/b] A
 ## server and a replay of it, and two peers, all agree about when the gravity went off
 ## without anybody sending a message about it — and a schedule that drew from a stream
 ## per tick would give a different answer on a machine that had drawn a different number

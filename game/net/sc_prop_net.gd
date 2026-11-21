@@ -45,7 +45,7 @@ func pull() -> void:
 ## a body taken out of the tree and queued for freeing is an entirely expected state for
 ## the rest of that frame — and `global_position` on one is
 ## `Condition "!is_inside_tree()" is true`, with a full backtrace, once per body per tick.
-## To an operator reading a log that is indistinguishable from a crash. dot-entity guards
+## To an operator reading a log that is indistinguishable from a crash. gs-entity guards
 ## its own `position()` for exactly this reason and writes down why.
 func _drawable() -> bool:
 	return prop != null and is_instance_valid(prop) and prop.is_inside_tree()
@@ -76,7 +76,7 @@ func _net_state_applied(_tick: int) -> void:
 
 ## Every frame between snapshots. Without this a crate steps at the snapshot rate however
 ## smoothly the interpolator did its work — the family's own "produced correctly and
-## consumed by nothing", which has cost dot-net two bugs.
+## consumed by nothing", which has cost gs-net two bugs.
 func _net_interpolated(_tick: int) -> void:
 	_draw()
 

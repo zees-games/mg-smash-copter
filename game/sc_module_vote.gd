@@ -17,7 +17,7 @@ func _bind_vote_hooks(world: ScGame) -> void:
 		if not world.config.vary_layout:
 			return out
 
-		# From the catalogue dot-map lists, so the ballot and `maps` can never disagree.
+		# From the catalogue gs-map lists, so the ballot and `maps` can never disagree.
 		for def in maps.catalogue.available() if maps != null else []:
 			out.append([def.id, def.display_name])
 

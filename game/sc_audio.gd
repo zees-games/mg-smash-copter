@@ -63,13 +63,13 @@ const CREAK_CLEARS_AT := 0.5
 
 var manager: GSAudioManager = null
 
-## Everybody's footsteps by what they stand on, and the bed under the whole game: dot-audio's
+## Everybody's footsteps by what they stand on, and the bed under the whole game: gs-audio's
 ## stock (Kenney's footsteps, generated beds, all CC0; the addon's stock/CREDITS.md).
 ## Forty metres up on a slab in the open: wind is the whole world's sound.
 var steps: GSAudioFootsteps = null
 var ambience: GSAudioAmbience = null
 
-## Quiet moods under the sky (dot-audio's stock set); the old wind bed plays only when none loaded.
+## Quiet moods under the sky (gs-audio's stock set); the old wind bed plays only when none loaded.
 var ambient: GSAmbienceDirector = null
 
 ## Where the cannon's mouth is. [ScClient] sets it from `ScArena.muzzle()`, which is the one
@@ -89,11 +89,11 @@ static func ids() -> Array[StringName]:
 		ROUND_START, ROUND_END, SHOWDOWN_TELEPORT, SHOWDOWN_GO, SPECIAL,
 		WEAPON_SHOT, WEAPON_SWING, WEAPON_LAUNCH, WEAPON_BEAM, WEAPON_THROW,
 		UI_CLICK, UI_DENY,
-		# dot-player-char's dead bodies.
+		# gs-player-char's dead bodies.
 		GSPlayerDeathReactions.SOUND_THUD, GSPlayerDeathReactions.SOUND_FACE_PLANT,
 		GSPlayerDeathReactions.SOUND_SLUMP, GSPlayerDeathReactions.SOUND_WHOOSH,
 	]
-	# dot-props' toys.
+	# gs-props' toys.
 	for row: Dictionary in GSPropBodySounds.rows():
 		out.append(StringName(row["id"]))
 	# A typed array plus a typed array is an untyped one: appended, not added.
@@ -113,7 +113,7 @@ static func sound_catalogue() -> GSAudioCatalogue:
 	c.add(_placed(IMPACT_HEAVY, 180.0, 20.0, 2, 75, 0.8, 1.0))
 
 	# The warning the tilt bar gives only to somebody reading it. Cooldown per id rather than
-	# per platform, which is dot-audio's granularity: two platforms going at once is one
+	# per platform, which is gs-audio's granularity: two platforms going at once is one
 	# creak, and the collapse after it is what says which.
 	var creak := _placed(PLATFORM_CREAK, 70.0, 10.0, 2, 70, 0.55, 0.75)
 	creak.cooldown_ms = 250
@@ -171,7 +171,7 @@ static func _add_weapon_sounds(c: GSAudioCatalogue) -> void:
 
 
 static func _add_stock_rows(c: GSAudioCatalogue) -> void:
-	# A body landing: dot-player-char's stock death sounds (Kenney, CC0), shipped in the addon.
+	# A body landing: gs-player-char's stock death sounds (Kenney, CC0), shipped in the addon.
 	for row: Dictionary in GSPlayerDeathSounds.rows():
 		var fall := _placed(row["id"], 45.0, 8.0, 3, 50, float(row["pitch_min"]), float(row["pitch_max"]))
 		fall.path = row["path"]
@@ -180,7 +180,7 @@ static func _add_stock_rows(c: GSAudioCatalogue) -> void:
 		fall.cooldown_ms = int(row["cooldown_ms"])
 		c.add(fall)
 
-	# The field's toys: dot-props' stock toy sounds (Kenney, CC0), shipped in the addon.
+	# The field's toys: gs-props' stock toy sounds (Kenney, CC0), shipped in the addon.
 	for row: Dictionary in GSPropBodySounds.rows():
 		var toy := _placed(row["id"], float(row["distance"]), 6.0, 3, 30, float(row["pitch_min"]), float(row["pitch_max"]))
 		toy.path = row["path"]
@@ -191,7 +191,7 @@ static func _add_stock_rows(c: GSAudioCatalogue) -> void:
 
 
 ## Which synthesised voice stands in for each id until real audio is dropped into [member SOUND_DIR].
-## A table in the game rather than a guess in dot-audio. The cannon is the heavy shot and a collapse the boom, so a warning and a consequence never sound alike; a creak is the hurt voice pitched down; the teleport is the one upward sweep, because up reads as "on".
+## A table in the game rather than a guess in gs-audio. The cannon is the heavy shot and a collapse the boom, so a warning and a consequence never sound alike; a creak is the hurt voice pitched down; the teleport is the one upward sweep, because up reads as "on".
 static func sound_recipes() -> Dictionary:
 	return {
 		CANNON_FIRE: GSAudioSynth.Voice.SHOT_HEAVY,
@@ -215,7 +215,7 @@ static func sound_recipes() -> Dictionary:
 		WEAPON_THROW: GSAudioSynth.Voice.CLICK,
 		UI_CLICK: GSAudioSynth.Voice.CLICK,
 		UI_DENY: GSAudioSynth.Voice.DENY,
-		# Stand-ins only for a build without dot-props' toy files.
+		# Stand-ins only for a build without gs-props' toy files.
 		GSPropBodySounds.BOUNCE: GSAudioSynth.Voice.IMPACT,
 		GSPropBodySounds.THUMP: GSAudioSynth.Voice.IMPACT,
 		GSPropBodySounds.KNOCK: GSAudioSynth.Voice.IMPACT,
@@ -229,7 +229,7 @@ static func sound_recipes() -> Dictionary:
 		GSPropBodySounds.WATER: GSAudioSynth.Voice.STEP,
 		GSPropBodySounds.BOING: GSAudioSynth.Voice.SPAWN,
 		GSPropBodySounds.HORN: GSAudioSynth.Voice.BLIP,
-		# Stand-ins only for a build without dot-player-char's files.
+		# Stand-ins only for a build without gs-player-char's files.
 		GSPlayerDeathReactions.SOUND_THUD: GSAudioSynth.Voice.IMPACT,
 		GSPlayerDeathReactions.SOUND_FACE_PLANT: GSAudioSynth.Voice.IMPACT,
 		GSPlayerDeathReactions.SOUND_SLUMP: GSAudioSynth.Voice.STEP,
@@ -299,7 +299,7 @@ func setup() -> GSResult:
 	manager.register_as_service = false
 	# A barrage, a collapse and a firefight at once is the busiest this game gets.
 	manager.voices = 24
-	# Measured toward the family's -17 LUFS (dot-audio docs/loudness.md): a 40 s stand-in round
+	# Measured toward the family's -17 LUFS (gs-audio docs/loudness.md): a 40 s stand-in round
 	# read -21.5 LUFS integrated with the wind and the steps in.
 	manager.loudness_trim_db = 4.0
 	add_child(manager)
@@ -380,7 +380,7 @@ func on_impact(at: Vector3, outcome: int, impulse: float = 0.0) -> bool:
 	match outcome:
 		ScPlatforms.Impact.WOBBLE:
 			# Louder for a heavier blow, up to the point where a crate and a boulder would be
-			# the same noise. The pitch is dot-audio's variation; the volume is information.
+			# the same noise. The pitch is gs-audio's variation; the volume is information.
 			return _at(IMPACT_LIGHT, at, clampf(0.45 + impulse / 3000.0, 0.45, 1.0))
 		ScPlatforms.Impact.TOPPLED, ScPlatforms.Impact.SHATTERED:
 			return _at(IMPACT_HEAVY, at)
@@ -465,15 +465,15 @@ func present(platforms: ScPlatforms, collapse_lean: float) -> int:
 		_creaking[index] = true
 		creaked += 1
 
-		# Counted whether or not dot-audio plays it: the cooldown and the concurrency cap are
+		# Counted whether or not gs-audio plays it: the cooldown and the concurrency cap are
 		# the manager's decision about the NOISE, and what this counts is the platform.
 		var _heard := _at(PLATFORM_CREAK, deck.centre)
 
 	return creaked
 
 
-## A dead body's sound (dot-player-char's ragdolls), where it landed.
-## A toy's sound (dot-props' toys): a bounce, where it happened.
+## A dead body's sound (gs-player-char's ragdolls), where it landed.
+## A toy's sound (gs-props' toys): a bounce, where it happened.
 func on_toy(id: StringName, at: Vector3, strength: float) -> bool:
 	return _at(id, at, clampf(strength, 0.25, 1.0))
 

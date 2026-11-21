@@ -1,6 +1,6 @@
 extends RefCounted
 
-## Smash Copter's per-layout settings: the tunables a layout's `cfg/game/mg-smash-copter/dot_map/map/<id>.yml` may set.
+## Smash Copter's per-layout settings: the tunables a layout's `cfg/game/mg-smash-copter/gs_map/map/<id>.yml` may set.
 
 const GAME_ID := "mg-smash-copter"
 

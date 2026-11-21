@@ -72,7 +72,7 @@ func _run() -> void:
 	_report_sections(_sections_entered, _sections_finished, sections, checks)
 
 
-## dot-moderation's live tools, built by dot-game's services layer with this game's verbs, driven through the console against a player who joined as a client does.
+## gs-moderation's live tools, built by gs-game's services layer with this game's verbs, driven through the console against a player who joined as a client does.
 ## The body is looked at when each command returns: a round can start or end under this section.
 func _test_the_live_tools() -> void:
 	_section("the moderator's live tools")
@@ -81,7 +81,7 @@ func _test_the_live_tools() -> void:
 	var services: Object = module.get("services") if module != null else null
 	var tools: Object = services.get("mod_tools") if services != null else null
 
-	_check(tools != null, "dot-game built dot-moderation's live tools, by path")
+	_check(tools != null, "gs-game built gs-moderation's live tools, by path")
 	_check(
 		server.console.find_command("noclip") != null and server.console.find_command("slay") != null,
 		"and put their commands on the console"
@@ -151,7 +151,7 @@ func _live_tools_blind_and_beacon(player: ScPlayer, services: Object) -> void:
 		await get_tree().process_frame
 	_check(player.blinded and player.beacon, "`blind Pilot` and `beacon Pilot` mark them")
 
-	# A blind is a spell. dot-moderation lifts it through the same handler when the time is
+	# A blind is a spell. gs-moderation lifts it through the same handler when the time is
 	# up, so what is checked is the flag, not the timer.
 	var _dark_off := _run_command("blind Pilot off")
 	var _spell := _run_command("blind Pilot 0.2")
@@ -277,7 +277,7 @@ func _vote_offers_every_layout(vote: Node) -> void:
 
 
 ## The map menu's server half (M): the owner's flag changes the layout now, anybody else gets a nomination and a rock-the-vote.
-## Contexts as dot-server makes them for a chat line.
+## Contexts as gs-server makes them for a chat line.
 func _vote_map_menu(vote: Node) -> void:
 	var menu_half: Object = vote.get("commands").get("map_menu")
 	_check(menu_half != null and server.console.find_command("mapmenu") != null
@@ -357,12 +357,12 @@ func _vote_round_end_and_rtv(vote: Node, director: GSVoteDirector, wanted: Strin
 	var rocked := _run_command("rtv")
 	vote.call("advance", 0.05)
 	_check(director.is_voting(), "and rock-the-vote opens a ballot before its time", str(rocked))
-	# Under MANUAL the director opens a rocked ballot itself (dot-vote API 2); this game no longer
+	# Under MANUAL the director opens a rocked ballot itself (gs-vote API 2); this game no longer
 	# does, so exactly one ballot opens, not one from each.
 	_check(ballots.size() == 1, "and exactly one ballot, the director's alone", str(ballots.size()))
 
 
-## Profiles, names and faces on a real server: dot-platform's identity layer, its module, and the three events this game redraws a player on.
+## Profiles, names and faces on a real server: gs-platform's identity layer, its module, and the three events this game redraws a player on.
 ## Admitted AFTER they are seated, on purpose: a real join does this whenever the profile store is slower than the content download, and a game reading name and face only at seating shows a guest all session.
 func _test_who_they_are() -> void:
 	_section("who somebody is")
@@ -370,8 +370,8 @@ func _test_who_they_are() -> void:
 	var module := _module()
 	var identity: Object = module.get("identity") if module != null else null
 
-	_check(identity is GSPlatformIdentity, "the module built dot-platform's identity layer")
-	_check(server.modules.has_module("platform"), "and dot-game loaded the platform module")
+	_check(identity is GSPlatformIdentity, "the module built gs-platform's identity layer")
+	_check(server.modules.has_module("platform"), "and gs-game loaded the platform module")
 	_check(
 		identity is GSPlatformIdentity and (identity as GSPlatformIdentity).avatars != null
 			and (identity as GSPlatformIdentity).avatars.schema.id == ScAvatars.SCHEMA_ID,
@@ -409,7 +409,7 @@ func _test_who_they_are() -> void:
 	_finished()
 
 
-## A guest first, on a server with authentication off. dot-user keeps no profile for a guest by default (a guest id is a random per-device string), so they get the name they gave and the stock look.
+## A guest first, on a server with authentication off. gs-user keeps no profile for a guest by default (a guest id is a random per-device string), so they get the name they gave and the stock look.
 func _who_guest_admitted_late(player: ScPlayer, session: GSClientSession, platform: Object) -> void:
 	session.identity = GSAuthIdentity.guest("device-717", "Maggie")
 	platform.call("_on_client_state_changed", session)
@@ -428,7 +428,7 @@ func _who_guest_admitted_late(player: ScPlayer, session: GSClientSession, platfo
 
 
 ## Then the same seat signed in, which is the case profiles exist for; returns the key the platform scoped them to.
-## Re-announced the way dot-server announces a state change: a guest admission stored no key, so it runs again.
+## Re-announced the way gs-server announces a state change: a guest admission stored no key, so it runs again.
 func _who_signed_in(player: ScPlayer, session: GSClientSession, platform: Object) -> String:
 	session.identity = GSAuthIdentity.from_dict({
 		"uid": "backbone:acc-717", "provider": "backbone", "provider_id": "acc-717",
@@ -474,8 +474,8 @@ func _who_progress_is_keyed(player: ScPlayer, module: Object, session: GSClientS
 	_check(_stats_errors.is_empty(), "the stats layer logged no error", str(_stats_errors))
 
 
-## An account's name is the site's and dot-user refuses to change it here, so an operator's `platform_name` is a refusal and the world keeps the name.
-## The rename that IS allowed (a guest profile on a server that keeps them) is dot-platform's sandbox's to check.
+## An account's name is the site's and gs-user refuses to change it here, so an operator's `platform_name` is a refusal and the world keeps the name.
+## The rename that IS allowed (a guest profile on a server that keeps them) is gs-platform's sandbox's to check.
 func _who_rename_is_refused(player: ScPlayer) -> void:
 	var renamed := _run_command("platform_name 717 Grace")
 	for _i in range(10):

@@ -32,7 +32,7 @@ func _ready() -> void:
 	_build_spectate()
 	_build_progress()
 
-		# Laid out now, not when a round begins: dot-match runs a warmup before the first round, and a world furnished on `round_started` would show only a floor and a tube, indistinguishable from a failed map load (and what a suite sees when it asserts without starting a round).
+		# Laid out now, not when a round begins: gs-match runs a warmup before the first round, and a world furnished on `round_started` would show only a floor and a tube, indistinguishable from a failed map load (and what a suite sees when it asserts without starting a round).
 	_lay_out_round()
 
 	if register_service:
@@ -69,7 +69,7 @@ func _build_physics() -> void:
 			&"pillar":
 								# Solid to what is thrown and flown, never to a person: a pillar top is 0.57 m under its deck, and a player dropping onto it when the deck came off stood there alive, out of the cannon's reach (it aims at STANDING platforms), making "stand in the middle" beat the first half. A collapse takes the floor away with whoever is on it; the bare pillar stays as the marker ScConfig.pillar_falls_with_platform keeps, and a prop or chopper still strikes it.
 				layer.collides_with = [&"prop", &"vehicle"]
-			# A beach ball on a platform (dot-props'): the decks, what the cannon throws, a
+			# A beach ball on a platform (gs-props'): the decks, what the cannon throws, a
 			# chopper, the pillars and the other balls; never a person, who walks through it
 			# and pushes it (`_advance_toys`). It rides a leaning deck and rolls off it.
 			&"toy":
@@ -190,12 +190,12 @@ func _build_combat() -> void:
 	rules.hit_groups = true
 	combat.rules = rules
 
-		# Lag compensation is OFF here and turned on by the bridge together with the callables that make it real: dot-combat defaults it on and warns "no rewind function is wired" at boot, false for this server and true for a client playing alone, which has no history to rewind.
+		# Lag compensation is OFF here and turned on by the bridge together with the callables that make it real: gs-combat defaults it on and warns "no rewind function is wired" at boot, false for this server and true for a client playing alone, which has no history to rewind.
 	var settings := GSCombatConfig.new()
 	settings.lag_compensation = false
 	combat.config = settings
 
-		# A trace, or every shot goes through the arena: dot-combat asks a [GSTrace] where the WORLD is and left unset reports nothing in the way. Before `setup()`, which warns when it finds none, so assigning it a line later logs a false "every shot will pass through world geometry".
+		# A trace, or every shot goes through the arena: gs-combat asks a [GSTrace] where the WORLD is and left unset reports nothing in the way. Before `setup()`, which warns when it finds none, so assigning it a line later logs a false "every shot will pass through world geometry".
 	var trace := GSTracePhysics.for_world(get_world_3d())
 
 	if physics != null:
@@ -209,7 +209,7 @@ func _build_combat() -> void:
 	combat.resolver.team_of = func(entity_id: int) -> int:
 		return team_of(entities.key_for_id(entity_id))
 
-	# dot-game's "still loading": the one place every hurt passes (a shot, a blast, a crush, the
+	# gs-game's "still loading": the one place every hurt passes (a shot, a blast, a crush, the
 	# floor), and a round counts the living from health, so refusing here keeps a covered seat
 	# alive in the count too. An admin's slay or slap is the operator's word and passes.
 	combat.resolver.adjust = func(damage: GSDamage) -> void:
@@ -294,13 +294,13 @@ func _build_match() -> void:
 	rules.team_based = true
 		# Two, the number that keeps an empty server from spinning: an elimination round ends the moment a side has nobody alive, and an empty side satisfies that on the first tick. `sides_are_playable` is the other half.
 	rules.min_players = 2
-		# Nobody comes back: dot-match enqueues a respawn on every kill, which would return a faller three seconds later and make surviving the first half worth nothing. Death is final until the next round.
+		# Nobody comes back: gs-match enqueues a respawn on every kill, which would return a faller three seconds later and make surviving the first half worth nothing. Death is final until the next round.
 	rules.respawn_disabled = true
-		# The rule asks the game who is alive, the seam dot-match is built around: being alive is a `GSHealth` in dot-combat, which dot-match does not depend on, and unset it falls back to score and clock so the round runs the full clock.
+		# The rule asks the game who is alive, the seam gs-match is built around: being alive is a `GSHealth` in gs-combat, which gs-match does not depend on, and unset it falls back to score and clock so the round runs the full clock.
 	rules.alive_fn = _is_alive
 	match_node.rules = rules
 
-		# Scoped to the match node itself, which finds nothing, deliberately: this game places its own players, and an unset `spawns_ref` makes dot-match walk the WHOLE scene, picking up another world's spawn points or the outgoing map's.
+		# Scoped to the match node itself, which finds nothing, deliberately: this game places its own players, and an unset `spawns_ref` makes gs-match walk the WHOLE scene, picking up another world's spawn points or the outgoing map's.
 	match_node.spawns_ref = GSNodeRef.of_path(^".")
 
 	add_child(match_node)
@@ -318,7 +318,7 @@ func _build_match() -> void:
 	match_node.teams.teams = teams
 	match_node.teams.force_balance = config.autobalance
 	match_node.teams.allow_choice = config.allow_team_choice
-		# Off, because `sides` decides a team and dot-match is only told: `max_difference` (default 1) refuses a join more than one ahead, and offline the stand-ins on team 2 left the other two on no team, ending a round early when the one known stand-in fell.
+		# Off, because `sides` decides a team and gs-match is only told: `max_difference` (default 1) refuses a join more than one ahead, and offline the stand-ins on team 2 left the other two on no team, ending a round early when the one known stand-in fell.
 	match_node.teams.max_difference = 0
 	match_node.teams.reindex()
 

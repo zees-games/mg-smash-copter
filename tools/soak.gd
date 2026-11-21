@@ -6,7 +6,7 @@ const ScLayouts := preload("../game/sc_layouts.gd")
 const ScPlayer := preload("../game/sc_player.gd")
 
 ## Bot soak on the real game: N stand-ins play rounds on one layout for M simulated minutes through
-## dot-bot's GSBotSoak, fed by dot-spawn's GSSpawnWatch ("map" is a layout id). Run: `./game.sh soak
+## gs-bot's GSBotSoak, fed by gs-spawn's GSSpawnWatch ("map" is a layout id). Run: `./game.sh soak
 ## [layout] [minutes]`; writes .godot/test-logs/soak-<layout>.json, prints the SOAK line, exits 1 on failure.
 
 const DEFAULT_MAP := &"terraces"

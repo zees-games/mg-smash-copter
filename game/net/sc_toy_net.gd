@@ -1,6 +1,6 @@
 extends GSNetBehaviour
 
-## One of the map's toys on the wire (dot-props' [GSPropBody]): where its moving part is and
+## One of the map's toys on the wire (gs-props' [GSPropBody]): where its moving part is and
 ## how it is turned, whether it is on, and how often it has been used.
 ##
 ## [b]The server's physics, never predicted[/b], for the reason game-fatal-contact's FcProps gives: Godot's
@@ -34,7 +34,7 @@ func _register_net_vars() -> void:
 
 ## Authority only: the toy's state into the replicated fields.
 func pull() -> void:
-	# Out of the tree is a field rebuilt inside the netcode's own tick, which a dot-net from
+	# Out of the tree is a field rebuilt inside the netcode's own tick, which a gs-net from
 	# before history.md #30 still walks: a toy taken out has no transform to give.
 	if toy == null or not is_instance_valid(toy) or not toy.is_inside_tree():
 		return

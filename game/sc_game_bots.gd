@@ -4,10 +4,10 @@ extends "sc_game_state.gd"
 
 
 ## What a stand-in does, the least that makes a round look like a round: it plays the actual game (toward a leaning
-## platform's high side, off one going over; in the showdown it shoots through dot-bot's [GSBotAim]). View,
-## reaction and aim are dot-bot's `bot_*`; what is true only here is `sc_bot_*` ([ScConfig]).
+## platform's high side, off one going over; in the showdown it shoots through gs-bot's [GSBotAim]). View,
+## reaction and aim are gs-bot's `bot_*`; what is true only here is `sc_bot_*` ([ScConfig]).
 
-## What the stand-ins are called, solo and on a server; past the end dot-bot numbers them.
+## What the stand-ins are called, solo and on a server; past the end gs-bot numbers them.
 const BOT_NAMES := ["Wobble", "Teeter", "Lurch", "Tilt", "Keel", "Sway", "Pitch", "Yaw"]
 
 ## Each stand-in's eyes and trigger finger for this round, player id -> [GSBotAim]. Cleared
@@ -104,8 +104,8 @@ func _nearest_enemy(player: ScPlayer) -> ScPlayer:
 	return best
 
 
-## Turns a stand-in on the nearest enemy and fires when dot-bot allows. Returns the flat world-space way it walks
-## (ZERO to hold), or [constant Vector3.INF] with nobody to fight. It sees through dot-bot's eyes (`bot_fov`,
+## Turns a stand-in on the nearest enemy and fires when gs-bot allows. Returns the flat world-space way it walks
+## (ZERO to hold), or [constant Vector3.INF] with nobody to fight. It sees through gs-bot's eyes (`bot_fov`,
 ## `bot_sight`); an unseen enemy is only turned toward, so the first shot waits `bot_reaction`.
 func _aim_bot(player: ScPlayer, command: GSFpsCommand) -> Vector3:
 	var best := _nearest_enemy(player)
@@ -356,7 +356,7 @@ func _bot_sees(player: ScPlayer, eye: Vector3, at: Vector3) -> bool:
 
 
 ## Aims a stand-in at [param at] (target [param id]) and says whether it fires this tick:
-## dot-bot's [GSBotAim], so the view turns at `bot_turn_rate`, the first shots miss by
+## gs-bot's [GSBotAim], so the view turns at `bot_turn_rate`, the first shots miss by
 ## `bot_aim_error` and settle, and the trigger waits `bot_reaction` after first sight.
 func _bot_shoot(player: ScPlayer, command: GSFpsCommand, id: int, at: Vector3, velocity: Vector3) -> bool:
 	var aim := _bot_aim_of(player)

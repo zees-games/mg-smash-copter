@@ -82,7 +82,7 @@ func _boot() -> void:
 	_section("booting")
 
 	# The tick rate is set as an operator sets it, a line in a config file the server execs at boot.
-	# `startup_config`, not `autoexec_config`: `sv_tickrate` is FLAG_STARTUP_ONLY and dot-server execs `server.cfg` before the listener, while `autoexec.cfg` runs after and would be refused.
+	# `startup_config`, not `autoexec_config`: `sv_tickrate` is FLAG_STARTUP_ONLY and gs-server execs `server.cfg` before the listener, while `autoexec.cfg` runs after and would be refused.
 	var cfg_path := "%s/server.cfg" % SERVER_DIR
 	var cfg := FileAccess.open(cfg_path, FileAccess.WRITE)
 
@@ -116,7 +116,7 @@ func _boot() -> void:
 	config.bans_path = "%s/bans.json" % SERVER_DIR
 	config.audit_log_path = "%s/audit.jsonl" % SERVER_DIR
 	# Off, or this run never ends: the stdin console reads on a thread Godot will not exit without.
-	# Kept after dot-server 5f46687 (no pipe reads unless `stdin_console_pipes`): a terminal is still read.
+	# Kept after gs-server 5f46687 (no pipe reads unless `stdin_console_pipes`): a terminal is still read.
 	config.stdin_console_enabled = false
 
 	server = GSServer.new()
@@ -192,7 +192,7 @@ func _test_the_module_loads() -> void:
 
 	var module := _module()
 	_check(game != null and game.progress != null and game.progress.durable_key_fn.is_valid(),
-		"progress is filed under dot-game's stable stats key")
+		"progress is filed under gs-game's stable stats key")
 	_check(module != null, "and the host has it under its name")
 
 	if module == null:
@@ -200,7 +200,7 @@ func _test_the_module_loads() -> void:
 		return
 
 	# Through `get()`, because this module has no `class_name` — the shape a module
-	# delivered in a dot-cloud pack must have.
+	# delivered in a gs-cloud pack must have.
 	_check(module.get("net") != null, "the netcode is up")
 	_check(module.get("bridge") != null, "with the game's bridge attached to it")
 	_check(module.get("roster") != null, "and a roster waiting for players")
@@ -327,13 +327,13 @@ func _test_stats_report() -> void:
 	script.source_code = "extends Node\nfunc post_integration(_a = null, _b = null, _c = null): return null\n"
 	var _reloaded := script.reload()
 	client.set_script(script)
-	GSRegistry.register(&"dot_backbone_client", client)
+	GSRegistry.register(&"gs_backbone_client", client)
 	var _r0 := cv.set_value("0")
 	var _r1 := cv.set_value("1")
 	_check(progress.stats.report_to_backbone, "on with a backbone client makes the tracker report")
 	var _r2 := cv.set_value("0")
 	_check(not progress.stats.report_to_backbone, "off stops it again")
-	GSRegistry.unregister_instance(&"dot_backbone_client", client)
+	GSRegistry.unregister_instance(&"gs_backbone_client", client)
 	client.free()
 
 	_check(progress.stats.schema.has(&"rank_score") and progress.rank != null, "rank_score is declared and the rank is set up")
@@ -344,7 +344,7 @@ func _test_stats_report() -> void:
 	_check(_life == 20.0, "a stored lifetime baseline (10 wins) is what the published rank is built on")
 
 
-## Config cvars, the workbench's sync into a hand-written cvar, and dot-team's block rules through dot-game's GSGameNoblock.
+## Config cvars, the workbench's sync into a hand-written cvar, and gs-team's block rules through gs-game's GSGameNoblock.
 func _noblock_and_config(module: GSModule) -> void:
 	var teamblock := server.console.find_cvar("mp_teamblock")
 	var enemyblock := server.console.find_cvar("mp_enemyblock")
@@ -396,7 +396,7 @@ func _test_the_commands() -> void:
 	var said := _run_command("sc_say hello from the server")
 	_check(_said(said, "hello"), "sc_say says something")
 
-	# And it is REPLICATED: dot-server sends it to every client before its scene loads and on
+	# And it is REPLICATED: gs-server sends it to every client before its scene loads and on
 	# every change, so a client's own combat manager (following its link) predicts tracers
 	# under the server's level rather than its default.
 	var shared := server.console.find_cvar("mp_teammate_passthrough")
@@ -466,7 +466,7 @@ func _test_the_tunables() -> void:
 	_check(config.cannon_max_tier == 2, "a tier the content does not have is refused, not clamped")
 	_run_command("sc_spectate_camera 1")
 
-	# The module binds dot-spectate's rules on the world's own object, so a console change
+	# The module binds gs-spectate's rules on the world's own object, so a console change
 	# reaches the rules in use; free roam is on until an operator turns it off.
 	_run_command("sc_spectate_camera 0")
 	var rules: GSSpectatorRules = game.spectate_rules
@@ -507,7 +507,7 @@ func _until_player(session: int) -> ScPlayer:
 
 
 ## The loaded module, looked up every time because the last section unloads it.
-## Typed [GSModule], not its own class: `sc_module.gd` has NO `class_name`, the shape a module delivered in a dot-cloud pack must have.
+## Typed [GSModule], not its own class: `sc_module.gd` has NO `class_name`, the shape a module delivered in a gs-cloud pack must have.
 func _module() -> GSModule:
 	return server.modules.get_module("smash") if server != null else null
 

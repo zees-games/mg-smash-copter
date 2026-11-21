@@ -3,8 +3,8 @@ extends RigidBody3D
 const ScPaths := preload("../game/sc_paths.gd")
 
 ## One thing the cannon throws: a rigid body that builds its own mesh and collider from four exported numbers.
-## The model is loaded by PATH, not an `ext_resource`: a `.tscn` records an absolute `res://` path plus a UID, neither of which resolves inside a mounted dot-cloud pack (crate meshes load, textures do not). [method ScPaths.rebase] is right built in and delivered, and lets the atlas go on by hand ([method _paint]).
-## The collider is a primitive (box, cylinder, sphere), not taken off the model: loose triangles misbehave under a sliding body (see dot-props) and everything here slides across a tilting platform.
+## The model is loaded by PATH, not an `ext_resource`: a `.tscn` records an absolute `res://` path plus a UID, neither of which resolves inside a mounted gs-cloud pack (crate meshes load, textures do not). [method ScPaths.rebase] is right built in and delivered, and lets the atlas go on by hand ([method _paint]).
+## The collider is a primitive (box, cylinder, sphere), not taken off the model: loose triangles misbehave under a sliding body (see gs-props) and everything here slides across a tilting platform.
 
 const CHANNEL := "sc.prop"
 
@@ -114,7 +114,7 @@ func _build_model() -> void:
 
 
 ## Gives every untextured material under [param root] this prop's atlas.
-## An imported GLB names its texture by UID and the absolute path it had at import, and a delivered pack has neither, so the mesh would load white (dot-cloud now registers a pack's UIDs; this is the belt to that braces).
+## An imported GLB names its texture by UID and the absolute path it had at import, and a delivered pack has neither, so the mesh would load white (gs-cloud now registers a pack's UIDs; this is the belt to that braces).
 ## Surgical, not an override: it touches only a material with no albedo texture, so in a build where the import worked it does nothing; an unconditional `material_override` would be a second definition free to drift.
 func _paint(root: Node) -> void:
 	var meshes := _meshes(root)

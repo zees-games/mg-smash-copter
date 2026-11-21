@@ -79,10 +79,10 @@ func _adopt_tick_rate(rate: int) -> void:
 	# The LIVE one, which is built from the config back at `setup()` and is therefore not
 	# updated by writing the config alone.
 	net.clock.tick_rate = game.tick_rate
-	# dot-net API 7 has GSNetClock.adopt_tick_rate(), which also raises the engine's step cap to
+	# gs-net API 7 has GSNetClock.adopt_tick_rate(), which also raises the engine's step cap to
 	# a quarter second of ticks, so a slow-frame client keeps up with the server. A shell built
 	# before it gets the same rule here; remove this branch when the oldest shell is API 7.
-	if GSAddonApi.build_level("dot_net") >= 7:
+	if GSAddonApi.build_level("gs_net") >= 7:
 		GSNetClock.adopt_tick_rate(game.tick_rate)
 	else:
 		Engine.max_physics_steps_per_frame = maxi(Engine.max_physics_steps_per_frame, ceili(0.25 * float(game.tick_rate)))
@@ -94,7 +94,7 @@ func _adopt_tick_rate(rate: int) -> void:
 
 
 ## Client, on TOYS: a mirror for every id at once, under the holder, whether this end's toys for the field exist yet
-## or not. A client must know every entity a snapshot carries, since dot-net stops reading at the first it does not
+## or not. A client must know every entity a snapshot carries, since gs-net stops reading at the first it does not
 ## know, which froze every player after a missing toy mirror. Paired with its toy by index once both exist.
 func _apply_toys(told: Dictionary) -> void:
 	if net == null or net.is_server:
@@ -124,7 +124,7 @@ func _apply_layout(reader: GSNetReader) -> void:
 	game.config.deck_height = float(described["deck_height"])
 
 	# Let go of the old field BEFORE building the new one: a client's platform behaviour and identity are CHILDREN
-	# of its body, so rebuilding frees them and a leftover registry entry makes dot-net read a freed node every
+	# of its body, so rebuilding frees them and a leftover registry entry makes gs-net read a freed node every
 	# snapshot. The server has `world_clearing`; a client is told, so it happens here.
 	_forget_platforms()
 

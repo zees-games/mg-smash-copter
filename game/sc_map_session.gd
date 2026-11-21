@@ -2,11 +2,11 @@ extends GSMapSession
 
 ## A [GSMapSession] whose maps are layouts.
 ##
-## [b]dot-map assumes a map is a scene it loads and swaps, and here a map is the arrangement of
+## [b]gs-map assumes a map is a scene it loads and swaps, and here a map is the arrangement of
 ## platforms the same scene lays out each round.[/b] Loading one would replace the world a
 ## round is being played in, so [method change_to_map] is overridden to hand the choice to the
 ## game (`apply_fn`, which is `ScGame.change_layout_now` for an admin and the vote's
-## "next round" for a ballot) and to keep the rest of dot-map as it is: the catalogue the
+## "next round" for a ballot) and to keep the rest of gs-map as it is: the catalogue the
 ## commands and the ballot list, the rotation's history, `current`, and the `changed` signal.
 ## Nothing here opens a scene or announces to clients, because a client is told the layout by
 ## the game's own LAYOUT event every round, which is the thing a sync host would be for.
@@ -60,7 +60,7 @@ const DEFAULT_ROTATION_FILE := "cfg/maps.yml"
 
 
 ## Reads maps.yml and applies it: which layouts the draw, the ballot and nominations may choose.
-## The merge, wildcards and rules are dot-map's [GSMapRotationFile]; this supplies the paths.
+## The merge, wildcards and rules are gs-map's [GSMapRotationFile]; this supplies the paths.
 ## A file that is present and unreadable is an ERROR and changes nothing: rotating every layout
 ## is a better failure than rotating none.
 func load_rotation() -> GSResult:

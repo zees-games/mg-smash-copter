@@ -32,7 +32,7 @@ func _test_a_round_runs() -> void:
 	var reached_showdown := false
 	var threw := 0
 
-	# Longer than the two phases add up to: the round cannot start until there are two sides (stand-ins join on a two-second interval, dot-match holds warmup below `min_players`).
+	# Longer than the two phases add up to: the round cannot start until there are two sides (stand-ins join on a two-second interval, gs-match holds warmup below `min_players`).
 	# Timing a test to the exact sum of its phases passes on a fast machine and fails on a slow one.
 	for _i in range(int(14.0 * TICK_RATE)):
 		await get_tree().physics_frame
@@ -94,7 +94,7 @@ func _test_a_round_runs() -> void:
 		"%d tracks, %d orphaned %s" % [net.history._tracks.size(), orphans.size(), str(orphans)])
 
 	# The same moment in the log: the old decks are out of the tree but still registered for one tick.
-	# Fixed in dot-net (GSNetHistory skips an entity not in the world), because taking a node out between ticks is something the netcode agreed a game may do.
+	# Fixed in gs-net (GSNetHistory skips an entity not in the world), because taking a node out between ticks is something the netcode agreed a game may do.
 	OS.remove_logger(errors)
 	var seen := errors.seen()
 	_check(seen.is_empty(), "and the engine reported no error",
@@ -158,7 +158,7 @@ func _test_the_stand_ins() -> void:
 
 	var _restored := _run_command("sc_min_players 4")
 
-	# How the stand-ins aim and shoot is dot-bot's, the family's names: bot_difficulty sets the
+	# How the stand-ins aim and shoot is gs-bot's, the family's names: bot_difficulty sets the
 	# bundle, a single setting overrides it, and the old sc_bot_spread still means bot_aim_error.
 	var bot_settings := GSBotSettings.of(game)
 	_check(server.console.get_string("bot_difficulty", "") == "medium" and bot_settings.difficulty() == "medium",
@@ -210,14 +210,14 @@ func _check_hit_zone(player: ScPlayer) -> void:
 		zoned.weapon_id = &"probe"
 		game.progress.report_damage(zoned)
 		_check(game.progress.session_values(&"u717").get_cell(GSStatsHitzones.HITS, "zone:neck") >= 1.0,
-			"a hit with a hit_group is filed by body zone through the dot-stats hitzone hook")
+			"a hit with a hit_group is filed by body zone through the gs-stats hitzone hook")
 		_check(game.progress.stats.schema.validate().ok, "the stats schema, hitzones included, validates")
 	else:
 		_check(false, "a hit is filed by body zone", "no progress or player")
 		_check(false, "the stats schema validates")
 
 
-## A seat whose client has not lifted its loading cover cannot be harmed, and can once it does (dot-game's "still loading"), over a real ENet socket.
+## A seat whose client has not lifted its loading cover cannot be harmed, and can once it does (gs-game's "still loading"), over a real ENet socket.
 ## A client joins and says nothing; crush, shoot and drop must be refused, an admin's slay still passes, and after `game.cover` on the wire the same hit lands.
 func _test_a_covered_seat_is_not_harmed() -> void:
 	_section("a client behind its loading cover is not harmed, and is once it lifts")
@@ -411,7 +411,7 @@ func _test_map_rotation_file() -> void:
 	_finished()
 
 
-## `time_up: finish_round` waits for a round being played, never for warmup: the game hands dot-vote `round_in_progress_fn`, else a limit that ran out in warmup held the change for `finish_round_max_sec`.
+## `time_up: finish_round` waits for a round being played, never for warmup: the game hands gs-vote `round_in_progress_fn`, else a limit that ran out in warmup held the change for `finish_round_max_sec`.
 ## Run on a director of its own carrying the game's hook, so the real vote's clock is untouched; the match's state is set by hand and put back.
 func _test_finish_round_waits_for_a_live_round() -> void:
 	_section("finish_round waits for a live round, not warmup")
@@ -450,7 +450,7 @@ func _test_finish_round_waits_for_a_live_round() -> void:
 
 
 ## A director under `time_up: finish_round` carrying [param hook], its clock run out with a
-## winner already decided: what dot-vote's own suite builds, with the game's answer in it.
+## winner already decided: what gs-vote's own suite builds, with the game's answer in it.
 func _finish_round_probe(hook: Callable, applied: Array) -> GSVoteDirector:
 	var source := GSVoteListSource.new()
 	var _a := source.add(GSVoteChoice.of(&"a", "A"))

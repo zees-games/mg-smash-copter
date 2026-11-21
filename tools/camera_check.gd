@@ -3,7 +3,7 @@ extends Node
 ## The cameras and bodies the first play test caught, in the real offline game:
 ##
 ## - the third-person and spectator chase cameras flown round the start and every
-##   checkpoint of the course (dot-core's GSCameraCheck): never inside, armed by the
+##   checkpoint of the course (gs-core's GSCameraCheck): never inside, armed by the
 ##   unprotected camera being in or behind the course on some frames;
 ## - the player walked (the forward action held) into another player held still: with
 ##   `mp_solidplayers 1` their capsules never overlap; with 0 they do (the armed half: the
@@ -123,7 +123,7 @@ func _walk(game: ScGame, me: ScPlayer, other: ScPlayer, spot: Vector3, from: Vec
 	var to_spot := spot - from
 	me.controller.teleport(from + Vector3.UP * 0.05, rad_to_deg(atan2(-to_spot.x, -to_spot.z)), 0.0)
 	await get_tree().physics_frame
-	Input.action_press(&"dot_fps_forward")
+	Input.action_press(&"gs_fps_forward")
 	var closest := INF
 	# Every other player is held, not only the one walked at: a free bot's brain walks it
 	# into the player, and the closing speed of two hulls is not what this measures.
@@ -152,7 +152,7 @@ func _walk(game: ScGame, me: ScPlayer, other: ScPlayer, spot: Vector3, from: Vec
 					closest = minf(closest, Vector2(a.x - b.x, a.z - b.z).length())
 		else:
 			closest = minf(closest, Vector2(a.x - spot.x, a.z - spot.z).length())
-	Input.action_release(&"dot_fps_forward")
+	Input.action_release(&"gs_fps_forward")
 	print("    %s: closest %.2f m" % ["solid" if solid else "pass-through", closest])
 	return closest
 

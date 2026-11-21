@@ -9,7 +9,7 @@ func _test_delivery() -> void:
 	# The seventh form of the family's delivery bug, and the one that cost a boot. A
 	# publisher REWRITES every `res://` string inside a `.tscn` onto the mount prefix, so an
 	# exported `model_path` arrives at runtime already absolute — and rebasing it a second
-	# time produced `res://dot_cloud/tmc/smash/0.1.0/dot_cloud/tmc/smash/0.1.0/assets/...`,
+	# time produced `res://gs_cloud/tmc/smash/0.1.0/gs_cloud/tmc/smash/0.1.0/assets/...`,
 	# which does not load and is long enough that the doubling is easy to read past.
 	#
 	# Armed: reverted to the unconditional `root().path_join(...)` this fails, and the two
@@ -20,7 +20,7 @@ func _test_delivery() -> void:
 	# the bug put back. That is measured: it did. [method ScPaths.rebase_onto] is the same
 	# function taking the prefix, and this is the only way the mounted case is reachable
 	# from a build.
-	const MOUNT := "res://dot_cloud/tmc/smash/0.1.0"
+	const MOUNT := "res://gs_cloud/tmc/smash/0.1.0"
 
 	var once := ScPaths.rebase_onto("res://assets/kenney/car/debris-tire.glb", MOUNT)
 	_check(
@@ -158,7 +158,7 @@ func _test_blind_and_beacon_drawn() -> void:
 	_hud_chat_and_theme(hud)
 	var vitals: GSVitals = hud.vitals
 
-	# Health and the clock are dot-ui's glance pieces, handed this world's numbers.
+	# Health and the clock are gs-ui's glance pieces, handed this world's numbers.
 	me.health.health = 17.4
 	hud._process(0.0)
 	_check(
@@ -177,12 +177,12 @@ func _test_blind_and_beacon_drawn() -> void:
 	)
 	me.health.health = me.health.max_health
 
-	# A shell whose dot-ui predates these classes cannot parse the pack: requires.json must ask for dot-ui 4.
+	# A shell whose gs-ui predates these classes cannot parse the pack: requires.json must ask for gs-ui 4.
 	var asks := GSAddonApi.derive()
 	_check(
-		int(asks.get("dot_ui", 0)) >= 13 and FileAccess.file_exists("res://" + GSAddonApi.FLOOR_FILE),
-		"the pack asks a shell for dot-ui level 13, the weapon icons (requires.floor.json)",
-		str(asks.get("dot_ui"))
+		int(asks.get("gs_ui", 0)) >= 13 and FileAccess.file_exists("res://" + GSAddonApi.FLOOR_FILE),
+		"the pack asks a shell for gs-ui level 13, the weapon icons (requires.floor.json)",
+		str(asks.get("gs_ui"))
 	)
 
 	me.blinded = false
@@ -463,7 +463,7 @@ func _noise_catalogue_is_whole() -> void:
 		"the id list and the catalogue name the same sounds",
 		"unlisted %s, uncatalogued %s" % [unlisted, uncatalogued])
 
-	# dot-audio's stock footsteps and beds are files the addon ships, so they need no stand-in.
+	# gs-audio's stock footsteps and beds are files the addon ships, so they need no stand-in.
 	var stock := GSAudioStock.ids()
 	var synthesised := catalogued.filter(func(id: StringName) -> bool: return not stock.has(id))
 	var silent := synthesised.filter(func(id: StringName) -> bool: return not recipes.has(id))
@@ -559,7 +559,7 @@ func _check_progress_schema() -> void:
 	var declared := ScProgress.ids()
 	var in_schema: Array[StringName] = []
 	for def in ScProgress.schema().stats:
-		# dot-stats' hitzone declarations ride in the same schema and are not this game's list.
+		# gs-stats' hitzone declarations ride in the same schema and are not this game's list.
 		if String(def.id).begins_with("sc."):
 			in_schema.append(def.id)
 	var watched := ScProgress.catalogue().watched_stats()

@@ -1,10 +1,10 @@
 # Stand-ins
 
-`ScGame._drive_bots` and the showdown half below it. The family view is dot-bot's [design](../../dot-bot/docs/design.md) and [presets](../../dot-bot/docs/presets.md).
+`ScGame._drive_bots` and the showdown half below it. The family view is gs-bot's [design](../../gs-bot/docs/design.md) and [presets](../../gs-bot/docs/presets.md).
 
 ## Whose decision is whose
 
-- **How a stand-in turns, aims and when it fires is dot-bot's**: one `GSBotAim` per stand-in per round (`_bot_aim_of`), on the game's `GSBotSettings.of(world)`. So the view turns at `bot_turn_rate`, the first shot waits `bot_reaction` (+ `bot_notice` off-axis), opens `bot_aim_error` off and settles, and a target is seen only inside `bot_fov` and `bot_sight` with nothing of the world between (`_bot_sees`). `bot_difficulty` moves this game's stand-ins with every other game's.
+- **How a stand-in turns, aims and when it fires is gs-bot's**: one `GSBotAim` per stand-in per round (`_bot_aim_of`), on the game's `GSBotSettings.of(world)`. So the view turns at `bot_turn_rate`, the first shot waits `bot_reaction` (+ `bot_notice` off-axis), opens `bot_aim_error` off and settles, and a target is seen only inside `bot_fov` and `bot_sight` with nothing of the world between (`_bot_sees`). `bot_difficulty` moves this game's stand-ins with every other game's.
 - **What only this game asks of them is `sc_bot_*`** (`ScConfig`): `sc_bot_advance` (how far a stand-in walks to a fight), `sc_bot_lean_notice` (degrees of lean before it walks uphill; the platform half's one mistake) and `sc_bot_spray` (how wide a miss it fires at, below).
 - `sc_bot_spread` was a fixed aim offset per bot per round; it is now a deprecated name for `bot_aim_error`, kept because server configs set it. `ScConfig.bot_aim_spread_degrees` is gone.
 - Bound by the module (`bind_cvars`), and solo at the console (`ScClient._bind_bot_console`, plus `-- --bot_difficulty hard` at launch). Names are `ScGame.BOT_NAMES` through `GSBotNames.pick`, solo and server alike, never twice.

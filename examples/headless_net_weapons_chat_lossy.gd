@@ -102,7 +102,7 @@ func _test_a_weapon_crosses() -> void:
 	_check(not uses.is_empty(), "which a watcher reads as a number of uses",
 		"%d reports" % uses.size())
 
-		# Owner-only, as information: opponents should not know exact ammunition (dot-combat decides the same for the same two numbers). This client IS the owner, so the check is that the field is declared so at all.
+		# Owner-only, as information: opponents should not know exact ammunition (gs-combat decides the same for the same two numbers). This client IS the owner, so the check is that the field is declared so at all.
 	var owner_only := false
 
 	for spec in ZeeWeaponNet.all_specs():
@@ -111,7 +111,7 @@ func _test_a_weapon_crosses() -> void:
 
 	_check(owner_only, "and the magazine is owner-only")
 
-		# Lag compensation, wired rather than declared: unset, dot-combat says so once at boot and resolves against the present. This checks the two ends of that seam are joined.
+		# Lag compensation, wired rather than declared: unset, gs-combat says so once at boot and resolves against the present. This checks the two ends of that seam are joined.
 	var combat := _server_game.combat.describe()
 	_check(bool(combat["lagcomp"]), "lag compensation is wired to the netcode's history")
 	_check(

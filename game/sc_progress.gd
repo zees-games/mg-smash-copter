@@ -9,12 +9,12 @@ const ScPlatforms := preload("sc_platforms.gd")
 ## game's interesting figures are about the floor — how many rounds somebody was still
 ## standing when the clock ran out, how many landings on their own platform they were not
 ## under, how many platforms went over with them on them. Each is declared once, in
-## [method schema], counted as it happens and reported by dot-stats as a DELTA — "add one",
+## [method schema], counted as it happens and reported by gs-stats as a DELTA — "add one",
 ## never "now has forty" — so two servers reporting one player add up rather than overwrite.
 ##
-## [b]Achievements are rules over those numbers and nothing else.[/b] dot-achievements never
+## [b]Achievements are rules over those numbers and nothing else.[/b] gs-achievements never
 ## hears about a platform or a cannon; it hears that a number moved, through
-## [GSAchievementStatsLink] — which is the differencer between dot-stats' SESSION totals
+## [GSAchievementStatsLink] — which is the differencer between gs-stats' SESSION totals
 ## and a lifetime total, and the reason this is not one `connect`. Wiring `recorded` straight
 ## into `record` would add the running total to the lifetime total on every reading.
 ##
@@ -27,15 +27,15 @@ const ScPlatforms := preload("sc_platforms.gd")
 ## a notice from the server when they earn something.
 ##
 ## [b]A player's numbers are filed under their scoped profile key when they have one[/b] —
-## dot-user's per-server derivation, which outlives a connection and can never carry a site
-## account id (dot-stats' reporter refuses a `backbone:` key before it leaves the process,
+## gs-user's per-server derivation, which outlives a connection and can never carry a site
+## account id (gs-stats' reporter refuses a `backbone:` key before it leaves the process,
 ## and this one is not one). [member durable_key_fn] supplies it; without one, or for a
-## guest dot-user keeps no profile for, the key is the world's id, `u<session>`, and lasts a
-## connection. The world's ids stay the world's: only what is handed to dot-stats and
-## dot-achievements changes, through [method _key].
+## guest gs-user keeps no profile for, the key is the world's id, `u<session>`, and lasts a
+## connection. The world's ids stay the world's: only what is handed to gs-stats and
+## gs-achievements changes, through [method _key].
 ##
 ## [b]Fixed when counting begins, for the rest of the session.[/b] Counting begins on a
-## player's first number, which is nearly always after dot-platform has admitted them; one
+## player's first number, which is nearly always after gs-platform has admitted them; one
 ## who scored before their profile arrived keeps the session key until they reconnect,
 ## because moving half a session's numbers to another key mid-flight would file the second
 ## half against a total the first half never reached.
@@ -66,7 +66,7 @@ const FALLS := &"sc.falls"
 const PLATFORMS_TIPPED := &"sc.platforms_tipped"
 ## Things the cannon landed on their own platform that missed them.
 const PROPS_DODGED := &"sc.props_dodged"
-## The published skill figure the site orders by (dot-stats' GSStatsRank).
+## The published skill figure the site orders by (gs-stats' GSStatsRank).
 const RANK_SCORE := &"rank_score"
 
 ## Somebody earned something. [param player_id] is theirs; the world tells them.
@@ -77,7 +77,7 @@ var stats: GSStatsTracker = null
 var rank: GSStatsRank = null
 var achievements: GSAchievementTracker = null
 var link: GSAchievementStatsLink = null
-## Kills and hits by body zone, through dot-stats' event feed; ids are combat entity ids.
+## Kills and hits by body zone, through gs-stats' event feed; ids are combat entity ids.
 var feed: GSStatsEventFeed = null
 ## Entity id -> player id, handed in by the world (its [GSEntityTable]).
 var player_of: Callable = Callable()
@@ -100,7 +100,7 @@ var _round_kills: Dictionary = {}
 var _reached_showdown: bool = false
 
 ## `func(player_id: StringName) -> String`: the durable key to file this player under, or
-## "" for none. Set by the module from dot-platform; see the class note.
+## "" for none. Set by the module from gs-platform; see the class note.
 var durable_key_fn: Callable = Callable()
 
 ## World id -> the key their numbers are filed under, and back. Fixed at [method record]'s
@@ -118,7 +118,7 @@ static func ids() -> Array[StringName]:
 
 
 ## Every number, once. [b]`publish` on the ones a player page would show[/b]; deaths and
-## rounds played are inputs to a ratio rather than figures anybody reads, and dot-stats
+## rounds played are inputs to a ratio rather than figures anybody reads, and gs-stats
 ## defaults publishing off per stat for exactly that choice.
 static func schema() -> GSStatsSchema:
 	var out := GSStatsSchema.new()
@@ -155,7 +155,7 @@ static func _add(
 ## family's most repeated bug wearing a rosette. The suite checks it both ways.
 ##
 ## One stat, one merge: everything is SUM except the best round, which is HIGHEST —
-## dot-achievements refuses a catalogue that reads one number both ways.
+## gs-achievements refuses a catalogue that reads one number both ways.
 static func catalogue() -> GSAchievementCatalogue:
 	var made: Array[GSAchievement] = []
 
@@ -378,13 +378,13 @@ func _feed_key(entity_id: Variant) -> StringName:
 	return _ensure(player_id, body)
 
 
-## A landed hit, filed by body zone (and wall or body crossed) through the dot-stats hook.
+## A landed hit, filed by body zone (and wall or body crossed) through the gs-stats hook.
 func report_damage(damage: GSDamage) -> void:
 	if feed != null and stats != null:
 		var _filed := GSStatsDamage.report(feed, damage)
 
 
-## Every wall a resolved shot crossed, for the site's Penetration cost panel (the shape is dot-stats').
+## Every wall a resolved shot crossed, for the site's Penetration cost panel (the shape is gs-stats').
 func report_shot(shot: GSShot) -> void:
 	if feed != null and stats != null:
 		var _walls := GSStatsDamage.report_shot(feed, shot)

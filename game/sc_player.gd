@@ -21,8 +21,8 @@ const META_CARRIER := &"sc_carrier"
 ## Not a camera height: shots leave from it and platforms are judged from it, so client camera and server shot resolution must share one number.
 const EYE_HEIGHT := 1.6
 
-## The action a slow walk is bound to, on top of whatever dot-player-controller registered.
-const WALK_ACTION := &"dot_fps_walk"
+## The action a slow walk is bound to, on top of whatever gs-player-controller registered.
+const WALK_ACTION := &"gs_fps_walk"
 
 ## This player was run over, blown up, shot, or simply missed.
 signal died(by: StringName)
@@ -30,7 +30,7 @@ signal died(by: StringName)
 @export var player_id: StringName = &"local"
 @export var display_name: String = "Player"
 
-## What this player looks like, as a dot-user-avatar document; null is the stock person.
+## What this player looks like, as a gs-user-avatar document; null is the stock person.
 ##
 ## Set on a server from the platform (`sc_module._avatar_for`) and carried to every client in JOIN; [method _atlas] falls back to the stock hash when null.
 var avatar: GSAvatar = null
@@ -72,7 +72,7 @@ var team: int = 0
 ## Read-only from outside; [method set_riding] is the switch.
 var riding: bool = false
 
-## The entity id dot-combat and dot-entity know them by.
+## The entity id gs-combat and gs-entity know them by.
 var entity_id: int = 0
 
 ## How many times [method place_at] has put them somewhere, rather than moved them there.
@@ -171,7 +171,7 @@ var tick_rate: int = 64:
 
 ## The key [GSWeaponPlayerBridge] identifies this carrier by.
 ##
-## Exactly this name, because the bridge is duck-typed (`player.get("player_key")`) to avoid naming a player class; spelled otherwise, every showdown shot comes from entity zero, which dot-combat reads as "the world".
+## Exactly this name, because the bridge is duck-typed (`player.get("player_key")`) to avoid naming a player class; spelled otherwise, every showdown shot comes from entity zero, which gs-combat reads as "the world".
 var player_key: String:
 	get:
 		return String(player_id)
@@ -186,7 +186,7 @@ func _ready() -> void:
 	controller.drive = GSFpsController.Drive.EXTERNAL
 	controller.tunables = tunables_for(config, active)
 	# Every player, both ends: an admin's noclip or freeze is a modifier whose index
-	# travels on the wire. See dot-player-controller's GSFpsAdminModifiers.
+	# travels on the wire. See gs-player-controller's GSFpsAdminModifiers.
 	controller.admin_abilities = true
 	add_child(controller)
 
@@ -258,7 +258,7 @@ static func jump_reach(config: ScConfig, rise: float, p_active: ScSpecials.Activ
 
 ## Registers the movement actions, and binds the slow walk to shift.
 ##
-## dot-player-controller puts walk on alt and sprint on shift; this game has no sprint and its walk is the central control. The existing binding is left alone, so a project's own input map wins.
+## gs-player-controller puts walk on alt and sprint on shift; this game has no sprint and its walk is the central control. The existing binding is left alone, so a project's own input map wins.
 static func register_actions(sampler: GSFpsSampler = null) -> void:
 	var _added := GSFpsSampler.register_default_actions(sampler)
 
@@ -409,7 +409,7 @@ func eye_position() -> Vector3:
 	return controller.state.position + Vector3(0.0, EYE_HEIGHT, 0.0)
 
 
-## The duck-typed component lookup dot-weapon's player bridge asks a carrier for.
+## The duck-typed component lookup gs-weapon's player bridge asks a carrier for.
 ##
 ## Without it the bridge falls back to the body transform: right position, identity basis (yaw lives in the controller's state), so every shot goes due north and nothing looks broken. Matches `GSFpsController` as well as `GSPlayerController`, because the bridge asks for the base and a name is not a hierarchy.
 func component(type_name: StringName) -> Object:

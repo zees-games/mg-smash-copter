@@ -8,7 +8,7 @@ extends "headless_run_terraces.gd"
 ## [/codeblock]
 ##
 ## [b]The checks that matter are the ones that cross an addon boundary, and the ones that
-## measure the model this game invented.[/b] dot-props, dot-combat, dot-match and dot-vehicle
+## measure the model this game invented.[/b] gs-props, gs-combat, gs-match and gs-vehicle
 ## are each tested in their own repository and each of them passes there; what has never run
 ## before this game is the joins — and [ScPlatforms] has never run anywhere, because nothing
 ## in the family models a floor that tips. So the sections are named after behaviours a
@@ -25,7 +25,7 @@ const SECTIONS := 55
 ##
 ## [b]A runtime error inside a section aborts that FUNCTION and nothing says so.[/b] The
 ## checks that already ran still print ok, the ones after it never happen, and the section
-## counter is satisfied because the section announced itself on the way in. dot-settings
+## counter is satisfied because the section announced itself on the way in. gs-settings
 ## reported "8 sections, 63 passed, 0 failed" and exited 0 with eight checks missing.
 const CHECKS := 442
 
@@ -362,7 +362,7 @@ func _test_the_flanks() -> void:
 func _flank_kerbs_open(game: ScGame, sides: int, walks: Array) -> void:
 	# And open where each one arrives: a ray at shin height from the middle of the pad,
 	# and of the perch, out along the flank to a metre past the edge meets no kerb. A
-	# runner is thrown over a closed kerb since dot-player-controller 2e6d930 and the
+	# runner is thrown over a closed kerb since gs-player-controller 2e6d930 and the
 	# drive below cannot see one (armed: it passed with the openings uncut), so this is
 	# what holds them — a walker, or a body sliding, is still stopped by one.
 	var space_here := game.arena.get_world_3d().direct_space_state

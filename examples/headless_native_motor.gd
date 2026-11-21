@@ -4,7 +4,7 @@ const ScConfig := preload("../game/sc_config.gd")
 const ScSpecials := preload("../game/sc_specials.gd")
 const ScPlayer := preload("../game/sc_player.gd")
 
-## A player's motor in dot-sim ([member GSFpsMotor.native_tick], on by default since dot-player-controller API 27) moves exactly as the script motor does: the same seeded inputs with this game's movement tunables, on a floor, ramp, step,
+## A player's motor in gs-sim ([member GSFpsMotor.native_tick], on by default since gs-player-controller API 27) moves exactly as the script motor does: the same seeded inputs with this game's movement tunables, on a floor, ramp, step,
 ## wall and pillar, give the same bytes every tick, for the whole tick in one call and for its two halves. A web client runs the script while a native server and native clients run the library, so they must agree without a correction.
 ## Hit registration and lag compensation are not touched. With no library the native half is skipped; [code]GS_SIM_REQUIRE_NATIVE=1[/code] (CI) fails instead.
 
@@ -32,13 +32,13 @@ func _run() -> void:
 	_check(GSFpsMotor.native_full, "GSFpsMotor.native_full is on without the game turning it on")
 	var loaded := GSFpsPhysicsBody.native_full_available()
 	if not loaded:
-		print("  dot-sim's motor module is not loaded: the native half is skipped")
-		_check((OS.get_environment("GS_SIM_REQUIRE_NATIVE") if OS.has_environment("GS_SIM_REQUIRE_NATIVE") else OS.get_environment("DOT_SIM_REQUIRE_NATIVE")) != "1", "the library is loaded (GS_SIM_REQUIRE_NATIVE=1)")
+		print("  gs-sim's motor module is not loaded: the native half is skipped")
+		_check((OS.get_environment("GS_SIM_REQUIRE_NATIVE") if OS.has_environment("GS_SIM_REQUIRE_NATIVE") else OS.get_environment("GS_SIM_REQUIRE_NATIVE")) != "1", "the library is loaded (GS_SIM_REQUIRE_NATIVE=1)")
 		_finished += 1
 		_report_sections(_entered, _finished, SECTIONS - 2, 3)
 		return
 	_check(true, "the library has the whole tick")
-	print("  dot-sim: native motor_tick=full")
+	print("  gs-sim: native motor_tick=full")
 	_finished += 1
 
 	_build_world()
@@ -50,7 +50,7 @@ func _run() -> void:
 	var script_run: Array[PackedByteArray] = await _replay(0, stream)
 	var full_run: Array[PackedByteArray] = await _replay(2, stream)
 	var native_calls := GSFpsPhysicsBody.native_ticks - before
-	_check(native_calls > TICKS / 2, "most ticks ran in dot-sim", "%d native calls in %d ticks" % [native_calls, TICKS])
+	_check(native_calls > TICKS / 2, "most ticks ran in gs-sim", "%d native calls in %d ticks" % [native_calls, TICKS])
 	var first := _first_difference(script_run, full_run)
 	_check(first < 0, "every tick's state is the same bytes", "first differs at tick %d" % first)
 	_check(_spread(script_run) > 20.0, "the run went somewhere (not a body stood still)", "%.1f m" % _spread(script_run))

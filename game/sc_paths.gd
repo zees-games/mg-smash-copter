@@ -3,7 +3,7 @@ extends RefCounted
 ## Where this game's own files are, wherever this copy of it happens to live.
 ##
 ## [b]A delivered pack does not mount at the path its content was authored at.[/b] It
-## mounts at [code]res://dot_cloud/<id>/<version>/[/code], so every absolute `res://`
+## mounts at [code]res://gs_cloud/<id>/<version>/[/code], so every absolute `res://`
 ## reference a game makes to its OWN files resolves against the HOST project root
 ## instead — which holds another game's file, or nothing. The pack mounts, the scene
 ## loads, and the first thing that tries to use the reference finds something else.
@@ -65,12 +65,12 @@ static func rebase_onto(path: String, here: String) -> String:
 	# a script is not a resource file it can parse. So a game ends up with both kinds: a
 	# `const` in a script that still says `res://props/x.tscn` and needs rebasing, and an
 	# exported property on a node that the publisher has already turned into
-	# `res://dot_cloud/<id>/<version>/props/x.tscn` and must not be. Rebasing the second
-	# produces `res://dot_cloud/tmc/smash/0.1.0/dot_cloud/tmc/smash/0.1.0/...`, which fails
+	# `res://gs_cloud/<id>/<version>/props/x.tscn` and must not be. Rebasing the second
+	# produces `res://gs_cloud/tmc/smash/0.1.0/gs_cloud/tmc/smash/0.1.0/...`, which fails
 	# to load with a path long enough that the doubling is easy to miss.
 	#
 	# This is the seventh form of the family's one delivery bug. The other six are in
-	# ../dot-server-deploy/docs/delivery-constraint.md; what they share is that the thing being rewritten and the thing doing
+	# ../gs-server-deploy/docs/delivery-constraint.md; what they share is that the thing being rewritten and the thing doing
 	# the rewriting cannot see each other.
 	#
 	# Built in, [param here] is `res://` and every `res://` path is already under it, so this

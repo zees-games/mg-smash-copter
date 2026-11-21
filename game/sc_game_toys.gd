@@ -4,8 +4,8 @@ extends "sc_game_bots.gd"
 
 
 ## One tick of everybody's weapons and what they produced. Shots are resolved HERE rather than by the rig:
-## zee-dot-weapons returns an outcome and applies nothing (a behaviour reaching into a `GSHealth` would be a client
-## deciding who dies), and this game hands outcomes to dot-combat.
+## zee-gs-weapons returns an outcome and applies nothing (a behaviour reaching into a `GSHealth` would be a client
+## deciding who dies), and this game hands outcomes to gs-combat.
 func _advance_weapons() -> void:
 	if phase != Phase.SHOWDOWN or combat == null:
 		return
@@ -102,7 +102,7 @@ func _shoot_toys(shot: GSShot) -> void:
 
 
 ## Turns a player's movement command into a weapon command. The buttons are the game's to assign:
-## dot-player-controller reserves three bits and this game spends all three (fire, alt-fire bash, reload); the slot
+## gs-player-controller reserves three bits and this game spends all three (fire, alt-fire bash, reload); the slot
 ## wanted rides in this game's own input message, as the movement command has no room.
 func weapon_command_for(player: ScPlayer) -> GSWeaponCommand:
 	var command := GSWeaponCommand.new()
@@ -252,8 +252,8 @@ func _on_prop_broken(prop: GSPropInstance, at: Vector3, _by: StringName) -> void
 		shattered.emit(at, material)
 
 
-## A barrel went off. dot-props described the blast; this is what it does to people. The split is the addon
-## boundary: dot-props knows props and nothing else (a player needs another id space and authority), so it shoves
+## A barrel went off. gs-props described the blast; this is what it does to people. The split is the addon
+## boundary: gs-props knows props and nothing else (a player needs another id space and authority), so it shoves
 ## the other props itself and hands the rest over here.
 func _on_prop_exploded(
 	at: Vector3, radius: float, damage_amount: float, force: float, by: StringName
@@ -309,12 +309,12 @@ func _on_prop_exploded(
 
 func _on_player_died(player: ScPlayer, damage: GSDamage) -> void:
 	# One dictionary read of the reverse index [GSEntityTable] keeps, instead of walking every player comparing
-	# ints, on every death. An attacker of 0 is dot-combat's "the world" (a fall, a crate, a barrel nobody set off),
+	# ints, on every death. An attacker of 0 is gs-combat's "the world" (a fall, a crate, a barrel nobody set off),
 	# for which the table returns an empty key.
 	var by := entities.key_for_id(damage.attacker)
 	var why: StringName = damage.context.get("why", DIED_SHOT)
 
-	# Before dot-match hears of it, and the order is the reason: `report_kill` can END the round synchronously (the
+	# Before gs-match hears of it, and the order is the reason: `report_kill` can END the round synchronously (the
 	# last of a side going is an elimination), dropping the phase to IDLE and filing the numbers, so a kill counted
 	# after that is in no phase and no round. The winning shot of every showdown was missing.
 	if spectate != null and authoritative:
@@ -331,9 +331,9 @@ func _on_player_died(player: ScPlayer, damage: GSDamage) -> void:
 			phase == Phase.HANDOVER or phase == Phase.SHOWDOWN
 		)
 
-	# [b]Only a player is reported to dot-match.[/b] Anything registered with dot-combat arrives at this
+	# [b]Only a player is reported to gs-match.[/b] Anything registered with gs-combat arrives at this
 	# handler looking the same, and a scoreboard row filed against a falling crate is a row nobody can
-	# explain. The kind is in the id, which is what dot-entity's whole layout is for.
+	# explain. The kind is in the id, which is what gs-entity's whole layout is for.
 	if match_node != null and GSEntity.is_kind(player.entity_id, GSEntity.KIND_PLAYER):
 		match_node.report_kill(
 			String(by), String(player.player_id), why, _tick

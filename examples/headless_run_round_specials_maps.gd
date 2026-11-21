@@ -60,7 +60,7 @@ func _test_the_round() -> void:
 		ScGame.Phase.keys()[game.phase])
 	_check(not corner.health.invulnerable, "with nobody protected any more")
 
-	# The round ends when a side has nobody left, which is dot-match's elimination rule
+	# The round ends when a side has nobody left, which is gs-match's elimination rule
 	# reading this game's own `alive_fn`. Unwired it falls back to a clock, and the tell is
 	# visible in the first round played.
 	var ended: Array[int] = []
@@ -199,8 +199,8 @@ func _test_riding_the_chopper() -> void:
 	_finished()
 
 
-## dot-core's audit over every layout's field: drawn geometry nothing collides with is walked
-## through. Strict, so a new mesh must have a shape or say (`dot_no_collision`) why not.
+## gs-core's audit over every layout's field: drawn geometry nothing collides with is walked
+## through. Strict, so a new mesh must have a shape or say (`gs_no_collision`) why not.
 func _test_collision_audit() -> void:
 	_section("nothing drawn in a layout is walked through")
 
@@ -234,9 +234,9 @@ func _test_collision_audit() -> void:
 	_finished()
 
 
-## The layouts are dot-map's maps: listed, changeable by command, voted from the catalogue.
+## The layouts are gs-map's maps: listed, changeable by command, voted from the catalogue.
 func _test_the_map_catalogue() -> void:
-	_section("the layouts are listed, changed and voted as dot-map maps")
+	_section("the layouts are listed, changed and voted as gs-map maps")
 
 	var config := ScConfig.new()
 	var catalogue := ScLayouts.catalogue(config)

@@ -32,7 +32,7 @@ func _on_player_added(id: StringName) -> void:
 		return
 
 	# Every id on the wire is `u<session>`, and anything else parses back to zero: a player called `bot` would
-	# replicate under session 0, which is also dot-net's broadcast address, and a second would replace the first
+	# replicate under session 0, which is also gs-net's broadcast address, and a second would replace the first
 	# here. Refused with a line, else one stand-in plays and the other stands still for ever.
 	if player_key(session_id) != id:
 		GSLog.warn(CHANNEL, "a player whose id is not a session key is not replicated", {
@@ -96,7 +96,7 @@ func _on_world_rebuilt() -> void:
 
 
 ## Every prop the world puts out becomes a replicated entity, announced reliably AND replicated by snapshot: the
-## snapshot moves it, the event says what it IS. Content is named by PATH so a dot-cloud pack can deliver it (a
+## snapshot moves it, the event says what it IS. Content is named by PATH so a gs-cloud pack can deliver it (a
 ## mounted pack's `class_name` globals are not registered in the host).
 func _on_prop_spawned(prop: GSPropInstance) -> void:
 	if net == null or not net.is_server or prop == null or prop.node == null:
@@ -306,7 +306,7 @@ func ensure_game_ticked(tick: int) -> void:
 
 	# After the world moved everything, before the snapshot is built: a body pulled earlier replicates last tick's
 	# place, with no error. Checked, not assumed: a behaviour lives on its body, so freeing one frees the other
-	# without telling dot-net's registry, which then logs a freed instance every tick.
+	# without telling gs-net's registry, which then logs a freed instance every tick.
 	for net_id in _bodies.keys():
 		var behaviour: Variant = _bodies[net_id]
 
@@ -421,7 +421,7 @@ func _switch_team(peer_id: int, team: int) -> void:
 		return
 
 	# It lands on the next round, by rule: a player who changed sides in the middle of a survival phase would stand
-	# on a platform of the team they left with their new team's win condition. dot-player-class documents the same
+	# on a platform of the team they left with their new team's win condition. gs-player-class documents the same
 	# decision about changing class mid-fight.
 	game.sides[id] = team
 	(game.players[id] as ScPlayer).team = team

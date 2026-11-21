@@ -7,7 +7,7 @@ extends "sc_prop_net.gd"
 ## bodies and one `pull` loop over it; a second parallel table is a second thing that can
 ## disagree about which of them exists.
 ##
-## [b]`extends` a relative path, not a `class_name`.[/b] A mounted dot-cloud pack's globals
+## [b]`extends` a relative path, not a `class_name`.[/b] A mounted gs-cloud pack's globals
 ## are not registered in the host, so a game that named its own base class would compile
 ## here, mount there and have every script in it dead with nothing reporting a thing.
 
@@ -32,9 +32,9 @@ var net_occupancy: int = 0
 ## Declared from the addon's own table.
 ##
 ## [b]The type is resolved from a STRING, and that is why the table is written the way it
-## is.[/b] [GSVehicleNetSync] never mentions a dot-net `class_name`, because a script
+## is.[/b] [GSVehicleNetSync] never mentions a gs-net `class_name`, because a script
 ## naming a class the project does not have fails to parse and takes every script that
-## references it down with it — so a game without dot-net can still use dot-vehicle.
+## references it down with it — so a game without gs-net can still use gs-vehicle.
 ## Resolving `GSNetVar.Type[spec.type]` is the game's half of that bargain and can only be
 ## done here.
 func _register_net_vars() -> void:

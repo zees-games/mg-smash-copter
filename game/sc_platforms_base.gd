@@ -166,7 +166,7 @@ var grip: float = 1.0
 var stiffness_scale: float = 1.0
 
 ## Node instance id -> deck index, so a motor's `ground_id` answers in one lookup: it is read once
-## per player per tick, and walking every deck to match it is the scan dot-entity exists to remove.
+## per player per tick, and walking every deck to match it is the scan gs-entity exists to remove.
 var _by_body: Dictionary = {}
 
 var _physics: GSPhysicsLayout = null

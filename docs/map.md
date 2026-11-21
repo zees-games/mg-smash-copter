@@ -4,7 +4,7 @@
 
 ## Reach: a jump is measured, not sized by eye
 
-`ScPlayer.jump_reach(config, rise)` is `tunables_for(config, active).jump_reach(rise)`, dot-player-controller's `GSFpsTunables.jump_reach`, so the game keeps no copy of the arithmetic. **The rise is never zero on this map**: a runner leans the platform toward the edge they run at, so the lip has dropped by the time they reach it (about 0.3 m mid-edge, 0.8 m at a corner, against a 1.15 m apex). The suite steps `ScPlatforms`' own model along the run to measure that dip for every route; it is most of the difference between a jump and a wall.
+`ScPlayer.jump_reach(config, rise)` is `tunables_for(config, active).jump_reach(rise)`, gs-player-controller's `GSFpsTunables.jump_reach`, so the game keeps no copy of the arithmetic. **The rise is never zero on this map**: a runner leans the platform toward the edge they run at, so the lip has dropped by the time they reach it (about 0.3 m mid-edge, 0.8 m at a corner, against a 1.15 m apex). The suite steps `ScPlatforms`' own model along the run to measure that dip for every route; it is most of the difference between a jump and a wall.
 
 `Layout.jumps` declares which KINDS of jump a layout means (`ALONG_ROWS`, `ACROSS_HOLES`, `ACROSS_ROWS`, `DIAGONALS`); `ScLayouts.pairs()` turns kinds into pairs off the cell list; `ScPlatforms.clear_air()` measures the air along the runner's line. **The sweep is both ways**: a declared jump must be inside the reach, and an undeclared one outside even a flat running jump, because "nobody is crossing" and "every platform stands alone" are promises too. `ScLayouts.islands()` counts what a player can get to, per cell, off the built field (bridges plus declared jumps).
 
@@ -32,7 +32,7 @@ A square ring in the middle, a pad per side at the corners, catwalks from pads t
 - **The flanks**: `ScArena.flank_walks()` puts a perch (`PERCH_SIZE`, 8 m) half-way round between every two pads, joined to both by catwalks that never come near the ring. From a perch the ring's blocks are side-on, so somebody hidden from the pad a block faces is in plain sight. A flank leaves a square pad at an angle, so its slab runs half its width into both ends and sits `FLANK_DROP` (2 cm) under them, or two coplanar tops z-fight.
 - **The dais**: `ScArena.dais()` (`DAIS_SIZE`, 4 m square, 0.9 m high) on the ring's middle, the one cover that can be held against any side by moving round it. Its top is the trade: 0.9 m is one jump (apex 1.15) and never a step (0.45), and on it a survivor sees and is seen by every pad and perch.
 - **A catwalk is cut along both edges.** `ScArena.catwalk(index)` ends each long side where it leaves the ring's square (`_line_exit`) and where it meets the pad's, a convex prism, with kerbs stopping at either edge. Measured along its middle, an oblique catwalk ran 3.2 m into the ring.
-- **Kerbs are open where a catwalk arrives.** `_build_kerb` cuts an opening wherever a catwalk crosses an edge. A 0.34 m kerb 0.6 m deep stopped a runner dead; dot-player-controller's step-up handles it since, and the openings stay because a junction with no step is the better junction. A check that counted kerbs passed; it counts SIDES now, and the showdown walk fails without the openings.
+- **Kerbs are open where a catwalk arrives.** `_build_kerb` cuts an opening wherever a catwalk crosses an edge. A 0.34 m kerb 0.6 m deep stopped a runner dead; gs-player-controller's step-up handles it since, and the openings stay because a junction with no step is the better junction. A check that counted kerbs passed; it counts SIDES now, and the showdown walk fails without the openings.
 - **Every edge is marked.** `CORNER_LIP` was documented twice and built nowhere, and the pads were flat shapes against a flat sky. Catwalks get the band on their long sides only: a kerb across a short end is a step at the junction a player runs through.
 - The showdown is reached by teleport; its question is whether a survivor can WALK from their pad along a catwalk onto the ring, which is driven with two sides (square junctions) and three (oblique).
 
@@ -46,4 +46,4 @@ A body marked with the meta `ScPlayer.META_CARRIER` carries whoever stands on it
 
 ## The map list
 
-`ScLayouts.catalogue()` is a `GSMapCatalogue` of the allowed layouts; `ScMapSession` (a `GSMapSession`) applies a change through `world.change_layout_now` with no scene swap, and `ScModule._build_maps` wires dot-map's commands to it. Link the addon with `addons/dot_map`.
+`ScLayouts.catalogue()` is a `GSMapCatalogue` of the allowed layouts; `ScMapSession` (a `GSMapSession`) applies a change through `world.change_layout_now` with no scene swap, and `ScModule._build_maps` wires gs-map's commands to it. Link the addon with `addons/gs_map`.

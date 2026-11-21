@@ -10,7 +10,7 @@ Kept because each could come back and the story is how it looks. None of them er
 - **The map came back white, and the floor was four hundred metres of red.** Lighting tuned for the wrong renderer; the hazard colour on the one surface nobody survives filled ninety percent of every frame.
 - **The bridge held freed nodes for ever.** A platform's net behaviour is a child of its body and the bridge only cleaned its table on the rebuild, after the free. Hence `world_clearing` and the validity guard. A client rebuilding its field had the same leak in the registry.
 - **A mid-round joiner was never placed**: they started at the origin, forty metres down inside the kill floor, died on their first tick, and on a two-team server ended the round, which re-laid the field and freed every platform from inside the netcode's loop. The suite saw it as a flood of "previously freed instance", three layers from the cause.
-- **Nobody could be shot**: no `GSHitboxSet` and no `combat.trace`, found from dot-combat's boot warning. **A teleport's yaw was taken back** by the motor reading the command. **Lag compensation was on with nothing wired.**
+- **Nobody could be shot**: no `GSHitboxSet` and no `combat.trace`, found from gs-combat's boot warning. **A teleport's yaw was taken back** by the motor reading the command. **Lag compensation was on with nothing wired.**
 - **A seat made the floor survivable**: the fall check skipped riders, whose own position stops moving while carried.
 - **Every round leaked a lag-compensation track per platform**, re-created by a `server_tick` holding the identity list from before the old field went.
 - **The camera moved only on a tick** (it hung off the node).
@@ -25,20 +25,20 @@ Kept because each could come back and the story is how it looks. None of them er
 
 `_apply_join` mirrored every player with owner 0, so nothing was predicted and the player moved a round trip behind the keys, while every check said the client agreed with the server. It is also what made the camera lurch: `render_state` blended a previous tick frozen at the last teleport with the newest snapshot. Measured with `--view=walk`, median eye speed per frame 60.9 m/s (max 1313) against 6.0 after. mg-buses-from-hell found the same line the same day; the fix is shared.
 
-## The stats warning that was dot-stats' (cross-repo)
+## The stats warning that was gs-stats' (cross-repo)
 
-`dedicated` printed a new WARN that an unpublished stat would not be reported, on a server that reports nothing: `GSStatsTracker.end()` queued a leaver's delta into the reporter even with reporting off. Publishing the stat to silence it would have been changing a decision to hide a log line; it was fixed in dot-stats instead.
+`dedicated` printed a new WARN that an unpublished stat would not be reported, on a server that reports nothing: `GSStatsTracker.end()` queued a leaver's delta into the reporter even with reporting off. Publishing the stat to silence it would have been changing a decision to hide a log line; it was fixed in gs-stats instead.
 
-## dot-match's spawn warning (cross-repo)
+## gs-match's spawn warning (cross-repo)
 
-dot-match warned "no usable spawn point at all" once per player per round, for a game that deliberately has no spawn points. Fixed in dot-match: `choose_spawn` returns null for an empty list, which is a game computing its own positions.
+gs-match warned "no usable spawn point at all" once per player per round, for a game that deliberately has no spawn points. Fixed in gs-match: `choose_spawn` returns null for an empty list, which is a game computing its own positions.
 
 ## Delivering it
 
 - **The seventh form of the mount constraint** and **the check that passed with the bug put back**: [delivery.md](delivery.md#the-seventh-form-a-path-already-rewritten-rebased-again).
 - **The combat manager set itself up twice** (`_ready` calls `setup()`, and `_build_combat` called it again); the tell was every setup log line printed twice in a row.
 - **The pads had no edge**, and `CORNER_LIP` was documented in two places and built in none. A value documented and produced nowhere is as invisible to a suite as one produced and consumed by nothing.
-- **Nobody could shoot anybody, and every check said the weapons worked.** Every shot left the world origin pointing north: `ZeeWeaponRig` resolved its carrier behind a `role == SERVER` early return (fixed in zee-dot-weapons, for every server using the pack), and this game's `ScPlayer` had no `component()`, so the weapon bridge fell back to the body transform with an identity basis. Then **friendly fire was on** in a game whose rules say off, because `team_of` was never given. No number anywhere was wrong.
+- **Nobody could shoot anybody, and every check said the weapons worked.** Every shot left the world origin pointing north: `ZeeWeaponRig` resolved its carrier behind a `role == SERVER` early return (fixed in zee-gs-weapons, for every server using the pack), and this game's `ScPlayer` had no `component()`, so the weapon bridge fell back to the body transform with an identity basis. Then **friendly fire was on** in a game whose rules say off, because `team_of` was never given. No number anywhere was wrong.
 - **A bot showdown produced the same winner twelve rounds in twelve**: symmetric corners and a stateless brain. The first fix drew on the entity id alone, which is the same every round, and changed nothing.
 - **A client disconnected mid-round** cast freed props and platforms in the bridge (three script errors on a run that exited 0), found by `smash_client`.
 
@@ -58,4 +58,4 @@ The health number was lifted above the chat box's first line, not its full log: 
 
 ## The stand-ins could not win a showdown at any difficulty (2026-10-12)
 
-Moving the stand-ins onto dot-bot's aim and measuring them against a pinned reference turned up four things the old snap-and-hold aim had hidden. Walking the straight line from slot to slot, every stand-in left its catwalk about thirty metres out, all four on one tick, and no shot was fired in twenty rounds. Routed down the catwalks, they stopped against the ring's first cover block and stood there. Round it, the presets that see further did worse: they opened fire walking from sixty metres, where the rifle's moving spread is five times its standing one, and reloaded on arrival (nightmare lost 18 of 20 to the reference, medium 12). And held down, any one-a-press weapon fired once and a charge rifle never. The rules are in [bots.md](bots.md); the presets now come out easy 0.35, medium 1.13, hard 2.38, nightmare 3.17 K/D.
+Moving the stand-ins onto gs-bot's aim and measuring them against a pinned reference turned up four things the old snap-and-hold aim had hidden. Walking the straight line from slot to slot, every stand-in left its catwalk about thirty metres out, all four on one tick, and no shot was fired in twenty rounds. Routed down the catwalks, they stopped against the ring's first cover block and stood there. Round it, the presets that see further did worse: they opened fire walking from sixty metres, where the rifle's moving spread is five times its standing one, and reloaded on arrival (nightmare lost 18 of 20 to the reference, medium 12). And held down, any one-a-press weapon fired once and a charge rifle never. The rules are in [bots.md](bots.md); the presets now come out easy 0.35, medium 1.13, hard 2.38, nightmare 3.17 K/D.

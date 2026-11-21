@@ -15,7 +15,7 @@ const ScBindings := preload("sc_bindings.gd")
 ## settings.open()                     # Escape does this in the client
 ## [/codeblock]
 ##
-## [b]dot-menu's `GSMenuGameSettings` with this game's spec[/b] (2026-10-09). It was a 250-line
+## [b]gs-menu's `GSMenuGameSettings` with this game's spec[/b] (2026-10-09). It was a 250-line
 ## copy of mg-wipeout's file — a manager, a `match` over four keys and a bare settings
 ## screen — and the same copy was in five other games. What is left here is what is this
 ## game's: where the document lives, and the stock keys it has nothing to apply to.
@@ -23,14 +23,14 @@ const ScBindings := preload("sc_bindings.gd")
 ## [b]The scopes are the family's, not this game's.[/b] `sensitivity` is ACCOUNT under the
 ## shared `tmc_account` namespace — a person's hand, the same number in every game here.
 ## `field_of_view` is SERVER_CLAMPED: a wide view is an advantage a server may cap, and
-## dot-settings gives a server no way to READ it. The volumes are this machine's.
+## gs-settings gives a server no way to READ it. The volumes are this machine's.
 
 const SCHEMA_VERSION := 1
 
-## Where this game's own document lives. The shared account document is dot-settings'.
+## Where this game's own document lives. The shared account document is gs-settings'.
 const SETTINGS_DIR := "user://smash_settings"
 
-## The app's namespace. ACCOUNT settings are shared under dot-menu's `tmc_account`.
+## The app's namespace. ACCOUNT settings are shared under gs-menu's `tmc_account`.
 const APP_NAMESPACE := &"smash_copter"
 
 ## The field of view the camera had before this existed, and still the default.

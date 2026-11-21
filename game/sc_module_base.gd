@@ -23,13 +23,13 @@ const ROSTER_INTERVAL := 2.0
 ## The `sc_bots` cvar, held so the tick does not look it up sixty times a second.
 var _bots: GSConVar = null
 
-## dot-workbench over the config and the block rules; the F9 panel off a dedicated server, the HTTP page only with `workbench.enabled`.
+## gs-workbench over the config and the block rules; the F9 panel off a dedicated server, the HTTP page only with `workbench.enabled`.
 var workbench: GSGameWorkbench = null
 
 ## `mp_forcecamera`, kept so the deprecated `sc_spectate_camera` writes through it.
 var _force_camera_cvar: Object = null
 
-## How many stand-ins, from how many people: dot-server's one rule for every game. See
+## How many stand-ins, from how many people: gs-server's one rule for every game. See
 ## [method _keep_the_round_full].
 var _quota: GSBotQuota = null
 
@@ -41,7 +41,7 @@ var _bot_ids: Array[StringName] = []
 ## The players' vote for the next layout; null when it could not be built.
 var vote: ScVote = null
 
-## dot-map's session over the layouts: the catalogue `map`, `maps`, `mapinfo` and the ballot list.
+## gs-map's session over the layouts: the catalogue `map`, `maps`, `mapinfo` and the ballot list.
 var maps: ScMapSession = null
 
 ## The drawn ballot's notice topic. The client shell draws one menu per topic.

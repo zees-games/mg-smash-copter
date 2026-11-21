@@ -2,7 +2,7 @@ extends GSSpectatorHost
 
 const ScPlayer := preload("sc_player.gd")
 
-## Where somebody who is out looks, and what the server lets them see. The policy (who may watch whom, through which camera) is the server's: an authoritative [GSSpectatorManager] there, and a MIRROR on a client told each change in a `SPECTATE` event; dot-spectate computes a transform and touches no camera.
+## Where somebody who is out looks, and what the server lets them see. The policy (who may watch whom, through which camera) is the server's: an authoritative [GSSpectatorManager] there, and a MIRROR on a client told each change in a `SPECTATE` event; gs-spectate computes a transform and touches no camera.
 ## No delay, as it would protect nothing: every player is always relevant (open air), so every client already receives every live position. `delay_ticks` stays 0 and the mirror's `advance` records no history.
 ## No `class_name`, like everything in this game; reached by preload from [ScGame], which hands it the two dictionaries it reads and a phase callable rather than being preloaded back (no cycle).
 

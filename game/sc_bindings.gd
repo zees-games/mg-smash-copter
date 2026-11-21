@@ -1,6 +1,6 @@
 extends RefCounted
 
-## Every key this game reads, as one dot-menu [GSMenuBindings] table: the action, the setting
+## Every key this game reads, as one gs-menu [GSMenuBindings] table: the action, the setting
 ## that stores it, the words a player sees, the default, and the card it goes on.
 ##
 ## [b]A table, because four things read it:[/b] the client matches events against the actions,
@@ -8,10 +8,10 @@ extends RefCounted
 ## row, and the help screen (H) lists them with the key each is on now. Until 2026-10-11 these
 ## were keycodes in `ScClient._unhandled_input`, which no page could show or move.
 ##
-## [b]Walk is Shift, the brake[/b]: dot-player-controller's own walk action, so the sampler
+## [b]Walk is Shift, the brake[/b]: gs-player-controller's own walk action, so the sampler
 ## reads this row (see `ScPlayer.register_actions` for why Shift and not the addon's Alt). The
-## chopper flies on the movement keys, so their rows say both. The chat keys are dot-game's
-## chat window's own actions. H is help, in every game of the family (dot-menu adds the row),
+## chopper flies on the movement keys, so their rows say both. The chat keys are gs-game's
+## chat window's own actions. H is help, in every game of the family (gs-menu adds the row),
 ## so nothing here may default to it.
 
 const BOARD := &"sc_board"
@@ -24,7 +24,7 @@ const SCOREBOARD := &"sc_scoreboard"
 const ROAM := &"sc_roam"
 ## The flashlight, on and off, for everybody still up.
 const FLASHLIGHT := &"sc_flashlight"
-## dot-ui's chat window's actions, which dot-game's chat client leaves at their defaults.
+## gs-ui's chat window's actions, which gs-game's chat client leaves at their defaults.
 const CHAT := &"chat_open"
 const CHAT_TEAM := &"chat_open_team"
 ## Slots 1 to 5, the weapon pack's, in the showdown.
@@ -34,12 +34,12 @@ const SLOTS: Array[StringName] = [&"sc_slot_1", &"sc_slot_2", &"sc_slot_3", &"sc
 static func make() -> GSMenuBindings:
 	var keys := GSMenuBindings.new()
 	keys.add_movement("Movement", "Ctrl", "Crouch (chopper: down)")
-	keys.add(&"dot_fps_forward", &"bind_forward", "Forward (chopper: tilt forward)", "W", "Movement")
-	keys.add(&"dot_fps_back", &"bind_back", "Back (chopper: tilt back)", "S", "Movement")
-	keys.add(&"dot_fps_left", &"bind_left", "Strafe left (chopper: turn)", "A", "Movement")
-	keys.add(&"dot_fps_right", &"bind_right", "Strafe right (chopper: turn)", "D", "Movement")
-	keys.add(&"dot_fps_jump", &"bind_jump", "Jump (chopper: up)", "Space", "Movement")
-	keys.add(&"dot_fps_walk", &"bind_walk", "Walk: the brake on a leaning platform", "Shift", "Movement")
+	keys.add(&"gs_fps_forward", &"bind_forward", "Forward (chopper: tilt forward)", "W", "Movement")
+	keys.add(&"gs_fps_back", &"bind_back", "Back (chopper: tilt back)", "S", "Movement")
+	keys.add(&"gs_fps_left", &"bind_left", "Strafe left (chopper: turn)", "A", "Movement")
+	keys.add(&"gs_fps_right", &"bind_right", "Strafe right (chopper: turn)", "D", "Movement")
+	keys.add(&"gs_fps_jump", &"bind_jump", "Jump (chopper: up)", "Space", "Movement")
+	keys.add(&"gs_fps_walk", &"bind_walk", "Walk: the brake on a leaning platform", "Shift", "Movement")
 	# The wheel goes through the showdown's weapons (and is not jump); in the chopper it does nothing.
 	var _wheel := keys.add_wheel_weapons()
 	keys.add(BOARD, &"bind_board", "Get into or out of the chopper", "E", "Hands")

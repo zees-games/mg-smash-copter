@@ -1,6 +1,6 @@
 extends "sc_client_round.gd"
 
-## The flashlight's presentation, split out of `sc_client.gd`: the light on the eye and the others' beams (dot-flashlight); the server owns on/off. No `class_name`; the client extends this.
+## The flashlight's presentation, split out of `sc_client.gd`: the light on the eye and the others' beams (gs-flashlight); the server owns on/off. No `class_name`; the client extends this.
 
 
 ## Whether the camera is this player's own eye (first person, not watching anybody); the client says.

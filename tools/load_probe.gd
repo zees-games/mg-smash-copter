@@ -1,6 +1,6 @@
 extends GSLoadProbe
 
-## The load probe: dot-game's [GSLoadProbe] on this game's offline solo client, with the phase and tick
+## The load probe: gs-game's [GSLoadProbe] on this game's offline solo client, with the phase and tick
 ## column(s) before player/cam/hud. Needs xvfb-run, never --headless:
 ##   xvfb-run -a godot --path . res://tools/load_probe.tscn -- [--frames=90] [--shot=N]
 const ScClient := preload("../game/sc_client.gd")
