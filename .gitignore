@@ -55,6 +55,9 @@
 /addons/dot_bot
 /addons/zee_weapons
 /addons/dot_player_char
+/addons/dot_animation
+/addons/dot_save
+/addons/dot_camera
 
 # Exports
 build/
