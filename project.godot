@@ -10,10 +10,17 @@ config_version=5
 
 [application]
 
-config/name="mg-smash-copter"
+config/name="Smash Copter"
 config/description="Two to six teams survive on platforms balanced on single pillars while a cannon rains props on them, then fight it out in the corners with random weapons."
 run/main_scene="res://game/sc.tscn"
 config/features=PackedStringArray("4.7")
+config/icon="res://branding/icon.png"
+config/windows_native_icon="res://branding/icon.ico"
+boot_splash/bg_color=Color(0.051, 0.0588, 0.0784, 1)
+boot_splash/fullsize=true
+boot_splash/image="res://branding/splash.png"
+boot_splash/show_image=true
+boot_splash/use_filter=true
 
 [audio]
 
