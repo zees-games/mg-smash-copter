@@ -34,6 +34,8 @@
 - `ScPlayer.component()` is the seam `GSWeaponPlayerBridge` looks up; without it the bridge falls back to the body transform (yaw lives in the controller's state, not the node), and every shot pointed north.
 - **Lag-compensation tracks**: a round begins inside `server_tick`, which records history for the identity list it took before the old field went, re-creating a track per forgotten platform. The bridge forgets them again once the manager's tick returns; `dedicated` counts orphaned tracks and asserts the engine reports no error.
 
+- **Solid hulls are lag-compensated, opt-in.** With `mp_solidplayers 1` and `mp_solidplayers_unlag 1` (both off by default) a mover's step bumps the other hulls where its own screen drew them. The command carries `view_lag_q`, `view_back`, `view_span` behind one presence bit (`ScNetCommand`); `ScHullView` (`game/net/sc_hull_view.gd`) wires gs-player-controller's `GSPlayerHullView`: the server answers from a per-tick feet ring recorded after `tick_once`, the client from the interpolator, and `ScGame.step_against_view` wraps every mover's step on both ends. With either cvar off nothing is asked and nothing is recorded. Needs gs-player-controller API 35. No second-client parity test yet.
+
 ## Freed bodies
 
 A disconnect mid-round frees bodies under the bridge; `_apply_prop_gone` and `_forget_platforms` check `is_instance_valid` before casting. The field's own freeing rules are in [platforms.md](platforms.md#freeing-the-field).

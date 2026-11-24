@@ -75,6 +75,12 @@ var last_slot: int = 0
 ## The aim button of the last command a peer sent (the sights up), which the body's rig and motor read.
 var last_aim: bool = false
 
+## The view the last command named ([ScNetCommand.view_lag_q], `view_back`, `view_span`) and the tick it was for: what the hull rewind moves the other players' hulls by. Retained across a lost packet like the movement; -1 is no view.
+var last_view_q: int = -1
+var last_view_back: int = -1
+var last_view_span: int = 0
+var last_view_tick: int = -1
+
 var last_state_tick: int = -1
 
 
@@ -128,6 +134,10 @@ func _net_apply_input(input: GSNetInput, _tick: int) -> void:
 		last_move = command.move
 		last_slot = command.slot
 		last_aim = command.aim
+		last_view_q = command.view_lag_q
+		last_view_back = command.view_back
+		last_view_span = command.view_span
+		last_view_tick = command.tick
 
 		if player != null:
 			player.wanted_slot = command.slot
@@ -149,7 +159,7 @@ func _net_simulate(tick: int, delta: float) -> void:
 		player.controller.apply_command(last_move.duplicate_command())
 	else:
 		player.controller.apply_command(last_move.duplicate_command())
-		player.step_controller(tick, delta)
+		bridge.game.step_against_view(player.player_id, tick, player.step_controller.bind(tick, delta))
 
 	pull()
 

@@ -402,7 +402,7 @@ func _step_bodies_only(delta: float) -> void:
 		var body := players[id] as ScPlayer
 
 		if body.is_alive():
-			body.simulate(_tick, delta)
+			step_against_view(id, _tick, body.simulate.bind(_tick, delta))
 
 
 ## One simulated tick, numbered by the netcode. What the bridge uses.
@@ -422,7 +422,7 @@ func _step(delta: float) -> void:
 	_advance_flashlights()
 
 	for id: StringName in players:
-		(players[id] as ScPlayer).simulate(_tick, delta)
+		step_against_view(id, _tick, (players[id] as ScPlayer).simulate.bind(_tick, delta))
 
 	if authoritative:
 		_advance_toys(delta)

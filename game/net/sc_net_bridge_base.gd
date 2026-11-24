@@ -3,6 +3,7 @@ extends GSGameNetIo
 const ScCopterNet := preload("sc_copter_net.gd")
 const ScEvent := preload("sc_event.gd")
 const ScEvents := preload("sc_events.gd")
+const ScHullView := preload("sc_hull_view.gd")
 const ScNetCommand := preload("sc_net_command.gd")
 const ScNetLink := preload("sc_net_link.gd")
 const ScPlatformNet := preload("sc_platform_net.gd")

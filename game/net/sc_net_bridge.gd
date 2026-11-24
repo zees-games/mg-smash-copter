@@ -28,6 +28,7 @@ func attach(p_game: Object, p_net: GSNetManager) -> GSResult:
 
 	game = world
 	net = p_net
+	game.hull_view = ScHullView.new(world, p_net, _behaviours)
 
 	_entities = Node.new()
 	_entities.name = "Entities"
@@ -102,30 +103,7 @@ func _connect_server_signals() -> void:
 	if game.spectate != null:
 		game.spectate.view_changed.connect(_on_spectate_changed)
 
-	_wire_lag_compensation()
-
-
-## Hands gs-combat the two callables that make lag compensation real.
-## gs-combat names no gs-net type, so it takes a rewind and a restore as [Callable]s; unset, it says so once and resolves every shot against the present while the flag claims lag compensation is on. gs-net already records the history.
-## The shooter is not excluded, and that is safe: `resolve_shot` fixes `shot.origin` before it rewinds anything and refuses self damage separately.
-func _wire_lag_compensation() -> void:
-	if game.combat == null or net == null:
-		return
-
-	if game.combat.config != null:
-		game.combat.config.lag_compensation = true
-
-	game.combat.rewind_fn = func(target_tick: float) -> void:
-		var _rewound := net.history.rewind(
-			net.registry.all(), int(target_tick), net.clock.tick
-		)
-
-	game.combat.restore_fn = func() -> int:
-		return net.history.restore()
-
-	GSLog.debug(CHANNEL, "lag compensation is wired to the netcode's history", {
-		"max_rewind_ms": game.combat.config.max_rewind_ms if game.combat.config != null else 0.0,
-	})
+	ScHullView.wire_combat(game, net)
 
 
 ## Opens the link under [param parent], whose NAME is half the RPC routing.

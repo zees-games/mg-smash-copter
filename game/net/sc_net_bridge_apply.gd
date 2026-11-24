@@ -15,6 +15,7 @@ func client_tick(tick: int, command: GSFpsCommand, slot: int = 0, aim: bool = fa
 	packet.move = command if command != null else GSFpsCommand.new()
 	packet.slot = slot
 	packet.aim = aim
+	game.hull_view.fill(packet, tick, _behaviours.get(local_player_id))
 
 	# Into the local history BEFORE predicting: reconciliation replays it.
 	net.local_inputs().push(packet)

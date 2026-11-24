@@ -191,6 +191,8 @@ signal toys_clearing()
 ## its link: the client places its camera under the first and predicts its own player under the second.
 var view_rules: GSPlayerViewRules = GSPlayerViewRules.new()
 var body_rules: GSPlayerBodyRules = GSPlayerBodyRules.new()
+## Lag-compensated hulls (`mp_solidplayers_unlag`): an `ScHullView`, set by a netcode bridge on both ends; null with no network, where nothing is lagged. Its rewind moves the bodies in `players`.
+var hull_view: RefCounted = null
 ## The ambience cvars (`sc_ambient*`): bound by the module (REPLICATED), followed by a client through its link.
 var ambient_rules: GSAmbienceRules = ScAmbience.make_rules()
 ## gs-mobile's touch cvars (`sv_mobile_*`, `sv_aim_assist*`, `sv_autofire*`): bound by the module (REPLICATED), followed by a client through its link. Auto-fire and aim assist stay off (their defaults) and the overlay gets no crosshair query, so an operator turning them on changes nothing here yet.
@@ -301,6 +303,14 @@ func _apply_body_mask(player: ScPlayer) -> void:
 	if player.weapons != null:
 		player.weapons.wall_extra_mask = tunables.collision_mask
 	body_rules.apply_hull(player, tunables.stand_height, tunables.radius)
+
+
+## Runs [param work] (a mover's step, at [param tick]) against the hulls where the mover's own view drew them when the rules ask (mp_solidplayers_unlag), else as it is.
+func step_against_view(id: StringName, tick: int, work: Callable) -> void:
+	if hull_view != null and body_rules.solid and body_rules.unlag:
+		hull_view.around(id, tick, work)
+	else:
+		work.call()
 
 
 ## `mp_solidplayers` changed: every player's mask and hull now.

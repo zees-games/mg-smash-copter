@@ -300,6 +300,9 @@ func ensure_game_ticked(tick: int) -> void:
 
 	game.tick_once(tick)
 
+	# Every player's feet after this tick, for the next ticks' rewinds.
+	game.hull_view.record(tick)
+
 	# The toys where the physics left them, before the snapshot.
 	for behaviour: ScToyNet in _toy_nets:
 		behaviour.pull()
