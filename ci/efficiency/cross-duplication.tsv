@@ -20,7 +20,7 @@ game/sc_killcam.gd	71
 game/sc_module.gd	33
 game/sc_player.gd	37
 game/sc_progress.gd	118
-game/sc_services.gd	118
+game/sc_services.gd	73
 game/sc_textures.gd	76
 props/sc_prop_body.gd	44
 tools/render_cover.gd	81

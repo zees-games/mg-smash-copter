@@ -1,5 +1,6 @@
-extends GSGameServices
+extends GSPlayerGameServices
 
+# Kept though unused here: they fix the order these scripts load in, and without them the headless run ends with 456 resources still in use (a load-order cycle between the client and server scripts).
 const ScGame := preload("sc_game.gd")
 const ScNetBridge := preload("net/sc_net_bridge.gd")
 const ScPlayer := preload("sc_player.gd")
@@ -19,10 +20,6 @@ const CH_WHISPER := &"whisper"
 
 ## Metres a shout carries. About two platform pitches — see the class documentation.
 const PROXIMITY_RANGE := 26.0
-
-## The bridge, for the roster lookup [method _position_of] needs. Set before [method setup].
-var bridge: ScNetBridge = null
-
 
 func _services_name() -> String:
 	return "smash-copter"
@@ -136,94 +133,9 @@ func _voice_default_channel() -> int:
 	return GSVoiceRouter.Channel.ALL
 
 
-## Which side somebody is on, for the team channel and for team voice.
-## Read off the game rather than cached, because sides change between rounds.
-func _team_of(peer_id: int) -> int:
-	var player := _player_of(peer_id)
-	return (game as ScGame).team_of(player.player_id) if player != null else 0
-
-
-func _position_of(peer_id: int) -> Vector3:
-	var player := _player_of(peer_id)
-
-	# The simulated state, not the node: the node is wherever the last frame drew them (between two ticks on an interpolating client), and a proximity range resolved against a rendered position is a frame's walking out.
-	return player.controller.state.position if player != null else Vector3.ZERO
-
-
-func _player_of(peer_id: int) -> ScPlayer:
-	if bridge == null or game == null:
-		return null
-
-	var session_id := bridge.player_for_peer(peer_id)
-
-	if session_id == 0:
-		return null
-
-	return (game as ScGame).players.get(ScNetBridge.player_key(session_id))
-
-
-
-## What the admin set means here, one callable per ability. See `GSGameServices`.
-## Noclip and freeze are here (how a stuck player is looked at, and a griefer on another's slab stopped). Respawn is refused because putting a faller back decides the round; give and strip because the handover's one random weapon each is the second half's fairness; moves are refused while flying, since the chopper is what moves.
-## Blind and beacon are about a SCREEN: one flag on [ScPlayer] that `ScPlayerNet` replicates (blind to its owner, beacon to everybody) and the client draws (`ScHud`, `GSFxBeacon`). The server decides.
-func _mod_abilities() -> Dictionary:
-	return {
-		"noclip": func(id: StringName, args: Dictionary) -> GSResult:
-			return _on_foot(id, func(p: ScPlayer) -> GSResult:
-				return GSFpsAdminModifiers.set_noclip(p.controller, bool(args["on"]))),
-		"freeze": func(id: StringName, args: Dictionary) -> GSResult:
-			return _on_foot(id, func(p: ScPlayer) -> GSResult:
-				return GSFpsAdminModifiers.set_frozen(p.controller, bool(args["on"]))),
-		"speed": func(id: StringName, args: Dictionary) -> GSResult:
-			return _on_foot(id, func(p: ScPlayer) -> GSResult:
-				return GSFpsAdminModifiers.set_speed(p.controller, float(args["scale"]))),
-		"gravity": func(id: StringName, args: Dictionary) -> GSResult:
-			return _on_foot(id, func(p: ScPlayer) -> GSResult:
-				return GSFpsAdminModifiers.set_gravity(p.controller, float(args["scale"]))),
-		"god": func(id: StringName, args: Dictionary) -> GSResult:
-			var p := _mod_player(id)
-			if p == null or p.health == null:
-				return _mod_absent(id)
-			p.health.invulnerable = bool(args["on"])
-			return GSResult.success(p.health.invulnerable),
-		"buddha": func(id: StringName, args: Dictionary) -> GSResult:
-			var p := _mod_player(id)
-			if p == null or p.health == null:
-				return _mod_absent(id)
-			p.health.cannot_die = bool(args["on"])
-			return GSResult.success(p.health.cannot_die),
-		"health": func(id: StringName, args: Dictionary) -> GSResult:
-			var p := _mod_player(id)
-			if p == null or p.health == null:
-				return _mod_absent(id)
-			if not p.health.alive:
-				return GSResult.fail(GSError.CODE_STATE, "They are out until the next round.")
-			p.health.health = minf(float(args["value"]), 2000.0)
-			return GSResult.success(p.health.health),
-		"slay": func(id: StringName, _args: Dictionary) -> GSResult:
-			return _mod_hurt(id, -1.0),
-		"slap": func(id: StringName, args: Dictionary) -> GSResult:
-			return _mod_hurt(id, float(args.get("damage", 0.0))),
-		"rename": func(id: StringName, args: Dictionary) -> GSResult:
-			var p := _mod_player(id)
-			if p == null:
-				return _mod_absent(id)
-			p.display_name = str(args["name"]).strip_edges().substr(0, 32)
-			return GSResult.success(p.display_name),
-		# The screen and nothing else, flying or not: a blinded player still moves, loads their platform and can be hit; freeze is the verb for stopping them, and one verb doing both could not be used for only the first.
-		"blind": func(id: StringName, args: Dictionary) -> GSResult:
-			var p := _mod_player(id)
-			if p == null:
-				return _mod_absent(id)
-			p.blinded = bool(args["on"])
-			return GSResult.success(p.blinded),
-		"beacon": func(id: StringName, args: Dictionary) -> GSResult:
-			var p := _mod_player(id)
-			if p == null:
-				return _mod_absent(id)
-			p.beacon = bool(args["on"])
-			return GSResult.success(p.beacon),
-	}
+## A pilot riding a platform is moved with it, not by an admin.
+func _mod_movable(p: Object) -> bool:
+	return not (p as ScPlayer).riding
 
 
 func _mod_unsupported() -> Dictionary:
@@ -234,144 +146,3 @@ func _mod_unsupported() -> Dictionary:
 		"burn": "nothing here burns a player",
 	}
 
-
-## Toggles that outlive a new body here, beyond gs-moderation's own god and buddha.
-## Blind and beacon are about the person, not the body: noclip or freeze ending with the round is right (arriving noclipped or frozen on a slab about to be shot at breaks the round), but a punished player must not shed it by falling.
-const PERSIST_ON_RESPAWN: Array[String] = ["blind", "beacon"]
-
-
-func _mod_can_teleport() -> bool:
-	return true
-
-
-func _mod_position(id: StringName) -> Variant:
-	var p := _mod_player(id)
-	return p.controller.state.position if p != null and not p.riding else null
-
-
-func _mod_teleport(id: StringName, to: Variant) -> void:
-	var p := _mod_player(id)
-
-	if p != null and not p.riding and to is Vector3:
-		p.place_at(to as Vector3, p.controller.state.yaw)
-
-
-func _mod_configure_commands(commands: Object) -> void:
-	commands.set("alive_fn", func(id: StringName) -> bool:
-		var p := _mod_player(id)
-		return p != null and p.is_alive())
-	commands.set("team_fn", func(id: StringName) -> String:
-		var p := _mod_player(id)
-		return str(p.team) if p != null else "")
-
-
-func _mod_player(id: StringName) -> ScPlayer:
-	if game == null or not String(id).is_valid_int():
-		return null
-
-	return (game as ScGame).players.get(ScNetBridge.player_key(String(id).to_int()))
-
-
-func _mod_absent(id: StringName) -> GSResult:
-	return GSResult.fail(GSError.CODE_STATE, "Player %s is not on the field." % String(id))
-
-
-func _on_foot(id: StringName, act: Callable) -> GSResult:
-	var p := _mod_player(id)
-
-	if p == null:
-		return _mod_absent(id)
-
-	if p.riding:
-		return GSResult.fail(GSError.CODE_STATE, "They are flying the chopper; the chopper is what moves.")
-
-	return act.call(p)
-
-
-## A slay (amount < 0) or a slap, as ordinary damage through the combat manager — so the
-## round hears about a slain player exactly as it hears about a fall.
-func _mod_hurt(id: StringName, amount: float) -> GSResult:
-	var p := _mod_player(id)
-
-	if p == null or p.health == null:
-		return _mod_absent(id)
-
-	if not p.health.alive:
-		return GSResult.fail(GSError.CODE_STATE, "They are already out.")
-
-	var field := game as ScGame
-
-	if amount < 0.0:
-		var was_god := p.health.invulnerable
-		var was_buddha := p.health.cannot_die
-		p.health.invulnerable = false
-		p.health.cannot_die = false
-		p.health.invulnerable_until_tick = -1
-		var fatal := GSDamage.make(0, p.entity_id, p.health.health + 1000.0, null)
-		fatal.weapon_id = &"slay"
-		fatal.context = {"admin": true}
-		field.combat.apply_damage(fatal)
-		p.health.invulnerable = was_god
-		p.health.cannot_die = was_buddha
-		return GSResult.success(null) if fatal.lethal else GSResult.fail(
-			GSError.CODE_STATE, "The slay was refused: %s" % fatal.refusal
-		)
-
-	if not p.riding:
-		# Into the simulated velocity, which replicates, so the owning client reconciles
-		# to the shove. On a slab on a pillar, a slap is a real threat, which is the point.
-		p.controller.state.velocity += Vector3(3.0, 4.0, 3.0)
-		p.controller.state.mode = GSFpsState.Mode.AIR
-
-	if amount > 0.0:
-		var hurt := GSDamage.make(0, p.entity_id, amount, null)
-		hurt.context = {"admin": true}
-		hurt.weapon_id = &"slap"
-		field.combat.apply_damage(hurt)
-
-	return GSResult.success(null)
-
-
-## A round is everybody's new body: a noclip or a freeze from last round ends, god carries.
-## A new layout is a new map: every `return` point is above some platform, so the history is cleared when the layout changes and kept when it does not (`[modtools-return-1]`).
-func _on_round_began_for_tools(_number: int, layout: StringName) -> void:
-	for key: StringName in (game as ScGame).players:
-		mod_player_respawned(StringName(String(key).trim_prefix("u")))
-
-	if layout != _tools_layout and mod_tools != null:
-		mod_tools.clear_history()
-	_tools_layout = layout
-
-
-## The layout the last round began on, for [method _on_round_began_for_tools].
-var _tools_layout: StringName = &""
-
-
-## The team seam gs-chat and gs-voice both ask for, which the base cannot wire.
-## [GSGameServices] knows nothing about teams (a lobby has none), so the two `team_fn` hooks are set here, after the base has built each router.
-func setup(p_server: GSServer, p_game: Object, p_link: Object) -> GSResult:
-	var ready_now: GSResult = await super.setup(p_server, p_game, p_link)
-
-	if not ready_now.ok:
-		return ready_now
-
-	if chat != null:
-		chat.set("team_fn", Callable(self, "_team_of"))
-
-	if voice != null:
-		voice.set("team_fn", Callable(self, "_team_of"))
-
-	if mod_tools != null:
-		# Read, extended and written back: the property is a PackedStringArray, and a packed
-		# array read through `get` is a copy — appending to it would change nothing.
-		var keep: PackedStringArray = mod_tools.get("persist_on_respawn")
-		for action in PERSIST_ON_RESPAWN:
-			if not keep.has(action):
-				keep.append(action)
-		mod_tools.set("persist_on_respawn", keep)
-
-	if game is ScGame and not (game as ScGame).round_began.is_connected(_on_round_began_for_tools):
-		(game as ScGame).round_began.connect(_on_round_began_for_tools)
-
-	GSLog.info(CHANNEL, "chat, voice and moderation are up for this game", describe())
-	return ready_now
