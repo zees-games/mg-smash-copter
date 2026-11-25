@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://6hhyyqhdh6gc"
-path="res://.godot/imported/clip-small.glb-dd4cdf5c631e93572fc3633832507e51.scn"
+uid="uid://bpdewbaxycgo2"
+path="res://.godot/imported/scope-large-b.glb-6076055f92b9d95ea2045e047cb4458b.scn"
 
 [deps]
 
-source_file="res://assets/blaster-kit/clip-small.glb"
-dest_files=["res://.godot/imported/clip-small.glb-dd4cdf5c631e93572fc3633832507e51.scn"]
+source_file="res://assets/attachments/scope-large-b.glb"
+dest_files=["res://.godot/imported/scope-large-b.glb-6076055f92b9d95ea2045e047cb4458b.scn"]
 
 [params]
 
@@ -41,5 +41,5 @@ materials/extract_format=0
 materials/extract_path=""
 _subresources={}
 gltf/naming_version=2
-gltf/embedded_image_handling=1
+gltf/embedded_image_handling=2
 gltf/texture_map_mode=1

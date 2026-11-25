@@ -75,7 +75,7 @@ func _test_zee_art_root() -> void:
 	# zee's art is `res://assets/…`, the host's root in a delivered pack: the client sets the cache root to
 	# `ScPaths.root()` at boot and back on exit. Armed: without the `_ready` line the first check fails.
 	const ELSEWHERE := "res://elsewhere/"
-	const ART := "res://assets/blaster-kit/blaster-a.glb"
+	const ART := "res://assets/ammo/bullet-foam.glb"
 
 	ZeeModelCache.set_asset_root(ELSEWHERE)
 
