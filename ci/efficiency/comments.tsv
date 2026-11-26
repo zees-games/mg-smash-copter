@@ -22,7 +22,6 @@ game/sc_figure.gd::history	1
 game/sc_figure.gd::long_block	2
 game/sc_map_session.gd::long_block	2
 game/sc_module.gd::commented_code	1
-game/sc_paths.gd::long_block	4
 game/sc_progress.gd::long_block	3
 game/sc_settings.gd::history	1
 game/sc_settings.gd::long_block	1

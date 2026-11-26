@@ -1,6 +1,7 @@
 {
   "format": 1,
   "addons": {
+    "gs_game": 50,
     "gs_mobile": 1,
     "gs_player_controller": 35,
     "gs_team": 6,
